@@ -1,0 +1,992 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { AppTab, ChatMessage, Recipe, ChatContext } from './types';
+import { RECIPES, MOVEMENTS } from './constants';
+import NutritionCard from './components/NutritionCard';
+import MovementCard from './components/MovementCard';
+import Resources from './components/Resources';
+import { getGeminiResponse, validateChatPassword } from './services/geminiService';
+import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle } from 'lucide-react';
+
+const SIDE_EFFECT_SHORTCUTS = [
+  { 
+    label: 'Fatigue', 
+    icon: <Zap className="w-4 h-4" />, 
+    color: 'text-amber-500',
+    bg: 'bg-amber-50',
+    prompt: 'How can I use exercise and food to help with cancer-related fatigue?' 
+  },
+  { 
+    label: 'Nausea', 
+    icon: <AlertCircle className="w-4 h-4" />, 
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50',
+    prompt: 'I am feeling nauseous from treatment. What are some food and gentle movement tips?' 
+  },
+  { 
+    label: 'Taste Changes', 
+    icon: <UtensilsCrossed className="w-4 h-4" />, 
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-50',
+    prompt: 'Food tastes like metal lately. What can I do with my diet or routine?' 
+  },
+  { 
+    label: 'Low Appetite', 
+    icon: <Coffee className="w-4 h-4" />, 
+    color: 'text-rose-500',
+    bg: 'bg-rose-50',
+    prompt: 'I have no appetite. How can I stay nourished and stimulate hunger?' 
+  },
+  { 
+    label: 'Dry Mouth', 
+    icon: <Droplets className="w-4 h-4" />, 
+    color: 'text-blue-500',
+    bg: 'bg-blue-50',
+    prompt: 'I have a very dry mouth from treatment. What foods or drinks can help?' 
+  }
+];
+
+const CHAT_PASSWORD_STORAGE_KEY = 'fit-for-cancer-chat-password';
+const CHAT_UNLOCKED_STORAGE_KEY = 'fit-for-cancer-chat-unlocked';
+
+const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<AppTab>(AppTab.HOME);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { 
+      role: 'model', 
+      content: "Hello, I'm your Fit For Cancer assistant. I provide evidence-based oncology exercise and nutrition guidance.\n\nTo get started, **on a scale of 0–10, how is your fatigue today?**\n\n| Score | Zone | Guidance |\n| :--- | :--- | :--- |\n| 🟢 0-3 | Green | Mild: Energy levels are good |\n| 🟡 4-6 | Yellow | Moderate: Energy is dipping |\n| 🔴 7-10 | Red | Severe: Critical fatigue |\n\nPlease also provide a **Quick Note** about your current context (e.g., 'Post-treatment' or 'Poor sleep')." 
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [fatigueScore, setFatigueScore] = useState<number | null>(null);
+  const [fatigueZone, setFatigueZone] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | null>(null);
+  const [isMyelomaPatient, setIsMyelomaPatient] = useState(false);
+  const [cancerType, setCancerType] = useState<string | undefined>(undefined);
+  const [exerciseZoneFilter, setExerciseZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
+  const [recipeZoneFilter, setRecipeZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
+  const [recipeCategoryFilter, setRecipeCategoryFilter] = useState<Recipe['category'] | 'All'>('All');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [chatPassword, setChatPassword] = useState('');
+  const [isChatUnlocked, setIsChatUnlocked] = useState(false);
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+  const [chatAuthError, setChatAuthError] = useState<string | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const storedPassword = window.sessionStorage.getItem(CHAT_PASSWORD_STORAGE_KEY);
+    const unlocked = window.sessionStorage.getItem(CHAT_UNLOCKED_STORAGE_KEY) === 'true';
+
+    if (storedPassword) {
+      setChatPassword(storedPassword);
+    }
+
+    if (storedPassword && unlocked) {
+      setIsChatUnlocked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === AppTab.ASSISTANT) {
+      scrollToBottom();
+    }
+  }, [messages, activeTab]);
+
+  const resetChatAccess = () => {
+    setIsChatUnlocked(false);
+    setChatAuthError(null);
+    window.sessionStorage.removeItem(CHAT_UNLOCKED_STORAGE_KEY);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const trimmedPassword = chatPassword.trim();
+    if (!trimmedPassword || isCheckingPassword) {
+      return;
+    }
+
+    setIsCheckingPassword(true);
+    setChatAuthError(null);
+
+    const isValid = await validateChatPassword(trimmedPassword);
+
+    if (!isValid) {
+      setIsChatUnlocked(false);
+      setChatAuthError('That password was not accepted. Please try again.');
+      window.sessionStorage.removeItem(CHAT_UNLOCKED_STORAGE_KEY);
+      setIsCheckingPassword(false);
+      return;
+    }
+
+    setIsChatUnlocked(true);
+    window.sessionStorage.setItem(CHAT_PASSWORD_STORAGE_KEY, trimmedPassword);
+    window.sessionStorage.setItem(CHAT_UNLOCKED_STORAGE_KEY, 'true');
+    setIsCheckingPassword(false);
+  };
+
+  const handleSendMessage = async (userPrompt?: string) => {
+    const textToSend = userPrompt || input;
+    if (!textToSend.trim() || isLoading || !isChatUnlocked) return;
+
+    const userMessage: ChatMessage = { role: 'user', content: textToSend };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput('');
+    setIsLoading(true);
+
+    // Update context based on current message before sending to AI
+    let updatedIsMyeloma = isMyelomaPatient;
+    let updatedCancerType = cancerType;
+    let updatedScore = fatigueScore;
+    let updatedZone = fatigueZone;
+
+    if (textToSend.toLowerCase().includes('myeloma')) {
+      updatedIsMyeloma = true;
+      setIsMyelomaPatient(true);
+    }
+
+    // Simple regex for other cancer types if mentioned
+    const cancerMatch = textToSend.match(/(breast|prostate|lung|colon|lymphoma|leukemia|melanoma|ovarian|pancreatic|stomach|bladder|kidney)\s+cancer/i);
+    if (cancerMatch) {
+      updatedCancerType = cancerMatch[0];
+      setCancerType(cancerMatch[0]);
+    } else if (textToSend.toLowerCase().includes('breast cancer')) {
+      updatedCancerType = 'Breast Cancer';
+      setCancerType('Breast Cancer');
+    } else if (textToSend.toLowerCase().includes('lung cancer')) {
+      updatedCancerType = 'Lung Cancer';
+      setCancerType('Lung Cancer');
+    }
+
+    if (!isOnline) {
+      const offlineMsg: ChatMessage = { 
+        role: 'model', 
+        content: "I'm currently offline. I can't access my AI brain without an internet connection, but you can still use the Exercise and Nutrition tabs to find evidence-based support!" 
+      };
+      setMessages(prev => [...prev, offlineMsg]);
+      setIsLoading(false);
+      return;
+    }
+
+    const scoreMatch = textToSend.match(/\b([0-9]|10)\b/);
+    if (scoreMatch) {
+      const score = parseInt(scoreMatch[1]);
+      updatedScore = score;
+      setFatigueScore(score);
+      
+      let zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' = '🟢 Green';
+      if (score >= 7) zone = '🔴 Red';
+      else if (score >= 4) zone = '🟡 Yellow';
+      
+      updatedZone = zone;
+      setFatigueZone(zone);
+      // Reset manual filters to null so they follow the new dynamic zone by default
+      setExerciseZoneFilter(null);
+      setRecipeZoneFilter(null);
+    }
+
+    const context: ChatContext = {
+      fatigueScore: updatedScore,
+      fatigueZone: updatedZone,
+      isMyelomaPatient: updatedIsMyeloma,
+      cancerType: updatedCancerType
+    };
+
+    const aiResponse = await getGeminiResponse(newMessages, chatPassword, context);
+
+    if (aiResponse === 'Incorrect password. Please re-enter it to continue using the health assistant.') {
+      resetChatAccess();
+      setChatAuthError(aiResponse);
+    }
+    
+    // Proactive notification if zone changed to Red
+    if (updatedZone === '🔴 Red' && fatigueZone !== '🔴 Red') {
+      const proactiveMsg: ChatMessage = { 
+        role: 'model', 
+        content: `I've updated your Exercise Panel to the 🔴 Red Zone (Score ${updatedScore}/10). We are pausing strength training today to focus on recovery and gentle stretching.` 
+      };
+      setMessages(prev => [...prev, { role: 'model', content: aiResponse }, proactiveMsg]);
+      setIsLoading(false);
+      return;
+    }
+
+    setMessages(prev => [...prev, { role: 'model', content: aiResponse }]);
+    setIsLoading(false);
+  };
+
+  const onFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSendMessage();
+  };
+
+  const renderContent = () => {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+          {(() => {
+            switch (activeTab) {
+              case AppTab.HOME:
+                return (
+                  <div className="space-y-8">
+            <header className={`${
+              fatigueZone === '🔴 Red' ? 'bg-rose-500 text-white shadow-rose-200' : 
+              fatigueZone === '🟡 Yellow' ? 'bg-amber-400 text-amber-950 shadow-amber-100' : 
+              'bg-neon-blue text-neon-dark shadow-neon-blue/20'
+            } rounded-2xl p-8 shadow-lg transition-all duration-500 relative overflow-hidden`}>
+              {/* Decorative background element */}
+              <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+              
+              <div className="relative z-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <h1 className="text-3xl font-bold">Welcome to Fit For Cancer</h1>
+                  {fatigueZone && (
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full border border-white/30">
+                      <span className="text-lg leading-none">{fatigueZone.split(' ')[0]}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">{fatigueZone.split(' ')[1]} Zone Active</span>
+                    </div>
+                  )}
+                </div>
+                
+                <p className="opacity-90 max-w-xl text-lg font-medium leading-relaxed">
+                  {!fatigueZone 
+                    ? "Evidence-based exercise and nutrition support tailored for your journey in Australia."
+                    : fatigueZone === '🟢 Green' 
+                      ? "Your energy levels are high today! It's a great time to focus on building strength and stamina with our standard movements."
+                      : fatigueZone === '🟡 Yellow'
+                        ? "Your energy is dipping a bit. We've modified your recommendations to help you stay active without draining your battery."
+                        : "You're in the recovery zone today. Focus on restorative movements and nourishing foods to help your body recharge."
+                  }
+                </p>
+                
+                <div className="flex flex-wrap gap-3 mt-8">
+                  <button 
+                    onClick={() => setActiveTab(AppTab.ASSISTANT)}
+                    className={`${
+                      fatigueZone === '🔴 Red' ? 'bg-white text-rose-600' : 
+                      fatigueZone === '🟡 Yellow' ? 'bg-amber-950 text-amber-400' : 
+                      'bg-neon-dark text-neon-blue'
+                    } px-6 py-2.5 font-bold rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md flex items-center gap-2`}
+                  >
+                    <span className="text-lg">💬</span>
+                    Talk to Health Assistant
+                  </button>
+                  
+                  {fatigueZone && (
+                    <button 
+                      onClick={() => setActiveTab(AppTab.ASSISTANT)}
+                      className="px-6 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 font-bold rounded-full hover:bg-white/20 transition-all"
+                    >
+                      Update Fatigue Score
+                    </button>
+                  )}
+                </div>
+              </div>
+            </header>
+
+            <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-6 sm:p-8">
+                <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <span>How it Works</span>
+                  <span className="text-lg">🟢🟡🔴</span>
+                </h2>
+                <p className="text-slate-600 mb-6 leading-relaxed">
+                  Managing your energy during treatment can feel like a moving target. Fit For Cancer is your evidence-based companion, designed to help you match your daily activity and nutrition to your current "energy budget".
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm font-bold text-neon-blue text-sm">1</div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm mb-1">Check Your Battery</h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">Use our simple 0–10 Fatigue Tracker to tell us how you are feeling.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm font-bold text-neon-blue text-sm">2</div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm mb-1">Get Your Zone</h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">Based on your score, the app instantly updates your Traffic Light Zone—Green, Yellow, or Red.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm font-bold text-neon-blue text-sm">3</div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm mb-1">Smart Recommendations</h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">Your Exercise and Nutrition panels automatically refresh to show the safest, most effective options.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4">The 3 Pillars of Support</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 text-2xl">🏃</div>
+                  <h3 className="font-bold text-lg mb-2">Movement</h3>
+                  <p className="text-slate-600 text-sm">Gentle, safe, and effective exercises designed to combat cancer-related fatigue.</p>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4 text-2xl">🍏</div>
+                  <h3 className="font-bold text-lg mb-2">Nourishment</h3>
+                  <p className="text-slate-600 text-sm">Recipes that manage treatment side-effects like nausea and low appetite.</p>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-4 text-2xl">🧠</div>
+                  <h3 className="font-bold text-lg mb-2">Evidence-Based</h3>
+                  <p className="text-slate-600 text-sm">Advice aligned with COSA guidelines and Australian oncology standards.</p>
+                </div>
+              </div>
+            </section>
+
+                    <section>
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-bold">Featured Movement</h2>
+                        <button onClick={() => setActiveTab(AppTab.EXERCISE)} className="text-neon-blue font-semibold hover:underline">View All</button>
+                      </div>
+                      <MovementCard movement={MOVEMENTS[0]} />
+                    </section>
+                  </div>
+                );
+              case AppTab.EXERCISE:
+        const currentExerciseZone = exerciseZoneFilter === 'All' ? null : (exerciseZoneFilter || fatigueZone);
+        const filteredMovements = MOVEMENTS.filter(m => {
+          if (exerciseZoneFilter === 'All') return true;
+          if (!currentExerciseZone) return true;
+          const zoneKey = currentExerciseZone.split(' ')[1] as 'Green' | 'Yellow' | 'Red';
+          return m.intensity === zoneKey;
+        });
+
+        return (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">Safe Movements</h1>
+                <p className="text-slate-600">These movements are designed for various energy levels. Always listen to your body and pace yourself.</p>
+                
+                {/* Humanized Zone Explanation */}
+                {currentExerciseZone && (
+                  <div className="mt-4 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                    <p className="text-sm font-medium text-slate-800">
+                      {currentExerciseZone === '🟢 Green' && `Because you're in the 🟢 Green Zone (Score ${fatigueScore ?? 'X'}/10), these 'Standard Movements' focus on building your strength and stamina while your energy is high.`}
+                      {currentExerciseZone === '🟡 Yellow' && `Because you're in the 🟡 Yellow Zone (Score ${fatigueScore ?? 'X'}/10), these 'Modified Movements' keep your circulation moving without draining your battery.`}
+                      {currentExerciseZone === '🔴 Red' && `Because you're in the 🔴 Red Zone (Score ${fatigueScore ?? 'X'}/10), we are focusing on 'Restorative Movement' to protect your energy and maintain circulation while you recover.`}
+                    </p>
+                  </div>
+                )}
+
+                {/* Myeloma Specific Guardrail */}
+                {isMyelomaPatient && (
+                  <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-start gap-3">
+                    <span className="text-xl">🦴</span>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-indigo-900 uppercase tracking-wider">Myeloma Care Note</p>
+                      <p className="text-xs text-indigo-800 leading-relaxed">
+                        Please ensure your haematologist has cleared you for weight-bearing exercise, as bone health is a priority in Myeloma care.
+                        {currentExerciseZone === '🔴 Red' && " For Red Zone days, please avoid 'Bed Rotations' if you are experiencing any new or localised back pain."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Energy Zone Toggle */}
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Energy Zone Filter:</span>
+                  <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200">
+                    <button
+                      onClick={() => setExerciseZoneFilter(exerciseZoneFilter === 'All' ? null : 'All')}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                        exerciseZoneFilter === 'All' 
+                          ? 'bg-white shadow-sm text-slate-900 border border-slate-200' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {(['🟢 Green', '🟡 Yellow', '🔴 Red'] as const).map((zone) => {
+                      const isActive = exerciseZoneFilter === zone || (exerciseZoneFilter === null && fatigueZone === zone);
+                      return (
+                        <button
+                          key={zone}
+                          onClick={() => setExerciseZoneFilter(exerciseZoneFilter === zone ? null : zone)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            isActive 
+                              ? 'bg-white shadow-sm text-slate-900 border border-slate-200' 
+                              : 'text-slate-400 hover:text-slate-600'
+                          }`}
+                        >
+                          {zone}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(exerciseZoneFilter !== null) && (
+                    <button 
+                      onClick={() => setExerciseZoneFilter(null)}
+                      className="text-[10px] font-bold text-neon-blue hover:underline uppercase tracking-widest ml-1"
+                    >
+                      Reset to Dynamic
+                    </button>
+                  )}
+                </div>
+
+                {/* Safety Guardrail */}
+                {exerciseZoneFilter === '🟢 Green' && fatigueZone === '🔴 Red' && (
+                  <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 animate-pulse">
+                    <span className="text-xl">⚠️</span>
+                    <p className="text-xs text-rose-700 font-medium">
+                      I'm showing you the Green Zone exercises, but please proceed with caution as your current fatigue is high. Listen to your body.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Red Zone Energy Conservation Tips */}
+            {currentExerciseZone === '🔴 Red' && (
+              <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 space-y-4">
+                <h3 className="font-bold text-amber-900 flex items-center gap-2">
+                  <span className="text-xl">🛡️</span>
+                  Energy Conservation: The 3 P's
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <p className="font-bold text-amber-800 text-sm">Pacing</p>
+                    <p className="text-xs text-amber-700 leading-relaxed">Rest before you feel exhausted. Break tasks into smaller chunks.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-amber-800 text-sm">Prioritising</p>
+                    <p className="text-xs text-amber-700 leading-relaxed">Skip non-essential tasks today. Focus your energy on what matters most.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-amber-800 text-sm">Positioning</p>
+                    <p className="text-xs text-amber-700 leading-relaxed">Perform movements while sitting or lying down to reduce the work of the heart.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {filteredMovements.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredMovements.map((m, i) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <MovementCard movement={m} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+                <h3 className="text-lg font-bold text-slate-800">No movements found for this zone</h3>
+                <button 
+                  onClick={() => setExerciseZoneFilter(null)}
+                  className="mt-2 text-neon-blue font-semibold hover:underline"
+                >
+                  View all movements
+                </button>
+              </div>
+            )}
+
+            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 mt-8">
+              <h3 className="font-bold text-blue-800 mb-2">Evidence Note</h3>
+              <p className="text-blue-700 text-sm">COSA guidelines recommend that all people with cancer should avoid inactivity and be as physically active as their current condition allows.</p>
+            </div>
+          </div>
+        );
+      case AppTab.NUTRITION:
+        const currentRecipeZone = recipeZoneFilter === 'All' ? null : (recipeZoneFilter || fatigueZone);
+        const filteredRecipes = RECIPES.filter(recipe => {
+          const matchesCategory = recipeCategoryFilter === 'All' || recipe.category === recipeCategoryFilter;
+          const matchesSearch = recipe.title.toLowerCase().includes(recipeSearchQuery.toLowerCase()) || 
+                                recipe.ingredients.some(ing => ing.toLowerCase().includes(recipeSearchQuery.toLowerCase()));
+          
+          let matchesFatigue = true;
+          if (recipeZoneFilter === 'All') {
+            matchesFatigue = true;
+          } else if (currentRecipeZone) {
+            matchesFatigue = recipe.fatigueZone === currentRecipeZone;
+          }
+          
+          return matchesCategory && matchesSearch && matchesFatigue;
+        });
+
+        const categories: (Recipe['category'] | 'All')[] = ['All', 'High Protein', 'Anti-Nausea', 'Easy to Digest', 'Hydrating', 'Zero-Prep', 'Quick Assembly'];
+
+        const isFiltering = recipeCategoryFilter !== 'All' || recipeSearchQuery !== '' || recipeZoneFilter !== null;
+
+        return (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold">Recovery Nutrition</h1>
+                  <p className="text-slate-600 mt-1">Nourishing recipes that are easy to prepare and digest during treatment.</p>
+                </div>
+                
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search ingredients or recipes..."
+                    value={recipeSearchQuery}
+                    onChange={(e) => setRecipeSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all text-sm"
+                  />
+                  {recipeSearchQuery && (
+                    <button 
+                      onClick={() => setRecipeSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Energy Zone</span>
+                      <div className="flex bg-white p-1 rounded-full border border-slate-200 shadow-sm">
+                        <button
+                          onClick={() => setRecipeZoneFilter(recipeZoneFilter === 'All' ? null : 'All')}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                            recipeZoneFilter === 'All' 
+                              ? 'bg-slate-900 text-white shadow-md' 
+                              : 'text-slate-400 hover:text-slate-600'
+                          }`}
+                        >
+                          All
+                        </button>
+                        {(['🟢 Green', '🟡 Yellow', '🔴 Red'] as const).map((zone) => {
+                          const isActive = recipeZoneFilter === zone || (recipeZoneFilter === null && fatigueZone === zone);
+                          return (
+                            <button
+                              key={zone}
+                              onClick={() => setRecipeZoneFilter(recipeZoneFilter === zone ? null : zone)}
+                              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                isActive 
+                                  ? 'bg-white shadow-md text-slate-900 border border-slate-100' 
+                                  : 'text-slate-400 hover:text-slate-600'
+                              }`}
+                            >
+                              {zone}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
+                      <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-[400px]">
+                        {categories.map(cat => (
+                          <button
+                            key={cat}
+                            onClick={() => setRecipeCategoryFilter(cat)}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                              recipeCategoryFilter === cat 
+                                ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' 
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isFiltering && (
+                    <button 
+                      onClick={() => {
+                        setRecipeZoneFilter(null);
+                        setRecipeCategoryFilter('All');
+                        setRecipeSearchQuery('');
+                      }}
+                      className="text-[10px] font-black text-neon-pink hover:underline uppercase tracking-[0.2em] flex items-center gap-1.5"
+                    >
+                      <X className="w-3 h-3" />
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
+
+                {recipeZoneFilter === null && fatigueZone && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-blue/5 border border-neon-blue/10 rounded-lg">
+                    <div className="w-2 h-2 bg-neon-blue rounded-full animate-pulse" />
+                    <span className="text-[10px] font-bold text-neon-blue uppercase tracking-widest">
+                      Dynamic Mode Active: Following your {fatigueZone} Zone
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {filteredRecipes.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRecipes.map((r, i) => (
+                  <motion.div
+                    key={r.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.03 }}
+                  >
+                    <NutritionCard recipe={r} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Filter className="w-8 h-8 text-slate-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">No recipes found</h3>
+                <p className="text-slate-500 max-w-xs mx-auto mt-1">Try adjusting your search or filters to find what you're looking for.</p>
+                <button 
+                  onClick={() => { setRecipeSearchQuery(''); setRecipeCategoryFilter('All'); }}
+                  className="mt-4 text-neon-blue font-semibold hover:underline"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      case AppTab.ASSISTANT:
+        if (!isChatUnlocked) {
+          return (
+            <div className="max-w-xl mx-auto py-8">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-8 sm:p-10 space-y-6">
+                  <div className="space-y-3">
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
+                      Protected Chat Access
+                    </span>
+                    <h1 className="text-3xl font-bold text-slate-900">Enter password to unlock the health assistant</h1>
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      The AI chat is protected to prevent unauthorised use of the Gemini API. Exercise, nutrition, and resources remain available without a password.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    <label className="block space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Chat password</span>
+                      <input
+                        type="password"
+                        value={chatPassword}
+                        onChange={(e) => {
+                          setChatPassword(e.target.value);
+                          setChatAuthError(null);
+                        }}
+                        placeholder="Enter access password"
+                        className="w-full rounded-2xl border border-slate-200 px-4 py-4 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-neon-blue"
+                        autoComplete="current-password"
+                      />
+                    </label>
+
+                    {chatAuthError && (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        {chatAuthError}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isCheckingPassword || !chatPassword.trim()}
+                      className="inline-flex items-center justify-center rounded-2xl bg-neon-blue px-5 py-3 text-sm font-bold text-neon-dark shadow-md transition-all hover:bg-neon-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isCheckingPassword ? 'Checking password...' : 'Unlock chat'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex flex-col h-[calc(100vh-160px)]">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-3xl font-bold">Health Assistant</h1>
+              <div className="flex items-center gap-3">
+                {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
+                  <button 
+                    onClick={() => {
+                      setFatigueScore(null);
+                      setFatigueZone(null);
+                      setCancerType(undefined);
+                      setIsMyelomaPatient(false);
+                    }}
+                    className="text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
+                  >
+                    Reset Context
+                  </button>
+                )}
+                <button
+                  onClick={resetChatAccess}
+                  className="text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
+                >
+                  Lock Chat
+                </button>
+              </div>
+            </div>
+            
+            {/* Fatigue Score Prompt */}
+            {fatigueScore === null && (
+              <div className="mb-3 p-3 bg-white rounded-xl border border-neon-blue shadow-md animate-in zoom-in-95 duration-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-neon-blue" />
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Check Your Battery (0-10)</h3>
+                </div>
+                
+                <div className="grid grid-cols-11 gap-1">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                    <button
+                      key={score}
+                      onClick={() => handleSendMessage(score.toString())}
+                      className={`h-7 rounded-md font-bold text-[10px] transition-all border ${
+                        score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' :
+                        score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' :
+                        'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'
+                      }`}
+                    >
+                      {score}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Context Banner */}
+            {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
+              <div className="mb-3 p-2 bg-slate-900 text-white rounded-lg border border-white/10 shadow-md flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Zone:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs">{fatigueZone?.split(' ')[0] || '⚪'}</span>
+                    <span className="text-[10px] font-bold">{fatigueScore}/10</span>
+                  </div>
+                </div>
+                
+                {(cancerType || isMyelomaPatient) && (
+                  <div className="flex items-center gap-2 border-l border-white/20 pl-3">
+                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Focus:</span>
+                    <span className="text-[10px] font-bold text-neon-blue">
+                      {cancerType || 'Myeloma'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Side Effect Shortcuts */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Quick Advice</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {SIDE_EFFECT_SHORTCUTS.map((sc, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSendMessage(sc.prompt)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-all hover:border-neon-blue whitespace-nowrap ${sc.bg}`}
+                  >
+                    <div className={`${sc.color}`}>
+                      {React.cloneElement(sc.icon as React.ReactElement, { className: "w-3 h-3" })}
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-700">{sc.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div 
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4"
+            >
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-4 rounded-2xl ${
+                    msg.role === 'user' 
+                      ? 'bg-neon-blue text-neon-dark rounded-tr-none shadow-md' 
+                      : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'
+                  }`}>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-100 p-4 rounded-2xl rounded-tl-none border border-slate-200">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-75"></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <form onSubmit={onFormSubmit} className="mt-4 flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about fatigue, nausea, appetite..."
+                className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all"
+              />
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                type="submit"
+                disabled={isLoading}
+                className="p-4 bg-neon-blue text-neon-dark rounded-xl shadow-md hover:bg-neon-blue/90 disabled:opacity-50 transition-all"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </motion.button>
+            </form>
+          </div>
+        );
+      case AppTab.RESOURCES:
+        return <Resources />;
+      default:
+        return null;
+    }
+  })()}
+</motion.div>
+</AnimatePresence>
+);
+};
+
+  return (
+    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
+      <nav className="sticky top-0 z-50 py-4 bg-neon-dark backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-neon-blue/20">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab(AppTab.HOME)}>
+          <img src="/logo.png" alt="Fit For Cancer Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <div className="flex flex-col">
+            <span className="text-xl font-black text-white tracking-tight group-hover:text-neon-blue transition-colors leading-none">Fit For Cancer</span>
+            {!isOnline && (
+              <span className="text-[9px] font-bold text-rose-400 uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                <WifiOff className="w-2.5 h-2.5" />
+                Offline Mode
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex bg-white/5 p-1 rounded-full border border-white/10 hidden sm:flex">
+          <TabButton active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)}>Home</TabButton>
+          <TabButton active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)}>Exercise</TabButton>
+          <TabButton active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)}>Nutrition</TabButton>
+          <TabButton active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)}>AI Chat</TabButton>
+          <TabButton active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)}>Resources</TabButton>
+        </div>
+      </nav>
+
+      <main className="flex-1 py-4">
+        {renderContent()}
+      </main>
+
+      {/* TGA Compliance Footer */}
+      <footer className="mt-12 mb-24 sm:mb-8 p-8 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col items-center gap-6">
+          <img src="/logo.png" alt="Fit For Cancer Logo" className="w-16 h-16 object-contain opacity-60 grayscale hover:grayscale-0 transition-all" referrerPolicy="no-referrer" />
+          
+          <div className="text-center space-y-6">
+            <div className="max-w-2xl mx-auto space-y-3">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">TGA Compliance & Clinical Safety</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                <strong>Important Medical Disclaimer:</strong> This application is designed to <strong>complement</strong>, rather than replace, professional medical advice. All exercise and nutrition guidance is aligned with Australian oncology standards (COSA & ESSA), but it does not account for your specific clinical contraindications.
+              </p>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Always consult your <strong>medical oncologist, haematologist, or specialised physiotherapist</strong> before starting new exercise routines or making significant dietary changes, especially if you are currently undergoing active treatment.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-center gap-4">
+              <button 
+                onClick={() => setActiveTab(AppTab.RESOURCES)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-neon-blue hover:text-neon-blue transition-all shadow-sm uppercase tracking-wider"
+              >
+                <BookOpen className="w-3 h-3" />
+                View Evidence Base & Resources
+              </button>
+              
+              <div className="pt-4 border-t border-slate-200 w-full max-w-xs">
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+                  Copyright 2026. Designed by <a href="https://jaquescreative.com/" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-neon-pink transition-colors">jaques creative</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Mobile Tab Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-4 flex justify-between sm:hidden z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <MobileTabButton label="Home" icon="🏠" active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)} />
+        <MobileTabButton label="Move" icon="🧘" active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)} />
+        <MobileTabButton label="Eat" icon="🥗" active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)} />
+        <MobileTabButton label="Chat" icon="💬" active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)} />
+        <MobileTabButton label="Refs" icon="📚" active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)} />
+      </div>
+    </div>
+  );
+};
+
+const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button 
+    onClick={onClick}
+    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+  >
+    {children}
+  </button>
+);
+
+const MobileTabButton: React.FC<{ label: string; icon: string; active: boolean; onClick: () => void }> = ({ label, icon, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center gap-1 transition-all ${active ? 'text-neon-blue' : 'text-slate-400 grayscale'}`}
+  >
+    <span className="text-xl">{icon}</span>
+    <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
+  </button>
+);
+
+export default App;

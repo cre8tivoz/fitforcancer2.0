@@ -1,0 +1,7 @@
+{
+  "name": "Fit For Cancer",
+  "description": "An evidence-based exercise and nutrition companion for individuals undergoing cancer treatment in Australia, featuring AI-guided support and oncology-specific recommendations.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

@@ -1,10 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-neon-blue: #00f3ff;
-  --color-neon-pink: #ff00ff;
-  --color-neon-orange: #ff8c00;
-  --color-neon-dark: #0a0a1a;
+  --color-primary: #52796f;
+  --color-accent: #c8e44a;
+  --color-tertiary: #4a6fa5;
+  --color-bg: #faf7f2;
+  --color-surface: #ffffff;
+  --color-nav: #1a2821;
+  --color-text: #1c1c1e;
+  --color-text-muted: #6b7280;
+  --color-neon-blue: #c8e44a;
+  --color-neon-pink: #52796f;
+  --color-neon-orange: #4a6fa5;
+  --color-neon-dark: #1a2821;
+  --font-display: "Syne", sans-serif;
+  --font-body: "Instrument Sans", sans-serif;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -21,8 +31,27 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900;
-    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 55%, white);
+    color: var(--color-nav);
   }
 }

@@ -1,13 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { AppTab, ChatMessage, Recipe, ChatContext } from './types';
 import { RECIPES, MOVEMENTS } from './constants';
 import NutritionCard from './components/NutritionCard';
 import MovementCard from './components/MovementCard';
 import Resources from './components/Resources';
+import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse, validateChatPassword } from './services/geminiService';
-import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle } from 'lucide-react';
+import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck } from 'lucide-react';
 
 const SIDE_EFFECT_SHORTCUTS = [
   { 
@@ -49,6 +52,45 @@ const SIDE_EFFECT_SHORTCUTS = [
 
 const CHAT_PASSWORD_STORAGE_KEY = 'fit-for-cancer-chat-password';
 const CHAT_UNLOCKED_STORAGE_KEY = 'fit-for-cancer-chat-unlocked';
+
+const MarkdownMessage: React.FC<{ content: string }> = ({ content }) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    components={{
+      p: ({ children }) => <p className="mb-3 last:mb-0 text-sm leading-7 text-inherit">{children}</p>,
+      ul: ({ children }) => <ul className="mb-3 list-disc pl-5 space-y-1.5 text-sm leading-7">{children}</ul>,
+      ol: ({ children }) => <ol className="mb-3 list-decimal pl-5 space-y-1.5 text-sm leading-7">{children}</ol>,
+      li: ({ children }) => <li className="pl-1 marker:text-[color:var(--color-primary)]">{children}</li>,
+      h3: ({ children }) => (
+        <h3 className="mt-4 mb-2 font-display text-base font-extrabold uppercase tracking-[0.08em] text-[color:var(--color-primary)] first:mt-0">
+          {children}
+        </h3>
+      ),
+      h4: ({ children }) => (
+        <h4 className="mt-4 mb-2 text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--color-tertiary)] first:mt-0">
+          {children}
+        </h4>
+      ),
+      strong: ({ children }) => <strong className="font-semibold text-[color:var(--color-text)]">{children}</strong>,
+      em: ({ children }) => <em className="italic text-slate-600">{children}</em>,
+      table: ({ children }) => (
+        <div className="mb-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white/70">
+          <table className="min-w-full border-collapse text-left text-sm">{children}</table>
+        </div>
+      ),
+      thead: ({ children }) => <thead className="bg-[color:var(--color-bg)] text-slate-700">{children}</thead>,
+      th: ({ children }) => <th className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em]">{children}</th>,
+      td: ({ children }) => <td className="border-t border-slate-200 px-3 py-2 align-top text-sm leading-6">{children}</td>,
+      code: ({ children }) => (
+        <code className="rounded-md bg-slate-200/70 px-1.5 py-0.5 font-medium text-[13px] text-slate-700">
+          {children}
+        </code>
+      ),
+    }}
+  >
+    {content}
+  </ReactMarkdown>
+);
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>(AppTab.HOME);
@@ -295,7 +337,7 @@ const App: React.FC = () => {
                       'bg-neon-dark text-neon-blue'
                     } px-6 py-2.5 font-bold rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md flex items-center gap-2`}
                   >
-                    <span className="text-lg">💬</span>
+                    <MessageCircle className="w-4 h-4" />
                     Talk to Health Assistant
                   </button>
                   
@@ -351,17 +393,23 @@ const App: React.FC = () => {
               <h2 className="text-2xl font-bold mb-4">The 3 Pillars of Support</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 text-2xl">🏃</div>
+                  <div className="w-12 h-12 bg-[color:var(--color-accent)]/25 text-[color:var(--color-nav)] rounded-full flex items-center justify-center mb-4">
+                    <Dumbbell className="w-6 h-6" />
+                  </div>
                   <h3 className="font-bold text-lg mb-2">Movement</h3>
                   <p className="text-slate-600 text-sm">Gentle, safe, and effective exercises designed to combat cancer-related fatigue.</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4 text-2xl">🍏</div>
+                  <div className="w-12 h-12 bg-[color:var(--color-primary)]/15 text-[color:var(--color-primary)] rounded-full flex items-center justify-center mb-4">
+                    <Utensils className="w-6 h-6" />
+                  </div>
                   <h3 className="font-bold text-lg mb-2">Nourishment</h3>
                   <p className="text-slate-600 text-sm">Recipes that manage treatment side-effects like nausea and low appetite.</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-4 text-2xl">🧠</div>
+                  <div className="w-12 h-12 bg-[color:var(--color-tertiary)]/15 text-[color:var(--color-tertiary)] rounded-full flex items-center justify-center mb-4">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
                   <h3 className="font-bold text-lg mb-2">Evidence-Based</h3>
                   <p className="text-slate-600 text-sm">Advice aligned with COSA guidelines and Australian oncology standards.</p>
                 </div>
@@ -826,9 +874,7 @@ const App: React.FC = () => {
                     onClick={() => handleSendMessage(sc.prompt)}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-all hover:border-neon-blue whitespace-nowrap ${sc.bg}`}
                   >
-                    <div className={`${sc.color}`}>
-                      {React.cloneElement(sc.icon as React.ReactElement, { className: "w-3 h-3" })}
-                    </div>
+                    <div className={`${sc.color}`}>{sc.icon}</div>
                     <span className="text-[10px] font-bold text-slate-700">{sc.label}</span>
                   </button>
                 ))}
@@ -846,7 +892,11 @@ const App: React.FC = () => {
                       ? 'bg-neon-blue text-neon-dark rounded-tr-none shadow-md' 
                       : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'
                   }`}>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                    {msg.role === 'model' ? (
+                      <MarkdownMessage content={msg.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -897,11 +947,10 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
-      <nav className="sticky top-0 z-50 py-4 bg-neon-dark backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-neon-blue/20">
+      <nav className="sticky top-0 z-50 py-4 bg-[color:var(--color-nav)] backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-white/10">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab(AppTab.HOME)}>
-          <img src="/logo.png" alt="Fit For Cancer Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
           <div className="flex flex-col">
-            <span className="text-xl font-black text-white tracking-tight group-hover:text-neon-blue transition-colors leading-none">Fit For Cancer</span>
+            <BrandLockup compact variant="dark" className="h-10 w-auto transition-transform group-hover:scale-[1.02]" />
             {!isOnline && (
               <span className="text-[9px] font-bold text-rose-400 uppercase tracking-widest flex items-center gap-1 mt-0.5">
                 <WifiOff className="w-2.5 h-2.5" />
@@ -926,7 +975,7 @@ const App: React.FC = () => {
       {/* TGA Compliance Footer */}
       <footer className="mt-12 mb-24 sm:mb-8 p-8 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col items-center gap-6">
-          <img src="/logo.png" alt="Fit For Cancer Logo" className="w-16 h-16 object-contain opacity-60 grayscale hover:grayscale-0 transition-all" referrerPolicy="no-referrer" />
+          <BrandLockup variant="light" className="w-64 max-w-full h-auto" />
           
           <div className="text-center space-y-6">
             <div className="max-w-2xl mx-auto space-y-3">
@@ -959,12 +1008,12 @@ const App: React.FC = () => {
       </footer>
 
       {/* Mobile Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-4 flex justify-between sm:hidden z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <MobileTabButton label="Home" icon="🏠" active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)} />
-        <MobileTabButton label="Move" icon="🧘" active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)} />
-        <MobileTabButton label="Eat" icon="🥗" active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)} />
-        <MobileTabButton label="Chat" icon="💬" active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)} />
-        <MobileTabButton label="Refs" icon="📚" active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)} />
+      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--color-surface)]/95 backdrop-blur-md border-t border-[color:var(--color-primary)]/10 px-4 py-3 flex justify-between sm:hidden z-50 shadow-[0_-10px_30px_-18px_rgba(26,40,33,0.35)]">
+        <MobileTabButton label="Home" icon={<House className="w-4 h-4" />} active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)} />
+        <MobileTabButton label="Move" icon={<Dumbbell className="w-4 h-4" />} active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)} />
+        <MobileTabButton label="Eat" icon={<Utensils className="w-4 h-4" />} active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)} />
+        <MobileTabButton label="Chat" icon={<MessageCircle className="w-4 h-4" />} active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)} />
+        <MobileTabButton label="Refs" icon={<BookOpen className="w-4 h-4" />} active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)} />
       </div>
     </div>
   );
@@ -973,18 +1022,18 @@ const App: React.FC = () => {
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
   <button 
     onClick={onClick}
-    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/65 hover:text-white hover:bg-white/10'}`}
   >
     {children}
   </button>
 );
 
-const MobileTabButton: React.FC<{ label: string; icon: string; active: boolean; onClick: () => void }> = ({ label, icon, active, onClick }) => (
+const MobileTabButton: React.FC<{ label: string; icon: React.ReactNode; active: boolean; onClick: () => void }> = ({ label, icon, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`flex flex-col items-center justify-center gap-1 transition-all ${active ? 'text-neon-blue' : 'text-slate-400 grayscale'}`}
+    className={`flex flex-col items-center justify-center gap-1 transition-all ${active ? 'text-[color:var(--color-nav)]' : 'text-slate-400'}`}
   >
-    <span className="text-xl">{icon}</span>
+    <span className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all ${active ? 'bg-[color:var(--color-accent)] border-[color:var(--color-accent)]' : 'bg-white border-slate-200'}`}>{icon}</span>
     <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
   </button>
 );

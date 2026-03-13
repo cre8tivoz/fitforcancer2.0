@@ -100,19 +100,19 @@ const MovementCard: React.FC<MovementCardProps> = ({ movement }) => {
         </p>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100/50">
-            <div className="flex items-center gap-2 mb-2 text-purple-700">
+          <div className="bg-[color:var(--color-primary)]/10 p-4 rounded-xl border border-[color:var(--color-primary)]/15">
+            <div className="flex items-center gap-2 mb-2 text-[color:var(--color-primary)]">
               <Brain className="w-4 h-4" />
               <span className="text-[10px] font-black uppercase tracking-widest">Mind & Mood</span>
             </div>
-            <p className="text-xs text-purple-600/90 leading-relaxed font-medium">{movement.mentalWellbeingBenefit}</p>
+            <p className="text-xs text-[color:var(--color-primary)]/85 leading-relaxed font-medium">{movement.mentalWellbeingBenefit}</p>
           </div>
-          <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
-            <div className="flex items-center gap-2 mb-2 text-blue-700">
+          <div className="bg-[color:var(--color-tertiary)]/10 p-4 rounded-xl border border-[color:var(--color-tertiary)]/15">
+            <div className="flex items-center gap-2 mb-2 text-[color:var(--color-tertiary)]">
               <Dumbbell className="w-4 h-4" />
               <span className="text-[10px] font-black uppercase tracking-widest">Body & Strength</span>
             </div>
-            <p className="text-xs text-blue-600/90 leading-relaxed font-medium">{movement.strengthBenefit}</p>
+            <p className="text-xs text-[color:var(--color-tertiary)]/85 leading-relaxed font-medium">{movement.strengthBenefit}</p>
           </div>
         </div>
 

@@ -243,7 +243,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
                 {/* Instructions Column */}
                 <div>
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                    <div className="w-8 h-8 bg-[color:var(--color-tertiary)]/12 rounded-lg flex items-center justify-center text-[color:var(--color-tertiary)]">
                       <ChefHat className="w-5 h-5" />
                     </div>
                     <h3 className="font-bold text-slate-900">Instructions</h3>

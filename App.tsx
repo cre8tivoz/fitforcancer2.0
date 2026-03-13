@@ -1,13 +1,10 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { AppTab, ChatMessage, Recipe, ChatContext } from './types';
 import { RECIPES, MOVEMENTS } from './constants';
 import NutritionCard from './components/NutritionCard';
 import MovementCard from './components/MovementCard';
-import Resources from './components/Resources';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse, validateChatPassword } from './services/geminiService';
 import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck } from 'lucide-react';
@@ -53,44 +50,8 @@ const SIDE_EFFECT_SHORTCUTS = [
 const CHAT_PASSWORD_STORAGE_KEY = 'fit-for-cancer-chat-password';
 const CHAT_UNLOCKED_STORAGE_KEY = 'fit-for-cancer-chat-unlocked';
 
-const MarkdownMessage: React.FC<{ content: string }> = ({ content }) => (
-  <ReactMarkdown
-    remarkPlugins={[remarkGfm]}
-    components={{
-      p: ({ children }) => <p className="mb-3 last:mb-0 text-sm leading-7 text-inherit">{children}</p>,
-      ul: ({ children }) => <ul className="mb-3 list-disc pl-5 space-y-1.5 text-sm leading-7">{children}</ul>,
-      ol: ({ children }) => <ol className="mb-3 list-decimal pl-5 space-y-1.5 text-sm leading-7">{children}</ol>,
-      li: ({ children }) => <li className="pl-1 marker:text-[color:var(--color-primary)]">{children}</li>,
-      h3: ({ children }) => (
-        <h3 className="mt-4 mb-2 font-display text-base font-extrabold uppercase tracking-[0.08em] text-[color:var(--color-primary)] first:mt-0">
-          {children}
-        </h3>
-      ),
-      h4: ({ children }) => (
-        <h4 className="mt-4 mb-2 text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--color-tertiary)] first:mt-0">
-          {children}
-        </h4>
-      ),
-      strong: ({ children }) => <strong className="font-semibold text-[color:var(--color-text)]">{children}</strong>,
-      em: ({ children }) => <em className="italic text-slate-600">{children}</em>,
-      table: ({ children }) => (
-        <div className="mb-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white/70">
-          <table className="min-w-full border-collapse text-left text-sm">{children}</table>
-        </div>
-      ),
-      thead: ({ children }) => <thead className="bg-[color:var(--color-bg)] text-slate-700">{children}</thead>,
-      th: ({ children }) => <th className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em]">{children}</th>,
-      td: ({ children }) => <td className="border-t border-slate-200 px-3 py-2 align-top text-sm leading-6">{children}</td>,
-      code: ({ children }) => (
-        <code className="rounded-md bg-slate-200/70 px-1.5 py-0.5 font-medium text-[13px] text-slate-700">
-          {children}
-        </code>
-      ),
-    }}
-  >
-    {content}
-  </ReactMarkdown>
-);
+const MarkdownMessage = lazy(() => import('./components/MarkdownMessage'));
+const Resources = lazy(() => import('./components/Resources'));
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>(AppTab.HOME);
@@ -893,7 +854,9 @@ const App: React.FC = () => {
                       : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'
                   }`}>
                     {msg.role === 'model' ? (
-                      <MarkdownMessage content={msg.content} />
+                      <Suspense fallback={<p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>}>
+                        <MarkdownMessage content={msg.content} />
+                      </Suspense>
                     ) : (
                       <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
                     )}
@@ -935,7 +898,11 @@ const App: React.FC = () => {
           </div>
         );
       case AppTab.RESOURCES:
-        return <Resources />;
+        return (
+          <Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading resources...</div>}>
+            <Resources />
+          </Suspense>
+        );
       default:
         return null;
     }

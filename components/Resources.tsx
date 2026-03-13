@@ -432,6 +432,33 @@ const Resources: React.FC = () => {
             </div>
           </div>
         </CollapsibleCard>
+
+        <CollapsibleCard
+          title="Privacy & Sensitive Data Handling"
+          icon={<Globe className="w-6 h-6 text-[color:var(--color-tertiary)]" />}
+        >
+          <div className="space-y-6 text-sm leading-7 text-slate-600">
+            <section className="space-y-2">
+              <p><strong className="text-slate-900">1. Your Data Stays With You (No Accounts)</strong></p>
+              <p>Currently, Fit For Cancer operates entirely without user accounts. Your triage information (such as your energy levels and Quick Notes) is stored locally on your own device using your browser&apos;s temporary memory. We do not store your personal health profile in a central database. When you close your browser or clear your cache, your local session resets.</p>
+            </section>
+
+            <section className="space-y-2">
+              <p><strong className="text-slate-900">2. The AI Health Assistant</strong></p>
+              <p>When you interact with the Health Assistant, your messages and local triage context are transmitted securely via an encrypted connection to generate your personalised advice. This data is completely anonymous—it is not linked to your name, email, or identity. Furthermore, our secure backend ensures your private conversations are never used to train public AI models.</p>
+            </section>
+
+            <section className="space-y-2">
+              <p><strong className="text-slate-900">3. Voice Dictation is Strictly Local</strong></p>
+              <p>If you use the microphone feature for Quick Notes, your voice is processed entirely by your device&apos;s native browser (such as Apple&apos;s or Google&apos;s built-in accessibility features). Fit For Cancer does not record, save, or transmit your audio files to any external servers. The translation to text happens right on your phone or computer.</p>
+            </section>
+
+            <section className="space-y-2">
+              <p><strong className="text-slate-900">4. Australian Privacy Principles (APPs)</strong></p>
+              <p>We are guided by the Australian Privacy Act 1988, specifically focusing on &apos;Data Minimisation.&apos; We only ask for the minimum amount of context required to provide safe, evidence-based support for your current session. Because we do not collect Identifiable Electronic Health Records (EHR), you remain in complete, anonymous control of your digital footprint.</p>
+            </section>
+          </div>
+        </CollapsibleCard>
       </div>
 
       <div className="grid grid-cols-1 gap-8">

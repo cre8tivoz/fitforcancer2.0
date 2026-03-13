@@ -7,7 +7,41 @@ import NutritionCard from './components/NutritionCard';
 import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse, validateChatPassword } from './services/geminiService';
-import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck } from 'lucide-react';
+import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic } from 'lucide-react';
+
+interface SpeechRecognitionResultLike {
+  readonly isFinal: boolean;
+  readonly 0: {
+    readonly transcript: string;
+  };
+}
+
+interface SpeechRecognitionEventLike extends Event {
+  readonly resultIndex: number;
+  readonly results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface BrowserSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): BrowserSpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 const SIDE_EFFECT_SHORTCUTS = [
   { 
@@ -76,7 +110,10 @@ const App: React.FC = () => {
   const [isChatUnlocked, setIsChatUnlocked] = useState(false);
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [chatAuthError, setChatAuthError] = useState<string | null>(null);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const appScrollContainerRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
     const storedPassword = window.sessionStorage.getItem(CHAT_PASSWORD_STORAGE_KEY);
@@ -101,6 +138,44 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionApi) {
+      setIsSpeechSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognitionApi();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-AU';
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .slice(event.resultIndex)
+        .map((result) => result[0]?.transcript ?? '')
+        .join(' ')
+        .trim();
+
+      if (transcript) {
+        setInput(transcript);
+      }
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    setIsSpeechSupported(true);
+
+    return () => {
+      recognition.stop();
+      recognitionRef.current = null;
     };
   }, []);
 
@@ -238,6 +313,22 @@ const App: React.FC = () => {
   const onFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage();
+  };
+
+  const toggleVoiceDictation = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      return;
+    }
+
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+      return;
+    }
+
+    setIsListening(true);
+    recognition.start();
   };
 
   const renderContent = () => {
@@ -873,9 +964,22 @@ const App: React.FC = () => {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about fatigue, nausea, appetite..."
+                placeholder={fatigueScore === null ? "Add a Quick Note about today..." : "Ask about fatigue, nausea, appetite..."}
                 className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all"
               />
+              {fatigueScore === null && isSpeechSupported && (
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  type="button"
+                  onClick={toggleVoiceDictation}
+                  aria-label={isListening ? 'Stop voice dictation' : 'Start voice dictation for Quick Note'}
+                  aria-pressed={isListening}
+                  className={`p-4 rounded-xl border shadow-sm transition-all ${isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'}`}
+                >
+                  <Mic className="w-5 h-5" />
+                </motion.button>
+              )}
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

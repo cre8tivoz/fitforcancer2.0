@@ -76,7 +76,6 @@ const App: React.FC = () => {
   const [isChatUnlocked, setIsChatUnlocked] = useState(false);
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [chatAuthError, setChatAuthError] = useState<string | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const storedPassword = window.sessionStorage.getItem(CHAT_PASSWORD_STORAGE_KEY);
@@ -104,17 +103,11 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  };
-
   useEffect(() => {
-    if (activeTab === AppTab.ASSISTANT) {
-      scrollToBottom();
+    if (activeTab === AppTab.EXERCISE || activeTab === AppTab.NUTRITION) {
+      window.scrollTo(0, 0);
     }
-  }, [messages, activeTab]);
+  }, [activeTab]);
 
   const resetChatAccess = () => {
     setIsChatUnlocked(false);
@@ -842,10 +835,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div 
-              ref={chatContainerRef}
-              className="flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4"
-            >
+            <div className="flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] p-4 rounded-2xl ${

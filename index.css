@@ -13,8 +13,8 @@
   --color-neon-pink: #52796f;
   --color-neon-orange: #4a6fa5;
   --color-neon-dark: #1a2821;
-  --font-display: "Syne", sans-serif;
-  --font-body: "Instrument Sans", sans-serif;
+  --font-display: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -47,7 +47,8 @@
   h4,
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.015em;
   }
 
   ::selection {

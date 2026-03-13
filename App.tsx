@@ -76,6 +76,7 @@ const App: React.FC = () => {
   const [isChatUnlocked, setIsChatUnlocked] = useState(false);
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [chatAuthError, setChatAuthError] = useState<string | null>(null);
+  const appScrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const storedPassword = window.sessionStorage.getItem(CHAT_PASSWORD_STORAGE_KEY);
@@ -104,9 +105,11 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === AppTab.EXERCISE || activeTab === AppTab.NUTRITION) {
-      window.scrollTo(0, 0);
+    if (!appScrollContainerRef.current) {
+      return;
     }
+
+    appScrollContainerRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activeTab]);
 
   const resetChatAccess = () => {
@@ -903,7 +906,8 @@ const App: React.FC = () => {
 };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
+    <div ref={appScrollContainerRef} className="h-screen overflow-y-auto">
+      <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
       <nav className="sticky top-0 z-50 py-4 bg-[color:var(--color-nav)] backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-white/10">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab(AppTab.HOME)}>
           <div className="flex flex-col">
@@ -971,6 +975,7 @@ const App: React.FC = () => {
         <MobileTabButton label="Eat" icon={<Utensils className="w-4 h-4" />} active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)} />
         <MobileTabButton label="Chat" icon={<MessageCircle className="w-4 h-4" />} active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)} />
         <MobileTabButton label="Refs" icon={<BookOpen className="w-4 h-4" />} active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)} />
+      </div>
       </div>
     </div>
   );

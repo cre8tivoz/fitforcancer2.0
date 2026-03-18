@@ -1,8 +1,10 @@
-import type { ChatContext, ChatMessage } from "../types";
+import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
+import { buildClinicalKnowledgeBaseText } from "../utils/clinical_guidelines.js";
 
 interface GeminiRequestBody {
   history?: ChatMessage[];
   context?: ChatContext;
+  cancerType?: CancerTypeOption;
   accessPassword?: string;
   validateOnly?: boolean;
 }
@@ -29,8 +31,29 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 const GEMINI_TIMEOUT_MS = 25000;
 const PASSWORD_HEADER_NAME = "x-chat-password";
 
-const getSystemInstruction = (context?: ChatContext, isFirstResponseInSession?: boolean) => {
+const normalizePassword = (value?: string | null): string => value?.trim() ?? "";
+
+const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?: boolean): string => {
+  if (cancerType === "bowel") return "Bowel";
+  if (cancerType === "melanoma") return "Melanoma";
+  if (cancerType === "breast") return "Breast";
+  if (cancerType === "prostate") return "Prostate";
+  if (cancerType === "lung") return "Lung";
+  if (cancerType === "blood_myeloma" || isMyelomaPatient) return "Blood/Myeloma";
+  if (cancerType === "other") return "Other/Prefer not to say";
+  return "Not specified";
+};
+
+const getSystemInstruction = (
+  context?: ChatContext,
+  isFirstResponseInSession?: boolean,
+  selectedCancerType?: CancerTypeOption,
+) => {
+  const effectiveCancerType = selectedCancerType ?? context?.cancerType;
+  const cancerTypeLabel = formatCancerTypeLabel(effectiveCancerType, context?.isMyelomaPatient);
   let instruction = `
+${buildClinicalKnowledgeBaseText(effectiveCancerType)}
+
 Role: You are an empathetic, highly specialized oncology fitness and nutrition assistant for the 'Fit For Cancer' app. Your advice is grounded in Australian oncology guidelines, including COSA and ESSA.
 
 Tone:
@@ -54,12 +77,12 @@ You are strictly bound by the COSA Position Statement on Exercise in Cancer Care
 Current User Context:
 - Fatigue Score: ${context.fatigueScore ?? "Not yet provided"}
 - Fatigue Zone: ${context.fatigueZone ?? "Not yet determined"}
-- Cancer Type: ${context.cancerType || (context.isMyelomaPatient ? "Myeloma" : "Not specified")}
+- Cancer Type: ${cancerTypeLabel}
 - Is Myeloma Patient: ${context.isMyelomaPatient ? "Yes" : "No"}
 
 PROACTIVE CONTEXTUALIZATION:
 - You MUST proactively reference the user's specific Cancer Type and Fatigue Score in your responses.
-- Instead of generic advice, say things like "Given your current fatigue score of ${context.fatigueScore}..." or "Since you are managing ${context.cancerType || (context.isMyelomaPatient ? "Myeloma" : "this journey")}...".
+- Instead of generic advice, say things like "Given your current fatigue score of ${context.fatigueScore}..." or "Since you are managing ${cancerTypeLabel !== "Not specified" ? cancerTypeLabel : "this journey"}...".
 - If the fatigue score is high (7-10), prioritise safety and energy conservation.
 - If they have Myeloma, ensure bone health disclaimers are present.
 - If they have Breast Cancer, mention arm mobility and lymphedema awareness.
@@ -212,7 +235,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
-  const expectedPassword = process.env.CHAT_ACCESS_PASSWORD;
+  const expectedPassword = normalizePassword(process.env.CHAT_ACCESS_PASSWORD);
   if (!expectedPassword) {
     res.status(500).json({ error: "Server is missing CHAT_ACCESS_PASSWORD" });
     return;
@@ -224,7 +247,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
-  const suppliedPassword = body.accessPassword ?? getHeaderValue(req.headers, PASSWORD_HEADER_NAME);
+  const suppliedPassword = normalizePassword(body.accessPassword ?? getHeaderValue(req.headers, PASSWORD_HEADER_NAME));
   if (!suppliedPassword || suppliedPassword !== expectedPassword) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -254,7 +277,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       },
       body: JSON.stringify({
         systemInstruction: {
-          parts: [{ text: getSystemInstruction(body.context, isFirstResponseInSession) }],
+          parts: [{ text: getSystemInstruction(body.context, isFirstResponseInSession, body.cancerType) }],
         },
         contents: body.history.map((message) => ({
           role: message.role,

@@ -28,7 +28,11 @@ const CollapsibleCard: React.FC<{ title: string; icon: React.ReactNode; children
   );
 };
 
-const Resources: React.FC = () => {
+interface ResourcesProps {
+  onClearSavedData: () => void;
+}
+
+const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
   const supportResources = [
     {
       category: 'Exercise Physiologists & Physical Support',
@@ -457,6 +461,21 @@ const Resources: React.FC = () => {
               <p><strong className="text-slate-900">4. Australian Privacy Principles (APPs)</strong></p>
               <p>We are guided by the Australian Privacy Act 1988, specifically focusing on &apos;Data Minimisation.&apos; We only ask for the minimum amount of context required to provide safe, evidence-based support for your current session. Because we do not collect Identifiable Electronic Health Records (EHR), you remain in complete, anonymous control of your digital footprint.</p>
             </section>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-relaxed text-slate-500">
+                  Saved patient context expires automatically after 14 days. You can remove it sooner at any time.
+                </p>
+                <button
+                  type="button"
+                  onClick={onClearSavedData}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] text-slate-600 transition-all hover:border-rose-300 hover:text-rose-600"
+                >
+                  Clear My Saved Data
+                </button>
+              </div>
+            </div>
           </div>
         </CollapsibleCard>
       </div>

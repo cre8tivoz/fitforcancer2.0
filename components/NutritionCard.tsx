@@ -73,25 +73,21 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
           <img 
             src={recipe.imageUrl} 
             alt={recipe.title} 
-            className="w-full h-full object-contain object-center p-2 transition-transform duration-500 group-hover:scale-105" 
+            className="w-full h-full object-fill object-center transition-transform duration-500 group-hover:scale-105" 
             referrerPolicy="no-referrer"
           />
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
-            <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/90 backdrop-blur-sm text-neon-blue rounded-full shadow-sm border border-neon-blue/10">
-              {recipe.category}
-            </span>
-            <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/90 backdrop-blur-sm text-slate-700 rounded-full shadow-sm border border-slate-200 w-fit">
-              {recipe.fatigueZone}
-            </span>
-            {recipe.citation && (
-              <span className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest bg-slate-900/5 text-slate-500 rounded-full border border-slate-200 w-fit">
-                Ref: {recipe.citation}
-              </span>
-            )}
-          </div>
         </div>
         
         <div className="p-5 flex flex-col flex-1">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-[color:var(--color-accent)]/20 text-[color:var(--color-nav)] rounded-full border border-[color:var(--color-accent)]/40">
+              {recipe.category}
+            </span>
+            <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 rounded-full border border-slate-200">
+              {recipe.fatigueZone}
+            </span>
+          </div>
+
           <div className="flex items-center gap-3 mb-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
@@ -134,6 +130,12 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
             <ChefHat className="w-4 h-4" />
             View Recipe
           </motion.button>
+
+          {recipe.citation && (
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+              {recipe.citation}
+            </p>
+          )}
         </div>
       </motion.div>
 
@@ -170,7 +172,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
               <img 
                 src={recipe.imageUrl} 
                 alt="" 
-                className="w-full h-full object-contain object-center bg-slate-50 p-3"
+                className="w-full h-full object-fill object-center bg-slate-50"
                 referrerPolicy="no-referrer"
               />
               <button 
@@ -188,11 +190,6 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
                   <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md text-white rounded-full border border-white/20">
                     {recipe.fatigueZone}
                   </span>
-                  {recipe.citation && (
-                    <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-black/40 backdrop-blur-md text-white/80 rounded-full border border-white/10">
-                      Ref: {recipe.citation}
-                    </span>
-                  )}
                 </div>
                 <h2 id={`recipe-title-${recipe.id}`} className="text-2xl sm:text-3xl font-bold text-white">{recipe.title}</h2>
                 <div className="flex items-center gap-4 mt-2 text-white/80 text-xs font-medium">
@@ -266,6 +263,11 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
                 <p className="text-xs text-slate-500 italic text-center">
                   Measurements are in Australian metric units. Adjust portions as needed based on your appetite and nutritional requirements.
                 </p>
+                {recipe.citation && (
+                  <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+                    {recipe.citation}
+                  </p>
+                )}
               </div>
             </div>
           </motion.div>

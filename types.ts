@@ -40,9 +40,27 @@ export interface ChatMessage {
   content: string;
 }
 
+export type CancerTypeOption =
+  | 'bowel'
+  | 'melanoma'
+  | 'breast'
+  | 'prostate'
+  | 'lung'
+  | 'blood_myeloma'
+  | 'other';
+
+export interface PersistedPatientContext {
+  cancerType?: CancerTypeOption;
+}
+
+export interface StoredPatientContextRecord {
+  timestamp: number;
+  context: PersistedPatientContext;
+}
+
 export interface ChatContext {
   fatigueScore: number | null;
   fatigueZone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
   isMyelomaPatient: boolean;
-  cancerType?: string;
+  cancerType?: CancerTypeOption;
 }

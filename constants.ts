@@ -22,6 +22,7 @@ import highProteinOvernightOatsImage from './media/nutrition/high_protein_overni
 import hydratingWatermelonMintCoolerImage from './media/nutrition/hydrating_watermelon__mint_cooler.jpg';
 import lowFlavourChickenAndRiceSoupImage from './media/nutrition/low_flavour_chicken_and_rice_soup.jpg';
 import poachedChickenAndSteamedGreensImage from './media/nutrition/poached_chicken_and_steamed_greens.jpg';
+import pelvicTiltImage from './media/exercises/pelvic-tilt.jpg';
 import proteinPackedBerrySmoothieImage from './media/nutrition/protein_packed_berry_smoothie.jpg';
 import redLentilSpinachDahlImage from './media/nutrition/red_lentil__spinach_dahl.jpg';
 import sardineEmergencyToastImage from './media/nutrition/sardine_emergency_toast.jpg';
@@ -422,7 +423,7 @@ export const MOVEMENTS: Movement[] = [
     strengthBenefit: 'A safe way to maintain core awareness without requiring standing balance.',
     description: 'Lying down, gently flatten the small of your back against the bed by tilting your pelvis, then relax.',
     safetyNote: 'Oncology Physiotherapy: A safe way to maintain core awareness without requiring any standing balance.',
-    imageUrl: '/pelvic-tilts.jpg',
+    imageUrl: pelvicTiltImage,
     citation: '(APA)'
   },
   {

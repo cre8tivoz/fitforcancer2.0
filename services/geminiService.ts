@@ -36,6 +36,7 @@ export const getGeminiResponse = async (history: ChatMessage[], accessPassword: 
       body: JSON.stringify({
         history,
         context,
+        cancerType: context?.cancerType,
         accessPassword,
       }),
     });

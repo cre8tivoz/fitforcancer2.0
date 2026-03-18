@@ -1,12 +1,13 @@
 
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AppTab, ChatMessage, Recipe, ChatContext } from './types';
+import { AppTab, ChatMessage, Recipe, ChatContext, CancerTypeOption } from './types';
 import { RECIPES, MOVEMENTS } from './constants';
 import NutritionCard from './components/NutritionCard';
 import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse, validateChatPassword } from './services/geminiService';
+import { clearPatientContext, loadPatientContext, savePatientContext } from './utils/patientContextStorage';
 import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic } from 'lucide-react';
 
 interface SpeechRecognitionResultLike {
@@ -83,12 +84,80 @@ const SIDE_EFFECT_SHORTCUTS = [
 
 const CHAT_PASSWORD_STORAGE_KEY = 'fit-for-cancer-chat-password';
 const CHAT_UNLOCKED_STORAGE_KEY = 'fit-for-cancer-chat-unlocked';
+const FATIGUE_SCORE_STORAGE_KEY = 'fit-for-cancer-fatigue-score';
+const FATIGUE_ZONE_STORAGE_KEY = 'fit-for-cancer-fatigue-zone';
+
+const CANCER_TYPE_OPTIONS: Array<{ value: CancerTypeOption; label: string }> = [
+  { value: 'bowel', label: 'Bowel' },
+  { value: 'melanoma', label: 'Melanoma' },
+  { value: 'breast', label: 'Breast' },
+  { value: 'prostate', label: 'Prostate' },
+  { value: 'lung', label: 'Lung' },
+  { value: 'blood_myeloma', label: 'Blood/Myeloma' },
+  { value: 'other', label: 'Other/Prefer not to say' },
+];
+
+const CANCER_TYPE_LABELS: Record<CancerTypeOption, string> = {
+  bowel: 'Bowel',
+  melanoma: 'Melanoma',
+  breast: 'Breast',
+  prostate: 'Prostate',
+  lung: 'Lung',
+  blood_myeloma: 'Blood/Myeloma',
+  other: 'Other/Prefer not to say',
+};
+
+const TAB_PATHS: Record<AppTab, string> = {
+  [AppTab.HOME]: '/',
+  [AppTab.EXERCISE]: '/exercise',
+  [AppTab.NUTRITION]: '/nutrition',
+  [AppTab.ASSISTANT]: '/assistant',
+  [AppTab.RESOURCES]: '/resources',
+};
+
+const getTabFromLocation = (): AppTab => {
+  if (typeof window === 'undefined') {
+    return AppTab.HOME;
+  }
+
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+
+  if (normalizedPath === '/exercise') return AppTab.EXERCISE;
+  if (normalizedPath === '/nutrition') return AppTab.NUTRITION;
+  if (normalizedPath === '/assistant') return AppTab.ASSISTANT;
+  if (normalizedPath === '/resources') return AppTab.RESOURCES;
+
+  return AppTab.HOME;
+};
+
+const detectCancerTypeFromText = (text: string): CancerTypeOption | undefined => {
+  const normalizedText = text.toLowerCase();
+
+  if (normalizedText.includes('myeloma') || normalizedText.includes('blood cancer')) return 'blood_myeloma';
+  if (normalizedText.includes('bowel cancer') || normalizedText.includes('colorectal cancer') || normalizedText.includes('colon cancer')) return 'bowel';
+  if (normalizedText.includes('melanoma')) return 'melanoma';
+  if (normalizedText.includes('breast cancer')) return 'breast';
+  if (normalizedText.includes('prostate cancer')) return 'prostate';
+  if (normalizedText.includes('lung cancer')) return 'lung';
+
+  return undefined;
+};
+
+const INITIAL_ASSISTANT_MESSAGE =
+  "Hello, I'm your Fit For Cancer assistant. I provide evidence-based oncology exercise and nutrition guidance.\n\nTo get started, **on a scale of 0-10, how is your fatigue today?**\n\n| Score | Zone | Guidance |\n| :--- | :--- | :--- |\n| 🟢 0-3 | Green | Mild: Energy levels are good |\n| 🟡 4-6 | Yellow | Moderate: Energy is dipping |\n| 🔴 7-10 | Red | Severe: Critical fatigue |\n\nPlease also provide a **Quick Note** about your current context (e.g., 'Post-treatment' or 'Poor sleep').";
+
+const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
+  {
+    role: 'model',
+    content: INITIAL_ASSISTANT_MESSAGE,
+  },
+];
 
 const MarkdownMessage = lazy(() => import('./components/MarkdownMessage'));
 const Resources = lazy(() => import('./components/Resources'));
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AppTab>(AppTab.HOME);
+  const [activeTab, setActiveTab] = useState<AppTab>(() => getTabFromLocation());
   const [messages, setMessages] = useState<ChatMessage[]>([
     { 
       role: 'model', 
@@ -99,8 +168,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [fatigueScore, setFatigueScore] = useState<number | null>(null);
   const [fatigueZone, setFatigueZone] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | null>(null);
-  const [isMyelomaPatient, setIsMyelomaPatient] = useState(false);
-  const [cancerType, setCancerType] = useState<string | undefined>(undefined);
+  const [cancerType, setCancerType] = useState<CancerTypeOption | undefined>(undefined);
   const [exerciseZoneFilter, setExerciseZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
   const [recipeZoneFilter, setRecipeZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
@@ -112,12 +180,16 @@ const App: React.FC = () => {
   const [chatAuthError, setChatAuthError] = useState<string | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const isMyelomaPatient = cancerType === 'blood_myeloma';
   const appScrollContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
     const storedPassword = window.sessionStorage.getItem(CHAT_PASSWORD_STORAGE_KEY);
     const unlocked = window.sessionStorage.getItem(CHAT_UNLOCKED_STORAGE_KEY) === 'true';
+    const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
+    const storedFatigueZone = window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY) as '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
+    const storedPatientContext = loadPatientContext();
 
     if (storedPassword) {
       setChatPassword(storedPassword);
@@ -126,7 +198,46 @@ const App: React.FC = () => {
     if (storedPassword && unlocked) {
       setIsChatUnlocked(true);
     }
+
+    if (storedFatigueScore !== null) {
+      const parsedScore = Number(storedFatigueScore);
+      if (!Number.isNaN(parsedScore)) {
+        setFatigueScore(parsedScore);
+      }
+    }
+
+    if (storedFatigueZone === '🟢 Green' || storedFatigueZone === '🟡 Yellow' || storedFatigueZone === '🔴 Red') {
+      setFatigueZone(storedFatigueZone);
+    }
+
+    if (storedPatientContext?.cancerType && storedPatientContext.cancerType in CANCER_TYPE_LABELS) {
+      setCancerType(storedPatientContext.cancerType);
+    }
   }, []);
+
+  useEffect(() => {
+    if (fatigueScore === null) {
+      window.sessionStorage.removeItem(FATIGUE_SCORE_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(FATIGUE_SCORE_STORAGE_KEY, String(fatigueScore));
+    }
+  }, [fatigueScore]);
+
+  useEffect(() => {
+    if (!fatigueZone) {
+      window.sessionStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(FATIGUE_ZONE_STORAGE_KEY, fatigueZone);
+    }
+  }, [fatigueZone]);
+
+  useEffect(() => {
+    if (!cancerType) {
+      clearPatientContext();
+    } else {
+      savePatientContext({ cancerType });
+    }
+  }, [cancerType]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -138,6 +249,18 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveTab(getTabFromLocation());
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
@@ -187,10 +310,36 @@ const App: React.FC = () => {
     appScrollContainerRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activeTab]);
 
+  useEffect(() => {
+    const nextPath = TAB_PATHS[activeTab];
+    if (typeof window === 'undefined' || window.location.pathname === nextPath) {
+      return;
+    }
+
+    window.history.pushState({ tab: activeTab }, '', nextPath);
+  }, [activeTab]);
+
   const resetChatAccess = () => {
     setIsChatUnlocked(false);
     setChatAuthError(null);
+    setChatPassword('');
     window.sessionStorage.removeItem(CHAT_UNLOCKED_STORAGE_KEY);
+    window.sessionStorage.removeItem(CHAT_PASSWORD_STORAGE_KEY);
+  };
+
+  const resetHealthAssistant = () => {
+    setMessages(INITIAL_CHAT_MESSAGES);
+    setInput('');
+    setIsLoading(false);
+    setChatAuthError(null);
+    setFatigueScore(null);
+    setFatigueZone(null);
+    setCancerType(undefined);
+  };
+
+  const clearSavedPatientData = () => {
+    clearPatientContext();
+    setCancerType(undefined);
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -209,7 +358,9 @@ const App: React.FC = () => {
     if (!isValid) {
       setIsChatUnlocked(false);
       setChatAuthError('That password was not accepted. Please try again.');
+      setChatPassword('');
       window.sessionStorage.removeItem(CHAT_UNLOCKED_STORAGE_KEY);
+      window.sessionStorage.removeItem(CHAT_PASSWORD_STORAGE_KEY);
       setIsCheckingPassword(false);
       return;
     }
@@ -231,27 +382,14 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     // Update context based on current message before sending to AI
-    let updatedIsMyeloma = isMyelomaPatient;
     let updatedCancerType = cancerType;
     let updatedScore = fatigueScore;
     let updatedZone = fatigueZone;
 
-    if (textToSend.toLowerCase().includes('myeloma')) {
-      updatedIsMyeloma = true;
-      setIsMyelomaPatient(true);
-    }
-
-    // Simple regex for other cancer types if mentioned
-    const cancerMatch = textToSend.match(/(breast|prostate|lung|colon|lymphoma|leukemia|melanoma|ovarian|pancreatic|stomach|bladder|kidney)\s+cancer/i);
-    if (cancerMatch) {
-      updatedCancerType = cancerMatch[0];
-      setCancerType(cancerMatch[0]);
-    } else if (textToSend.toLowerCase().includes('breast cancer')) {
-      updatedCancerType = 'Breast Cancer';
-      setCancerType('Breast Cancer');
-    } else if (textToSend.toLowerCase().includes('lung cancer')) {
-      updatedCancerType = 'Lung Cancer';
-      setCancerType('Lung Cancer');
+    const detectedCancerType = detectCancerTypeFromText(textToSend);
+    if (detectedCancerType) {
+      updatedCancerType = detectedCancerType;
+      setCancerType(detectedCancerType);
     }
 
     if (!isOnline) {
@@ -284,8 +422,8 @@ const App: React.FC = () => {
     const context: ChatContext = {
       fatigueScore: updatedScore,
       fatigueZone: updatedZone,
-      isMyelomaPatient: updatedIsMyeloma,
-      cancerType: updatedCancerType
+      isMyelomaPatient: updatedCancerType === 'blood_myeloma',
+      cancerType: updatedCancerType,
     };
 
     const aiResponse = await getGeminiResponse(newMessages, chatPassword, context);
@@ -709,12 +847,12 @@ const App: React.FC = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
-                      <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-[400px]">
+                      <div className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible">
                         {categories.map(cat => (
                           <button
                             key={cat}
                             onClick={() => setRecipeCategoryFilter(cat)}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                            className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
                               recipeCategoryFilter === cat 
                                 ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' 
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'
@@ -836,21 +974,16 @@ const App: React.FC = () => {
         }
 
         return (
-          <div className="flex flex-col h-[calc(100vh-160px)]">
+          <div className="flex h-[calc(100vh-160px)] min-h-0 flex-col">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-3xl font-bold">Health Assistant</h1>
               <div className="flex items-center gap-3">
                 {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
                   <button 
-                    onClick={() => {
-                      setFatigueScore(null);
-                      setFatigueZone(null);
-                      setCancerType(undefined);
-                      setIsMyelomaPatient(false);
-                    }}
+                    onClick={resetHealthAssistant}
                     className="text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
                   >
-                    Reset Context
+                    Reset Health Assistant
                   </button>
                 )}
                 <button
@@ -865,10 +998,32 @@ const App: React.FC = () => {
             {/* Fatigue Score Prompt */}
             {fatigueScore === null && (
               <div className="mb-3 p-3 bg-white rounded-xl border border-neon-blue shadow-md animate-in zoom-in-95 duration-500">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-3">
                   <Activity className="w-4 h-4 text-neon-blue" />
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Check Your Battery (0-10)</h3>
                 </div>
+
+                <label className="mb-3 block">
+                  <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Cancer Type (Optional)
+                  </span>
+                  <select
+                    value={cancerType ?? ''}
+                    onChange={(e) => {
+                      const nextValue = e.target.value as CancerTypeOption | '';
+                      const normalizedValue = nextValue || undefined;
+                      setCancerType(normalizedValue);
+                    }}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-neon-blue"
+                  >
+                    <option value="">Select a cancer type</option>
+                    {CANCER_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 
                 <div className="grid grid-cols-11 gap-1">
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
@@ -891,19 +1046,21 @@ const App: React.FC = () => {
             {/* Context Banner */}
             {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
               <div className="mb-3 p-2 bg-slate-900 text-white rounded-lg border border-white/10 shadow-md flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Zone:</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs">{fatigueZone?.split(' ')[0] || '⚪'}</span>
-                    <span className="text-[10px] font-bold">{fatigueScore}/10</span>
+                {fatigueScore !== null && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Zone:</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs">{fatigueZone?.split(' ')[0] || '⚪'}</span>
+                      <span className="text-[10px] font-bold">{fatigueScore}/10</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 
                 {(cancerType || isMyelomaPatient) && (
-                  <div className="flex items-center gap-2 border-l border-white/20 pl-3">
+                  <div className={`flex items-center gap-2 ${fatigueScore !== null ? 'border-l border-white/20 pl-3' : ''}`}>
                     <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Focus:</span>
                     <span className="text-[10px] font-bold text-neon-blue">
-                      {cancerType || 'Myeloma'}
+                      {cancerType ? CANCER_TYPE_LABELS[cancerType] : 'Blood/Myeloma'}
                     </span>
                   </div>
                 )}
@@ -911,16 +1068,17 @@ const App: React.FC = () => {
             )}
             
             {/* Side Effect Shortcuts */}
-            <div className="mb-3">
+            <div className="relative z-10 mb-4 shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Quick Advice</span>
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <div className="flex gap-2 overflow-x-auto px-1 pb-2 no-scrollbar">
                 {SIDE_EFFECT_SHORTCUTS.map((sc, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => handleSendMessage(sc.prompt)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-all hover:border-neon-blue whitespace-nowrap ${sc.bg}`}
+                    className={`flex min-h-11 items-center gap-2 rounded-full border border-slate-100 px-4 py-2 shadow-sm transition-all hover:border-neon-blue whitespace-nowrap ${sc.bg}`}
                   >
                     <div className={`${sc.color}`}>{sc.icon}</div>
                     <span className="text-[10px] font-bold text-slate-700">{sc.label}</span>
@@ -929,7 +1087,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] p-4 rounded-2xl ${
@@ -997,7 +1155,7 @@ const App: React.FC = () => {
       case AppTab.RESOURCES:
         return (
           <Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading resources...</div>}>
-            <Resources />
+            <Resources onClearSavedData={clearSavedPatientData} />
           </Suspense>
         );
       default:
@@ -1088,7 +1246,7 @@ const App: React.FC = () => {
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
   <button 
     onClick={onClick}
-    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/65 hover:text-white hover:bg-white/10'}`}
+    className={`min-h-11 px-4 py-2 rounded-full text-sm font-semibold transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
   >
     {children}
   </button>
@@ -1097,9 +1255,9 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 const MobileTabButton: React.FC<{ label: string; icon: React.ReactNode; active: boolean; onClick: () => void }> = ({ label, icon, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`flex flex-col items-center justify-center gap-1 transition-all ${active ? 'text-[color:var(--color-nav)]' : 'text-slate-400'}`}
+    className={`flex min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-all ${active ? 'text-[color:var(--color-nav)]' : 'text-slate-400'}`}
   >
-    <span className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all ${active ? 'bg-[color:var(--color-accent)] border-[color:var(--color-accent)]' : 'bg-white border-slate-200'}`}>{icon}</span>
+    <span className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all ${active ? 'bg-[color:var(--color-accent)] border-[color:var(--color-accent)] shadow-sm' : 'bg-white border-slate-200'}`}>{icon}</span>
     <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
   </button>
 );

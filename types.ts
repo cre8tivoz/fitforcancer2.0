@@ -3,6 +3,7 @@ export enum AppTab {
   HOME = 'home',
   EXERCISE = 'exercise',
   NUTRITION = 'nutrition',
+  ENERGY_BANK = 'energy_bank',
   ASSISTANT = 'assistant',
   RESOURCES = 'resources'
 }
@@ -56,6 +57,13 @@ export interface PersistedPatientContext {
 export interface StoredPatientContextRecord {
   timestamp: number;
   context: PersistedPatientContext;
+}
+
+export interface EnergyHistoryEntry {
+  id: number;
+  date: string;
+  score: number;
+  note: string;
 }
 
 export interface ChatContext {

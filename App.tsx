@@ -7,8 +7,8 @@ import NutritionCard from './components/NutritionCard';
 import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse, validateChatPassword } from './services/geminiService';
-import { clearPatientContext, loadPatientContext, savePatientContext } from './utils/patientContextStorage';
-import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic } from 'lucide-react';
+import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
+import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing } from 'lucide-react';
 
 interface SpeechRecognitionResultLike {
   readonly isFinal: boolean;
@@ -86,6 +86,7 @@ const CHAT_PASSWORD_STORAGE_KEY = 'fit-for-cancer-chat-password';
 const CHAT_UNLOCKED_STORAGE_KEY = 'fit-for-cancer-chat-unlocked';
 const FATIGUE_SCORE_STORAGE_KEY = 'fit-for-cancer-fatigue-score';
 const FATIGUE_ZONE_STORAGE_KEY = 'fit-for-cancer-fatigue-zone';
+const DAILY_CHECKIN_LOGGED_STORAGE_KEY = 'fit-for-cancer-daily-checkin-logged';
 
 const CANCER_TYPE_OPTIONS: Array<{ value: CancerTypeOption; label: string }> = [
   { value: 'bowel', label: 'Bowel' },
@@ -111,6 +112,7 @@ const TAB_PATHS: Record<AppTab, string> = {
   [AppTab.HOME]: '/',
   [AppTab.EXERCISE]: '/exercise',
   [AppTab.NUTRITION]: '/nutrition',
+  [AppTab.ENERGY_BANK]: '/energy-bank',
   [AppTab.ASSISTANT]: '/assistant',
   [AppTab.RESOURCES]: '/resources',
 };
@@ -124,6 +126,7 @@ const getTabFromLocation = (): AppTab => {
 
   if (normalizedPath === '/exercise') return AppTab.EXERCISE;
   if (normalizedPath === '/nutrition') return AppTab.NUTRITION;
+  if (normalizedPath === '/energy-bank') return AppTab.ENERGY_BANK;
   if (normalizedPath === '/assistant') return AppTab.ASSISTANT;
   if (normalizedPath === '/resources') return AppTab.RESOURCES;
 
@@ -154,6 +157,7 @@ const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
 ];
 
 const MarkdownMessage = lazy(() => import('./components/MarkdownMessage'));
+const EnergyBank = lazy(() => import('./components/EnergyBank'));
 const Resources = lazy(() => import('./components/Resources'));
 
 const App: React.FC = () => {
@@ -180,6 +184,8 @@ const App: React.FC = () => {
   const [chatAuthError, setChatAuthError] = useState<string | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [hasLoggedDailyCheckIn, setHasLoggedDailyCheckIn] = useState(false);
+  const [energyHistoryRefreshKey, setEnergyHistoryRefreshKey] = useState(0);
   const isMyelomaPatient = cancerType === 'blood_myeloma';
   const appScrollContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -189,6 +195,7 @@ const App: React.FC = () => {
     const unlocked = window.sessionStorage.getItem(CHAT_UNLOCKED_STORAGE_KEY) === 'true';
     const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
     const storedFatigueZone = window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY) as '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
+    const hasLoggedCheckIn = window.sessionStorage.getItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY) === 'true';
     const storedPatientContext = loadPatientContext();
 
     if (storedPassword) {
@@ -212,6 +219,10 @@ const App: React.FC = () => {
 
     if (storedPatientContext?.cancerType && storedPatientContext.cancerType in CANCER_TYPE_LABELS) {
       setCancerType(storedPatientContext.cancerType);
+    }
+
+    if (hasLoggedCheckIn) {
+      setHasLoggedDailyCheckIn(true);
     }
   }, []);
 
@@ -328,6 +339,8 @@ const App: React.FC = () => {
   };
 
   const resetHealthAssistant = () => {
+    recognitionRef.current?.stop();
+    setIsListening(false);
     setMessages(INITIAL_CHAT_MESSAGES);
     setInput('');
     setIsLoading(false);
@@ -335,11 +348,24 @@ const App: React.FC = () => {
     setFatigueScore(null);
     setFatigueZone(null);
     setCancerType(undefined);
+    setHasLoggedDailyCheckIn(false);
+    window.sessionStorage.removeItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY);
   };
 
   const clearSavedPatientData = () => {
     clearPatientContext();
     setCancerType(undefined);
+  };
+
+  const handleFatigueScoreSelect = (score: number) => {
+    setFatigueScore(score);
+
+    const zone: '\u{1F7E2} Green' | '\u{1F7E1} Yellow' | '\u{1F534} Red' =
+      score >= 7 ? '\u{1F534} Red' : score >= 4 ? '\u{1F7E1} Yellow' : '\u{1F7E2} Green';
+
+    setFatigueZone(zone);
+    setExerciseZoneFilter(null);
+    setRecipeZoneFilter(null);
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -372,8 +398,19 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = async (userPrompt?: string) => {
-    const textToSend = userPrompt || input;
-    if (!textToSend.trim() || isLoading || !isChatUnlocked) return;
+    const isInitialCheckIn = fatigueScore !== null && !hasLoggedDailyCheckIn;
+    const quickNote = userPrompt ? '' : input.trim();
+    const textToSend =
+      userPrompt
+      || (
+        isInitialCheckIn
+          ? `My fatigue score today is ${fatigueScore}/10.${quickNote ? ` Quick note: ${quickNote}` : ''}`
+          : input
+      );
+    if ((!textToSend.trim() && !isInitialCheckIn) || isLoading || !isChatUnlocked) return;
+
+    recognitionRef.current?.stop();
+    setIsListening(false);
 
     const userMessage: ChatMessage = { role: 'user', content: textToSend };
     const newMessages = [...messages, userMessage];
@@ -406,17 +443,15 @@ const App: React.FC = () => {
     if (scoreMatch) {
       const score = parseInt(scoreMatch[1]);
       updatedScore = score;
-      setFatigueScore(score);
-      
-      let zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' = '🟢 Green';
-      if (score >= 7) zone = '🔴 Red';
-      else if (score >= 4) zone = '🟡 Yellow';
-      
-      updatedZone = zone;
-      setFatigueZone(zone);
-      // Reset manual filters to null so they follow the new dynamic zone by default
-      setExerciseZoneFilter(null);
-      setRecipeZoneFilter(null);
+      handleFatigueScoreSelect(score);
+      updatedZone = score >= 7 ? '\u{1F534} Red' : score >= 4 ? '\u{1F7E1} Yellow' : '\u{1F7E2} Green';
+    }
+
+    if (isInitialCheckIn && updatedScore !== null) {
+      saveDailyCheckIn(updatedScore, quickNote);
+      setHasLoggedDailyCheckIn(true);
+      setEnergyHistoryRefreshKey((current) => current + 1);
+      window.sessionStorage.setItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY, 'true');
     }
 
     const context: ChatContext = {
@@ -921,6 +956,12 @@ const App: React.FC = () => {
             )}
           </div>
         );
+      case AppTab.ENERGY_BANK:
+        return (
+          <Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading Energy Bank...</div>}>
+            <EnergyBank refreshKey={energyHistoryRefreshKey} />
+          </Suspense>
+        );
       case AppTab.ASSISTANT:
         if (!isChatUnlocked) {
           return (
@@ -1029,8 +1070,11 @@ const App: React.FC = () => {
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
                     <button
                       key={score}
-                      onClick={() => handleSendMessage(score.toString())}
+                      type="button"
+                      onClick={() => handleFatigueScoreSelect(score)}
                       className={`h-7 rounded-md font-bold text-[10px] transition-all border ${
+                        fatigueScore === score ? 'ring-2 ring-slate-900/15 scale-[1.03]' : ''
+                      } ${
                         score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' :
                         score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' :
                         'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'
@@ -1040,6 +1084,9 @@ const App: React.FC = () => {
                     </button>
                   ))}
                 </div>
+                <p className="mt-3 text-[11px] leading-5 text-slate-500">
+                  Select your score, add an optional Quick Note below, then press send to start the assistant and save your check-in.
+                </p>
               </div>
             )}
 
@@ -1125,13 +1172,19 @@ const App: React.FC = () => {
                 placeholder={fatigueScore === null ? "Add a Quick Note about today..." : "Ask about fatigue, nausea, appetite..."}
                 className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all"
               />
-              {fatigueScore === null && isSpeechSupported && (
+              {isSpeechSupported && (
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   type="button"
                   onClick={toggleVoiceDictation}
-                  aria-label={isListening ? 'Stop voice dictation' : 'Start voice dictation for Quick Note'}
+                  aria-label={
+                    isListening
+                      ? 'Stop voice dictation'
+                      : fatigueScore === null
+                        ? 'Start voice dictation for Quick Note'
+                        : 'Start voice dictation for Health Assistant message'
+                  }
                   aria-pressed={isListening}
                   className={`p-4 rounded-xl border shadow-sm transition-all ${isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'}`}
                 >
@@ -1186,6 +1239,7 @@ const App: React.FC = () => {
           <TabButton active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)}>Home</TabButton>
           <TabButton active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)}>Exercise</TabButton>
           <TabButton active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)}>Nutrition</TabButton>
+          <TabButton active={activeTab === AppTab.ENERGY_BANK} onClick={() => setActiveTab(AppTab.ENERGY_BANK)}>Energy Bank</TabButton>
           <TabButton active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)}>AI Chat</TabButton>
           <TabButton active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)}>Resources</TabButton>
         </div>
@@ -1235,6 +1289,7 @@ const App: React.FC = () => {
         <MobileTabButton label="Home" icon={<House className="w-4 h-4" />} active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)} />
         <MobileTabButton label="Move" icon={<Dumbbell className="w-4 h-4" />} active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)} />
         <MobileTabButton label="Eat" icon={<Utensils className="w-4 h-4" />} active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)} />
+        <MobileTabButton label="Bank" icon={<ChartColumnIncreasing className="w-4 h-4" />} active={activeTab === AppTab.ENERGY_BANK} onClick={() => setActiveTab(AppTab.ENERGY_BANK)} />
         <MobileTabButton label="Chat" icon={<MessageCircle className="w-4 h-4" />} active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)} />
         <MobileTabButton label="Refs" icon={<BookOpen className="w-4 h-4" />} active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)} />
       </div>
@@ -1263,3 +1318,7 @@ const MobileTabButton: React.FC<{ label: string; icon: React.ReactNode; active: 
 );
 
 export default App;
+
+
+
+

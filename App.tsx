@@ -8,7 +8,7 @@ import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse, validateChatPassword } from './services/geminiService';
 import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
-import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing } from 'lucide-react';
+import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2 } from 'lucide-react';
 
 interface SpeechRecognitionResultLike {
   readonly isFinal: boolean;
@@ -117,6 +117,9 @@ const TAB_PATHS: Record<AppTab, string> = {
   [AppTab.RESOURCES]: '/resources',
 };
 
+const CONTROL_FOCUS_CLASS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]';
+
 const getTabFromLocation = (): AppTab => {
   if (typeof window === 'undefined') {
     return AppTab.HOME;
@@ -186,6 +189,7 @@ const App: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [hasLoggedDailyCheckIn, setHasLoggedDailyCheckIn] = useState(false);
   const [energyHistoryRefreshKey, setEnergyHistoryRefreshKey] = useState(0);
+  const [isAccessibilityModalOpen, setIsAccessibilityModalOpen] = useState(false);
   const isMyelomaPatient = cancerType === 'blood_myeloma';
   const appScrollContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -329,6 +333,40 @@ const App: React.FC = () => {
 
     window.history.pushState({ tab: activeTab }, '', nextPath);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!isAccessibilityModalOpen) {
+      return undefined;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccessibilityModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isAccessibilityModalOpen]);
+
+  const handleTabLinkClick = (event: React.MouseEvent<HTMLAnchorElement>, tab: AppTab) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    setActiveTab(tab);
+  };
 
   const resetChatAccess = () => {
     setIsChatUnlocked(false);
@@ -689,15 +727,22 @@ const App: React.FC = () => {
 
                 {/* Energy Zone Toggle */}
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Energy Zone Filter:</span>
-                  <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200">
+                  <span id="exercise-zone-filter-label" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Energy Zone Filter:</span>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby="exercise-zone-filter-label"
+                    className="flex bg-slate-100 p-1 rounded-full border border-slate-200"
+                  >
                     <button
+                      type="button"
+                      role="radio"
+                      aria-checked={exerciseZoneFilter === 'All'}
                       onClick={() => setExerciseZoneFilter(exerciseZoneFilter === 'All' ? null : 'All')}
                       className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                         exerciseZoneFilter === 'All' 
                           ? 'bg-white shadow-sm text-slate-900 border border-slate-200' 
                           : 'text-slate-400 hover:text-slate-600'
-                      }`}
+                      } ${CONTROL_FOCUS_CLASS}`}
                     >
                       All
                     </button>
@@ -706,12 +751,15 @@ const App: React.FC = () => {
                       return (
                         <button
                           key={zone}
+                          type="button"
+                          role="radio"
+                          aria-checked={isActive}
                           onClick={() => setExerciseZoneFilter(exerciseZoneFilter === zone ? null : zone)}
                           className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                             isActive 
                               ? 'bg-white shadow-sm text-slate-900 border border-slate-200' 
                               : 'text-slate-400 hover:text-slate-600'
-                          }`}
+                          } ${CONTROL_FOCUS_CLASS}`}
                         >
                           {zone}
                         </button>
@@ -720,8 +768,9 @@ const App: React.FC = () => {
                   </div>
                   {(exerciseZoneFilter !== null) && (
                     <button 
+                      type="button"
                       onClick={() => setExerciseZoneFilter(null)}
-                      className="text-[10px] font-bold text-neon-blue hover:underline uppercase tracking-widest ml-1"
+                      className={`ml-1 text-[10px] font-bold text-neon-blue hover:underline uppercase tracking-widest ${CONTROL_FOCUS_CLASS}`}
                     >
                       Reset to Dynamic
                     </button>
@@ -825,9 +874,14 @@ const App: React.FC = () => {
                   <p className="text-slate-600 mt-1">Nourishing recipes that are easy to prepare and digest during treatment.</p>
                 </div>
                 
-                <div className="relative w-full md:w-72">
+                <div className="w-full md:w-72">
+                  <label htmlFor="nutrition-search" className="mb-1.5 ml-1 block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                    Search recipes
+                  </label>
+                  <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
+                    id="nutrition-search"
                     type="text"
                     placeholder="Search ingredients or recipes..."
                     value={recipeSearchQuery}
@@ -836,12 +890,15 @@ const App: React.FC = () => {
                   />
                   {recipeSearchQuery && (
                     <button 
+                      type="button"
                       onClick={() => setRecipeSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 ${CONTROL_FOCUS_CLASS}`}
+                      aria-label="Clear recipe search"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   )}
+                </div>
                 </div>
               </div>
 
@@ -850,14 +907,21 @@ const App: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Energy Zone</span>
-                      <div className="flex bg-white p-1 rounded-full border border-slate-200 shadow-sm">
+                      <div
+                        role="radiogroup"
+                        aria-label="Nutrition energy zone filter"
+                        className="flex bg-white p-1 rounded-full border border-slate-200 shadow-sm"
+                      >
                         <button
+                          type="button"
+                          role="radio"
+                          aria-checked={recipeZoneFilter === 'All'}
                           onClick={() => setRecipeZoneFilter(recipeZoneFilter === 'All' ? null : 'All')}
                           className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                             recipeZoneFilter === 'All' 
                               ? 'bg-slate-900 text-white shadow-md' 
                               : 'text-slate-400 hover:text-slate-600'
-                          }`}
+                          } ${CONTROL_FOCUS_CLASS}`}
                         >
                           All
                         </button>
@@ -866,12 +930,15 @@ const App: React.FC = () => {
                           return (
                             <button
                               key={zone}
+                              type="button"
+                              role="radio"
+                              aria-checked={isActive}
                               onClick={() => setRecipeZoneFilter(recipeZoneFilter === zone ? null : zone)}
                               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                                 isActive 
                                   ? 'bg-white shadow-md text-slate-900 border border-slate-100' 
                                   : 'text-slate-400 hover:text-slate-600'
-                              }`}
+                              } ${CONTROL_FOCUS_CLASS}`}
                             >
                               {zone}
                             </button>
@@ -882,16 +949,23 @@ const App: React.FC = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
-                      <div className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible">
+                      <div
+                        role="radiogroup"
+                        aria-label="Recipe category filter"
+                        className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible"
+                      >
                         {categories.map(cat => (
                           <button
                             key={cat}
+                            type="button"
+                            role="radio"
+                            aria-checked={recipeCategoryFilter === cat}
                             onClick={() => setRecipeCategoryFilter(cat)}
                             className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
                               recipeCategoryFilter === cat 
                                 ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' 
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'
-                            }`}
+                            } ${CONTROL_FOCUS_CLASS}`}
                           >
                             {cat}
                           </button>
@@ -902,12 +976,13 @@ const App: React.FC = () => {
 
                   {isFiltering && (
                     <button 
+                      type="button"
                       onClick={() => {
                         setRecipeZoneFilter(null);
                         setRecipeCategoryFilter('All');
                         setRecipeSearchQuery('');
                       }}
-                      className="text-[10px] font-black text-neon-pink hover:underline uppercase tracking-[0.2em] flex items-center gap-1.5"
+                      className={`text-[10px] font-black text-neon-pink hover:underline uppercase tracking-[0.2em] flex items-center gap-1.5 ${CONTROL_FOCUS_CLASS}`}
                     >
                       <X className="w-3 h-3" />
                       Clear All Filters
@@ -918,6 +993,7 @@ const App: React.FC = () => {
                 {recipeZoneFilter === null && fatigueZone && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-blue/5 border border-neon-blue/10 rounded-lg">
                     <div className="w-2 h-2 bg-neon-blue rounded-full animate-pulse" />
+                    <span className="sr-only">Following your current zone.</span>
                     <span className="text-[10px] font-bold text-neon-blue uppercase tracking-widest">
                       Dynamic Mode Active: Following your {fatigueZone} Zone
                     </span>
@@ -1164,44 +1240,51 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
-            <form onSubmit={onFormSubmit} className="mt-4 flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={fatigueScore === null ? "Add a Quick Note about today..." : "Ask about fatigue, nausea, appetite..."}
-                className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all"
-              />
-              {isSpeechSupported && (
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  type="button"
-                  onClick={toggleVoiceDictation}
-                  aria-label={
-                    isListening
-                      ? 'Stop voice dictation'
-                      : fatigueScore === null
-                        ? 'Start voice dictation for Quick Note'
-                        : 'Start voice dictation for Health Assistant message'
-                  }
-                  aria-pressed={isListening}
-                  className={`p-4 rounded-xl border shadow-sm transition-all ${isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'}`}
+            <form onSubmit={onFormSubmit} className="mt-4 space-y-2">
+              <label htmlFor="assistant-message" className="ml-1 block text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                {fatigueScore === null ? 'Quick Note' : 'Health Assistant message'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="assistant-message"
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={fatigueScore === null ? "Add a Quick Note about today..." : "Ask about fatigue, nausea, appetite..."}
+                  className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all"
+                />
+                {isSpeechSupported && (
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    type="button"
+                    onClick={toggleVoiceDictation}
+                    aria-label={
+                      isListening
+                        ? 'Stop voice dictation'
+                        : fatigueScore === null
+                          ? 'Start voice dictation for Quick Note'
+                          : 'Start voice dictation for Health Assistant message'
+                    }
+                    aria-pressed={isListening}
+                    className={`p-4 rounded-xl border shadow-sm transition-all ${isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} ${CONTROL_FOCUS_CLASS}`}
+                  >
+                    <Mic className="w-5 h-5" />
+                  </motion.button>
+                )}
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="submit"
+                  disabled={isLoading}
+                  aria-label={fatigueScore === null ? 'Send Quick Note to start the health assistant' : 'Send message to the health assistant'}
+                  className={`p-4 bg-neon-blue text-neon-dark rounded-xl shadow-md hover:bg-neon-blue/90 disabled:opacity-50 transition-all ${CONTROL_FOCUS_CLASS}`}
                 >
-                  <Mic className="w-5 h-5" />
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
                 </motion.button>
-              )}
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                type="submit"
-                disabled={isLoading}
-                className="p-4 bg-neon-blue text-neon-dark rounded-xl shadow-md hover:bg-neon-blue/90 disabled:opacity-50 transition-all"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </motion.button>
+              </div>
             </form>
           </div>
         );
@@ -1224,7 +1307,12 @@ const App: React.FC = () => {
     <div ref={appScrollContainerRef} className="h-screen overflow-y-auto">
       <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
       <nav className="sticky top-0 z-50 py-4 bg-[color:var(--color-nav)] backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-white/10">
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab(AppTab.HOME)}>
+        <a
+          href={TAB_PATHS[AppTab.HOME]}
+          onClick={(event) => handleTabLinkClick(event, AppTab.HOME)}
+          aria-current={activeTab === AppTab.HOME ? 'page' : undefined}
+          className={`flex items-center gap-3 group ${CONTROL_FOCUS_CLASS}`}
+        >
           <div className="flex flex-col">
             <BrandLockup compact variant="dark" className="h-10 w-auto transition-transform group-hover:scale-[1.02]" />
             {!isOnline && (
@@ -1234,14 +1322,14 @@ const App: React.FC = () => {
               </span>
             )}
           </div>
-        </div>
+        </a>
         <div className="flex bg-white/5 p-1 rounded-full border border-white/10 hidden sm:flex">
-          <TabButton active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)}>Home</TabButton>
-          <TabButton active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)}>Exercise</TabButton>
-          <TabButton active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)}>Nutrition</TabButton>
-          <TabButton active={activeTab === AppTab.ENERGY_BANK} onClick={() => setActiveTab(AppTab.ENERGY_BANK)}>Energy Bank</TabButton>
-          <TabButton active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)}>AI Chat</TabButton>
-          <TabButton active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)}>Resources</TabButton>
+          <TabButton href={TAB_PATHS[AppTab.HOME]} active={activeTab === AppTab.HOME} onClick={(event) => handleTabLinkClick(event, AppTab.HOME)}>Home</TabButton>
+          <TabButton href={TAB_PATHS[AppTab.EXERCISE]} active={activeTab === AppTab.EXERCISE} onClick={(event) => handleTabLinkClick(event, AppTab.EXERCISE)}>Exercise</TabButton>
+          <TabButton href={TAB_PATHS[AppTab.NUTRITION]} active={activeTab === AppTab.NUTRITION} onClick={(event) => handleTabLinkClick(event, AppTab.NUTRITION)}>Nutrition</TabButton>
+          <TabButton href={TAB_PATHS[AppTab.ENERGY_BANK]} active={activeTab === AppTab.ENERGY_BANK} onClick={(event) => handleTabLinkClick(event, AppTab.ENERGY_BANK)}>Energy Bank</TabButton>
+          <TabButton href={TAB_PATHS[AppTab.ASSISTANT]} active={activeTab === AppTab.ASSISTANT} onClick={(event) => handleTabLinkClick(event, AppTab.ASSISTANT)}>AI Chat</TabButton>
+          <TabButton href={TAB_PATHS[AppTab.RESOURCES]} active={activeTab === AppTab.RESOURCES} onClick={(event) => handleTabLinkClick(event, AppTab.RESOURCES)}>Resources</TabButton>
         </div>
       </nav>
 
@@ -1266,13 +1354,15 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex flex-col items-center gap-4">
-              <button 
-                onClick={() => setActiveTab(AppTab.RESOURCES)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-neon-blue hover:text-neon-blue transition-all shadow-sm uppercase tracking-wider"
+              <a
+                href={TAB_PATHS[AppTab.RESOURCES]}
+                onClick={(event) => handleTabLinkClick(event, AppTab.RESOURCES)}
+                aria-current={activeTab === AppTab.RESOURCES ? 'page' : undefined}
+                className={`inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-neon-blue hover:text-neon-blue transition-all shadow-sm uppercase tracking-wider ${CONTROL_FOCUS_CLASS}`}
               >
                 <BookOpen className="w-3 h-3" />
                 View Evidence Base & Resources
-              </button>
+              </a>
               
               <div className="pt-4 border-t border-slate-200 w-full max-w-xs">
                 <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
@@ -1280,41 +1370,135 @@ const App: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAccessibilityModalOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={isAccessibilityModalOpen}
+                aria-controls="accessibility-statement-dialog"
+                className={`inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-700 ${CONTROL_FOCUS_CLASS}`}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>Committed to WCAG 2.2 AA Accessibility</span>
+              </button>
+            </div>
           </div>
         </div>
       </footer>
 
+      <AnimatePresence>
+        {isAccessibilityModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 py-6"
+            onClick={() => setIsAccessibilityModalOpen(false)}
+          >
+            <motion.div
+              id="accessibility-statement-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="accessibility-statement-title"
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-7"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                    <Globe className="h-3.5 w-3.5" />
+                    Accessibility Statement
+                  </span>
+                  <div>
+                    <h2 id="accessibility-statement-title" className="text-2xl font-bold text-slate-900">
+                      Our accessibility commitment
+                    </h2>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">
+                      Fit For Cancer is designed to meet WCAG 2.2 AA expectations and support Australian digital inclusion standards.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAccessibilityModalOpen(false)}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 ${CONTROL_FOCUS_CLASS}`}
+                  aria-label="Close accessibility statement"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-4 text-sm leading-7 text-slate-600">
+                <div className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-primary)]" />
+                  <p>We design mobile-first interfaces with readable typography, clear labels, and touch-friendly controls so people can use the app more comfortably during treatment.</p>
+                </div>
+                <div className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-primary)]" />
+                  <p>We aim to support keyboard navigation, visible focus states, screen-reader-friendly semantics, and reduced cognitive load across exercise, nutrition, and assistant flows.</p>
+                </div>
+                <div className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-primary)]" />
+                  <p>Accessibility is an ongoing commitment. We continue refining the product with user feedback, especially for people experiencing fatigue, treatment side effects, or fluctuating concentration.</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAccessibilityModalOpen(false)}
+                  className={`inline-flex min-h-11 items-center rounded-2xl bg-[color:var(--color-nav)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[color:var(--color-primary)] ${CONTROL_FOCUS_CLASS}`}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Tab Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--color-surface)]/95 backdrop-blur-md border-t border-[color:var(--color-primary)]/10 px-4 py-3 flex justify-between sm:hidden z-50 shadow-[0_-10px_30px_-18px_rgba(26,40,33,0.35)]">
-        <MobileTabButton label="Home" icon={<House className="w-4 h-4" />} active={activeTab === AppTab.HOME} onClick={() => setActiveTab(AppTab.HOME)} />
-        <MobileTabButton label="Move" icon={<Dumbbell className="w-4 h-4" />} active={activeTab === AppTab.EXERCISE} onClick={() => setActiveTab(AppTab.EXERCISE)} />
-        <MobileTabButton label="Eat" icon={<Utensils className="w-4 h-4" />} active={activeTab === AppTab.NUTRITION} onClick={() => setActiveTab(AppTab.NUTRITION)} />
-        <MobileTabButton label="Bank" icon={<ChartColumnIncreasing className="w-4 h-4" />} active={activeTab === AppTab.ENERGY_BANK} onClick={() => setActiveTab(AppTab.ENERGY_BANK)} />
-        <MobileTabButton label="Chat" icon={<MessageCircle className="w-4 h-4" />} active={activeTab === AppTab.ASSISTANT} onClick={() => setActiveTab(AppTab.ASSISTANT)} />
-        <MobileTabButton label="Refs" icon={<BookOpen className="w-4 h-4" />} active={activeTab === AppTab.RESOURCES} onClick={() => setActiveTab(AppTab.RESOURCES)} />
+        <MobileTabButton href={TAB_PATHS[AppTab.HOME]} label="Home" icon={<House className="w-4 h-4" />} active={activeTab === AppTab.HOME} onClick={(event) => handleTabLinkClick(event, AppTab.HOME)} />
+        <MobileTabButton href={TAB_PATHS[AppTab.EXERCISE]} label="Move" icon={<Dumbbell className="w-4 h-4" />} active={activeTab === AppTab.EXERCISE} onClick={(event) => handleTabLinkClick(event, AppTab.EXERCISE)} />
+        <MobileTabButton href={TAB_PATHS[AppTab.NUTRITION]} label="Eat" icon={<Utensils className="w-4 h-4" />} active={activeTab === AppTab.NUTRITION} onClick={(event) => handleTabLinkClick(event, AppTab.NUTRITION)} />
+        <MobileTabButton href={TAB_PATHS[AppTab.ENERGY_BANK]} label="Trends" icon={<ChartColumnIncreasing className="w-4 h-4" />} active={activeTab === AppTab.ENERGY_BANK} onClick={(event) => handleTabLinkClick(event, AppTab.ENERGY_BANK)} />
+        <MobileTabButton href={TAB_PATHS[AppTab.ASSISTANT]} label="Chat" icon={<MessageCircle className="w-4 h-4" />} active={activeTab === AppTab.ASSISTANT} onClick={(event) => handleTabLinkClick(event, AppTab.ASSISTANT)} />
+        <MobileTabButton href={TAB_PATHS[AppTab.RESOURCES]} label="Resources" icon={<BookOpen className="w-4 h-4" />} active={activeTab === AppTab.RESOURCES} onClick={(event) => handleTabLinkClick(event, AppTab.RESOURCES)} />
       </div>
       </div>
     </div>
   );
 };
 
-const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
-  <button 
+const TabButton: React.FC<{ href: string; active: boolean; onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void; children: React.ReactNode }> = ({ href, active, onClick, children }) => (
+  <a
+    href={href}
     onClick={onClick}
-    className={`min-h-11 px-4 py-2 rounded-full text-sm font-semibold transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
+    aria-current={active ? 'page' : undefined}
+    className={`inline-flex min-h-11 items-center px-4 py-2 rounded-full text-sm font-semibold transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'} ${CONTROL_FOCUS_CLASS}`}
   >
     {children}
-  </button>
+  </a>
 );
 
-const MobileTabButton: React.FC<{ label: string; icon: React.ReactNode; active: boolean; onClick: () => void }> = ({ label, icon, active, onClick }) => (
-  <button 
+const MobileTabButton: React.FC<{ href: string; label: string; icon: React.ReactNode; active: boolean; onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void }> = ({ href, label, icon, active, onClick }) => (
+  <a
+    href={href}
     onClick={onClick}
-    className={`flex min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-all ${active ? 'text-[color:var(--color-nav)]' : 'text-slate-400'}`}
+    aria-current={active ? 'page' : undefined}
+    className={`flex min-w-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-all ${active ? 'text-[color:var(--color-nav)]' : 'text-slate-400'} ${CONTROL_FOCUS_CLASS}`}
   >
     <span className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all ${active ? 'bg-[color:var(--color-accent)] border-[color:var(--color-accent)] shadow-sm' : 'bg-white border-slate-200'}`}>{icon}</span>
-    <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
-  </button>
+    <span className="text-[11px] font-semibold">{label}</span>
+  </a>
 );
 
 export default App;

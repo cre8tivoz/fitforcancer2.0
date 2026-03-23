@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Activity, CalendarDays, NotebookText } from 'lucide-react';
+import { Activity, CalendarDays, Check, Download, NotebookText } from 'lucide-react';
 import { EnergyHistoryEntry } from '../types';
 import { getEnergyHistory } from '../utils/patientContextStorage';
 
@@ -28,8 +28,28 @@ const formatLongDate = (isoDate: string) =>
     minute: '2-digit',
   }).format(new Date(isoDate));
 
+const getZoneLabel = (score: number): 'Green' | 'Yellow' | 'Red' => {
+  if (score >= 7) return 'Red';
+  if (score >= 4) return 'Yellow';
+  return 'Green';
+};
+
+const getZoneToneClasses = (zone: 'Green' | 'Yellow' | 'Red') => {
+  if (zone === 'Red') {
+    return 'bg-rose-50 text-rose-700 border-rose-200';
+  }
+
+  if (zone === 'Yellow') {
+    return 'bg-amber-50 text-amber-800 border-amber-200';
+  }
+
+  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+};
+
 const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
   const [history, setHistory] = useState<EnergyHistoryEntry[]>([]);
+  const [exported, setExported] = useState(false);
+  const resetTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setHistory(getEnergyHistory());
@@ -43,6 +63,78 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
       })),
     [history],
   );
+
+  const recentEntries = useMemo(() => history.slice(-7), [history]);
+
+  const summaryText = useMemo(() => {
+    if (recentEntries.length === 0) {
+      return 'No recent check-ins saved yet.';
+    }
+
+    const zoneCounts = recentEntries.reduce<Record<'Green' | 'Yellow' | 'Red', number>>(
+      (accumulator, entry) => {
+        const zone = getZoneLabel(entry.score);
+        accumulator[zone] += 1;
+        return accumulator;
+      },
+      { Green: 0, Yellow: 0, Red: 0 },
+    );
+
+    const dominantZone = (Object.entries(zoneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Yellow') as
+      | 'Green'
+      | 'Yellow'
+      | 'Red';
+
+    return `Last ${recentEntries.length} check-ins: mostly ${dominantZone} zone.`;
+  }, [recentEntries]);
+
+  const handleExportHistory = () => {
+    const exportLines = [
+      'Fit For Cancer - Energy Bank',
+      `Export Date: ${new Date().toLocaleDateString('en-AU')}`,
+      '',
+      summaryText,
+      '',
+      'History Log',
+      ...history.map((entry, index) => {
+        const zone = getZoneLabel(entry.score);
+        const note = entry.note || 'No Quick Note saved.';
+        return `${index + 1}. ${formatLongDate(entry.date)} | Score: ${entry.score}/10 | Zone: ${zone}\n   Note: ${note}`;
+      }),
+    ].join('\n');
+
+    const blob = new Blob([exportLines], { type: 'text/plain' });
+    const objectUrl = URL.createObjectURL(blob);
+    const downloadLink = document.createElement('a');
+
+    downloadLink.href = objectUrl;
+    downloadLink.download = 'FitForCancer_EnergyBank.txt';
+    downloadLink.style.display = 'none';
+
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(objectUrl);
+
+    setExported(true);
+
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    resetTimerRef.current = window.setTimeout(() => {
+      setExported(false);
+      resetTimerRef.current = null;
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
 
   if (history.length === 0) {
     return (
@@ -103,6 +195,15 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Entries Saved</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{history.length}</p>
             </div>
+            <button
+              type="button"
+              onClick={handleExportHistory}
+              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
+              aria-label={exported ? 'Energy Bank export started' : 'Export Energy Bank history'}
+            >
+              {exported ? <Check className="h-4 w-4 text-emerald-600" /> : <Download className="h-4 w-4" />}
+              <span>{exported ? 'Saved' : 'Export'}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -113,6 +214,10 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
             <h2 className="text-lg font-bold text-slate-900">30-Day Energy Trend</h2>
             <p className="text-sm leading-6 text-slate-500">Scores are plotted from 0 to 10 so your zones stay easy to read.</p>
           </div>
+        </div>
+
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-900">{summaryText}</p>
         </div>
 
         <div className="h-72 w-full">
@@ -185,28 +290,27 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
           <h2 className="text-lg font-bold text-slate-900">History Log</h2>
         </div>
 
-        <div className="max-h-[26rem] overflow-y-auto rounded-2xl border border-slate-100">
-          <div className="grid grid-cols-[110px_72px_minmax(0,1fr)] gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-            <span>Date</span>
-            <span>Score</span>
-            <span>Quick Note</span>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {[...history].reverse().map((entry) => (
-              <div
+        <div className="max-h-[26rem] overflow-y-auto space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3 sm:p-4">
+          {[...history].reverse().map((entry) => {
+            const zone = getZoneLabel(entry.score);
+            return (
+              <article
                 key={entry.id}
-                className="grid grid-cols-[110px_72px_minmax(0,1fr)] gap-3 px-4 py-4 text-sm text-slate-600"
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
               >
-                <span className="text-xs leading-5 text-slate-500">{formatLongDate(entry.date)}</span>
-                <span className="inline-flex h-fit w-fit rounded-full bg-[color:var(--color-accent)]/25 px-2.5 py-1 text-xs font-bold text-[color:var(--color-nav)]">
-                  {entry.score}/10
-                </span>
-                <span className="min-w-0 break-words leading-6 text-slate-700">
+                <p className="text-xs font-medium leading-5 text-slate-500">{formatLongDate(entry.date)}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex h-fit w-fit rounded-full border px-2.5 py-1 text-xs font-bold ${getZoneToneClasses(zone)}`}>
+                    {entry.score}/10
+                  </span>
+                  <span className="text-xs font-medium text-slate-500">{zone} zone</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">
                   {entry.note || 'No Quick Note saved.'}
-                </span>
-              </div>
-            ))}
-          </div>
+                </p>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Check, Download } from 'lucide-react';
 import SmartChip from './SmartChip';
 import { parseMessageWithChips } from '../utils/parseMessageWithChips';
 
@@ -10,6 +11,43 @@ interface MarkdownMessageProps {
 
 const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
   const { cleanText, links } = parseMessageWithChips(content);
+  const [exported, setExported] = useState(false);
+  const resetTimerRef = useRef<number | null>(null);
+
+  const handleExport = () => {
+    const exportText = `Fit For Cancer - Support Plan\nDate: ${new Date().toLocaleDateString()}\n\n${cleanText}`;
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const objectUrl = URL.createObjectURL(blob);
+    const downloadLink = document.createElement('a');
+
+    downloadLink.href = objectUrl;
+    downloadLink.download = 'FitForCancer_Plan.txt';
+    downloadLink.style.display = 'none';
+
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(objectUrl);
+
+    setExported(true);
+
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    resetTimerRef.current = window.setTimeout(() => {
+      setExported(false);
+      resetTimerRef.current = null;
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div>
@@ -50,11 +88,23 @@ const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
         {cleanText}
       </ReactMarkdown>
 
-      {links.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {links.map((link) => (
-            <SmartChip key={link.url} title={link.title} url={link.url} />
-          ))}
+      {(links.length > 0 || cleanText.trim()) && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {links.map((link) => (
+              <SmartChip key={link.url} title={link.title} url={link.url} />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
+            aria-label={exported ? 'Download started' : 'Download support plan'}
+          >
+            {exported ? <Check className="h-4 w-4 text-emerald-600" /> : <Download className="h-4 w-4" />}
+            <span>{exported ? 'Saved' : 'Download'}</span>
+          </button>
         </div>
       )}
     </div>

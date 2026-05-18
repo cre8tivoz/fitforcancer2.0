@@ -1,53 +1,24 @@
 import { ChatContext, ChatMessage } from "../types";
 
-const UNAUTHORIZED_MESSAGE = "Incorrect password. Please re-enter it to continue using the health assistant.";
-
 const parseJson = async (response: Response) => response.json().catch(() => null);
 
-export const validateChatPassword = async (accessPassword: string) => {
+export const getGeminiResponse = async (history: ChatMessage[], context?: ChatContext) => {
   try {
     const response = await fetch("/api/gemini", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-chat-password": accessPassword,
-      },
-      body: JSON.stringify({
-        accessPassword,
-        validateOnly: true,
-      }),
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error("Chat password validation error:", error);
-    return false;
-  }
-};
-
-export const getGeminiResponse = async (history: ChatMessage[], accessPassword: string, context?: ChatContext) => {
-  try {
-    const response = await fetch("/api/gemini", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-chat-password": accessPassword,
       },
       body: JSON.stringify({
         history,
         context,
         cancerType: context?.cancerType,
-        accessPassword,
       }),
     });
 
     const data = await parseJson(response);
 
     if (!response.ok) {
-      if (response.status === 401) {
-        return UNAUTHORIZED_MESSAGE;
-      }
-
       return data?.error || "There was an error connecting to the health assistant. Please check your connection.";
     }
 

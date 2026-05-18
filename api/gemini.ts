@@ -5,8 +5,6 @@ interface GeminiRequestBody {
   history?: ChatMessage[];
   context?: ChatContext;
   cancerType?: CancerTypeOption;
-  accessPassword?: string;
-  validateOnly?: boolean;
 }
 
 interface JsonResponse {
@@ -29,9 +27,6 @@ interface VercelLikeResponse {
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const GEMINI_TIMEOUT_MS = 25000;
-const PASSWORD_HEADER_NAME = "x-chat-password";
-
-const normalizePassword = (value?: string | null): string => value?.trim() ?? "";
 
 const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?: boolean): string => {
   if (cancerType === "bowel") return "Bowel";
@@ -184,24 +179,6 @@ const parseBody = (body: VercelLikeRequest["body"]): GeminiRequestBody | null =>
   return body;
 };
 
-const getHeaderValue = (headers: VercelLikeRequest["headers"], name: string): string | null => {
-  if (!headers) {
-    return null;
-  }
-
-  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
-  if (!entry) {
-    return null;
-  }
-
-  const value = entry[1];
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-};
-
 const extractText = (payload: any): string | null => {
   const candidates = payload?.candidates;
   if (!Array.isArray(candidates)) {
@@ -239,26 +216,9 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
-  const expectedPassword = normalizePassword(process.env.CHAT_ACCESS_PASSWORD);
-  if (!expectedPassword) {
-    res.status(500).json({ error: "Server is missing CHAT_ACCESS_PASSWORD" });
-    return;
-  }
-
   const body = parseBody(req.body);
   if (!body) {
     res.status(400).json({ error: "Invalid JSON payload" });
-    return;
-  }
-
-  const suppliedPassword = normalizePassword(body.accessPassword ?? getHeaderValue(req.headers, PASSWORD_HEADER_NAME));
-  if (!suppliedPassword || suppliedPassword !== expectedPassword) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  if (body.validateOnly) {
-    res.status(200).json({ text: "Authorized" });
     return;
   }
 

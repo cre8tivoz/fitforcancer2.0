@@ -6,7 +6,7 @@ import { RECIPES, MOVEMENTS } from './constants';
 import NutritionCard from './components/NutritionCard';
 import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
-import { getGeminiResponse, validateChatPassword } from './services/geminiService';
+import { getGeminiResponse } from './services/geminiService';
 import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
 import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2 } from 'lucide-react';
 
@@ -82,8 +82,6 @@ const SIDE_EFFECT_SHORTCUTS = [
   }
 ];
 
-const CHAT_PASSWORD_STORAGE_KEY = 'fit-for-cancer-chat-password';
-const CHAT_UNLOCKED_STORAGE_KEY = 'fit-for-cancer-chat-unlocked';
 const FATIGUE_SCORE_STORAGE_KEY = 'fit-for-cancer-fatigue-score';
 const FATIGUE_ZONE_STORAGE_KEY = 'fit-for-cancer-fatigue-zone';
 const DAILY_CHECKIN_LOGGED_STORAGE_KEY = 'fit-for-cancer-daily-checkin-logged';
@@ -181,10 +179,6 @@ const App: React.FC = () => {
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
   const [recipeCategoryFilter, setRecipeCategoryFilter] = useState<Recipe['category'] | 'All'>('All');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [chatPassword, setChatPassword] = useState('');
-  const [isChatUnlocked, setIsChatUnlocked] = useState(false);
-  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
-  const [chatAuthError, setChatAuthError] = useState<string | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [hasLoggedDailyCheckIn, setHasLoggedDailyCheckIn] = useState(false);
@@ -195,20 +189,10 @@ const App: React.FC = () => {
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
-    const storedPassword = window.sessionStorage.getItem(CHAT_PASSWORD_STORAGE_KEY);
-    const unlocked = window.sessionStorage.getItem(CHAT_UNLOCKED_STORAGE_KEY) === 'true';
     const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
     const storedFatigueZone = window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY) as '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
     const hasLoggedCheckIn = window.sessionStorage.getItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY) === 'true';
     const storedPatientContext = loadPatientContext();
-
-    if (storedPassword) {
-      setChatPassword(storedPassword);
-    }
-
-    if (storedPassword && unlocked) {
-      setIsChatUnlocked(true);
-    }
 
     if (storedFatigueScore !== null) {
       const parsedScore = Number(storedFatigueScore);
@@ -368,14 +352,6 @@ const App: React.FC = () => {
     setActiveTab(tab);
   };
 
-  const resetChatAccess = () => {
-    setIsChatUnlocked(false);
-    setChatAuthError(null);
-    setChatPassword('');
-    window.sessionStorage.removeItem(CHAT_UNLOCKED_STORAGE_KEY);
-    window.sessionStorage.removeItem(CHAT_PASSWORD_STORAGE_KEY);
-  };
-
   const resetHealthAssistant = () => {
     recognitionRef.current?.stop();
     setIsListening(false);
@@ -406,35 +382,6 @@ const App: React.FC = () => {
     setRecipeZoneFilter(null);
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const trimmedPassword = chatPassword.trim();
-    if (!trimmedPassword || isCheckingPassword) {
-      return;
-    }
-
-    setIsCheckingPassword(true);
-    setChatAuthError(null);
-
-    const isValid = await validateChatPassword(trimmedPassword);
-
-    if (!isValid) {
-      setIsChatUnlocked(false);
-      setChatAuthError('That password was not accepted. Please try again.');
-      setChatPassword('');
-      window.sessionStorage.removeItem(CHAT_UNLOCKED_STORAGE_KEY);
-      window.sessionStorage.removeItem(CHAT_PASSWORD_STORAGE_KEY);
-      setIsCheckingPassword(false);
-      return;
-    }
-
-    setIsChatUnlocked(true);
-    window.sessionStorage.setItem(CHAT_PASSWORD_STORAGE_KEY, trimmedPassword);
-    window.sessionStorage.setItem(CHAT_UNLOCKED_STORAGE_KEY, 'true');
-    setIsCheckingPassword(false);
-  };
-
   const handleSendMessage = async (userPrompt?: string) => {
     const isInitialCheckIn = fatigueScore !== null && !hasLoggedDailyCheckIn;
     const quickNote = userPrompt ? '' : input.trim();
@@ -445,7 +392,7 @@ const App: React.FC = () => {
           ? `My fatigue score today is ${fatigueScore}/10.${quickNote ? ` Quick note: ${quickNote}` : ''}`
           : input
       );
-    if ((!textToSend.trim() && !isInitialCheckIn) || isLoading || !isChatUnlocked) return;
+    if ((!textToSend.trim() && !isInitialCheckIn) || isLoading) return;
 
     recognitionRef.current?.stop();
     setIsListening(false);
@@ -499,12 +446,7 @@ const App: React.FC = () => {
       cancerType: updatedCancerType,
     };
 
-    const aiResponse = await getGeminiResponse(newMessages, chatPassword, context);
-
-    if (aiResponse === 'Incorrect password. Please re-enter it to continue using the health assistant.') {
-      resetChatAccess();
-      setChatAuthError(aiResponse);
-    }
+    const aiResponse = await getGeminiResponse(newMessages, context);
     
     // Proactive notification if zone changed to Red
     if (updatedZone === '🔴 Red' && fatigueZone !== '🔴 Red') {
@@ -1039,57 +981,6 @@ const App: React.FC = () => {
           </Suspense>
         );
       case AppTab.ASSISTANT:
-        if (!isChatUnlocked) {
-          return (
-            <div className="max-w-xl mx-auto py-8">
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-8 sm:p-10 space-y-6">
-                  <div className="space-y-3">
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
-                      Protected Chat Access
-                    </span>
-                    <h1 className="text-3xl font-bold text-slate-900">Enter password to unlock the health assistant</h1>
-                    <p className="text-sm leading-relaxed text-slate-600">
-                      The AI chat is protected to prevent unauthorised use of the Gemini API. Exercise, nutrition, and resources remain available without a password.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                    <label className="block space-y-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Chat password</span>
-                      <input
-                        type="password"
-                        value={chatPassword}
-                        onChange={(e) => {
-                          setChatPassword(e.target.value);
-                          setChatAuthError(null);
-                        }}
-                        placeholder="Enter access password"
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-4 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-neon-blue"
-                        autoComplete="current-password"
-                      />
-                    </label>
-
-                    {chatAuthError && (
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        {chatAuthError}
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={isCheckingPassword || !chatPassword.trim()}
-                      className="inline-flex items-center justify-center rounded-2xl bg-neon-blue px-5 py-3 text-sm font-bold text-neon-dark shadow-md transition-all hover:bg-neon-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isCheckingPassword ? 'Checking password...' : 'Unlock chat'}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          );
-        }
-
         return (
           <div className="flex h-[calc(100vh-160px)] min-h-0 flex-col">
             <div className="flex items-center justify-between mb-4">
@@ -1103,12 +994,6 @@ const App: React.FC = () => {
                     Reset Health Assistant
                   </button>
                 )}
-                <button
-                  onClick={resetChatAccess}
-                  className="text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
-                >
-                  Lock Chat
-                </button>
               </div>
             </div>
             

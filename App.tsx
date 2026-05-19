@@ -189,6 +189,11 @@ const App: React.FC = () => {
   const appScrollContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const scrollPositionsRef = useRef<Record<string, number>>({});
+  const prevActiveTabRef = useRef<AppTab>(activeTab);
+
+  useEffect(() => {
+    prevActiveTabRef.current = activeTab;
+  }, [activeTab]);
 
   useEffect(() => {
     const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
@@ -309,8 +314,8 @@ const App: React.FC = () => {
       return;
     }
 
-    // Save current scroll position before navigating away
-    const prevTabKey = TAB_PATHS[activeTab] || '/';
+    // Save the PREVIOUS tab's scroll position before navigating away
+    const prevTabKey = TAB_PATHS[prevActiveTabRef.current] || '/';
     scrollPositionsRef.current[prevTabKey] = container.scrollTop;
 
     requestAnimationFrame(() => {
@@ -322,7 +327,15 @@ const App: React.FC = () => {
         container?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       }
     });
-  }, [activeTab, messages]);
+  }, [activeTab]);
+
+  // Scroll to bottom when new chat messages arrive (assistant tab only)
+  useEffect(() => {
+    if (activeTab !== AppTab.ASSISTANT) return;
+    const container = appScrollContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, left: 0, behavior: 'smooth' });
+  }, [messages, activeTab]);
 
   useEffect(() => {
     const nextPath = TAB_PATHS[activeTab];

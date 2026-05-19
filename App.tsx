@@ -184,9 +184,11 @@ const App: React.FC = () => {
   const [hasLoggedDailyCheckIn, setHasLoggedDailyCheckIn] = useState(false);
   const [energyHistoryRefreshKey, setEnergyHistoryRefreshKey] = useState(0);
   const [isAccessibilityModalOpen, setIsAccessibilityModalOpen] = useState(false);
+  const [isFatiguePromptMinimized, setIsFatiguePromptMinimized] = useState(false);
   const isMyelomaPatient = cancerType === 'blood_myeloma';
   const appScrollContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const scrollPositionsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
@@ -302,12 +304,25 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!appScrollContainerRef.current) {
+    const container = appScrollContainerRef.current;
+    if (!container) {
       return;
     }
 
-    appScrollContainerRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [activeTab]);
+    // Save current scroll position before navigating away
+    const prevTabKey = TAB_PATHS[activeTab] || '/';
+    scrollPositionsRef.current[prevTabKey] = container.scrollTop;
+
+    requestAnimationFrame(() => {
+      const nextPath = TAB_PATHS[activeTab];
+      const savedPosition = nextPath ? scrollPositionsRef.current[nextPath] : undefined;
+      if (savedPosition !== undefined && savedPosition > 0) {
+        container?.scrollTo({ top: savedPosition, left: 0, behavior: 'auto' });
+      } else {
+        container?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+    });
+  }, [activeTab, messages]);
 
   useEffect(() => {
     const nextPath = TAB_PATHS[activeTab];
@@ -891,10 +906,11 @@ const App: React.FC = () => {
 
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
+                      <div className="relative">
                       <div
                         role="radiogroup"
                         aria-label="Recipe category filter"
-                        className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible"
+                        className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible scroll-fade-right"
                       >
                         {categories.map(cat => (
                           <button
@@ -913,7 +929,9 @@ const App: React.FC = () => {
                           </button>
                         ))}
                       </div>
+                      </div>
                     </div>
+
                   </div>
 
                   {isFiltering && (
@@ -982,7 +1000,7 @@ const App: React.FC = () => {
         );
       case AppTab.ASSISTANT:
         return (
-          <div className="flex h-[calc(100vh-160px)] min-h-0 flex-col">
+          <div className="flex flex-1 min-h-0 flex-col">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-3xl font-bold">Health Assistant</h1>
               <div className="flex items-center gap-3">
@@ -997,57 +1015,79 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            {/* Fatigue Score Prompt */}
+            {/* Fatigue Score Prompt — Collapsible */}
             {fatigueScore === null && (
-              <div className="mb-3 p-3 bg-white rounded-xl border border-neon-blue shadow-md animate-in zoom-in-95 duration-500">
-                <div className="flex items-center gap-2 mb-3">
-                  <Activity className="w-4 h-4 text-neon-blue" />
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Check Your Battery (0-10)</h3>
-                </div>
-
-                <label className="mb-3 block">
-                  <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Cancer Type (Optional)
-                  </span>
-                  <select
-                    value={cancerType ?? ''}
-                    onChange={(e) => {
-                      const nextValue = e.target.value as CancerTypeOption | '';
-                      const normalizedValue = nextValue || undefined;
-                      setCancerType(normalizedValue);
-                    }}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-neon-blue"
+              <div className="mb-3 bg-white rounded-xl border border-neon-blue shadow-md overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsFatiguePromptMinimized(!isFatiguePromptMinimized)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-neon-blue/5 transition-colors"
+                  aria-expanded={!isFatiguePromptMinimized}
+                  aria-controls="fatigue-score-panel"
+                >
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-neon-blue" />
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      {isFatiguePromptMinimized ? 'Expand to set your fatigue score' : 'Check Your Battery (0-10)'}
+                    </h3>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-slate-400 transition-transform ${isFatiguePromptMinimized ? '' : 'rotate-180'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <option value="">Select a cancer type</option>
-                    {CANCER_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
                 
-                <div className="grid grid-cols-11 gap-1">
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                    <button
-                      key={score}
-                      type="button"
-                      onClick={() => handleFatigueScoreSelect(score)}
-                      className={`h-7 rounded-md font-bold text-[10px] transition-all border ${
-                        fatigueScore === score ? 'ring-2 ring-slate-900/15 scale-[1.03]' : ''
-                      } ${
-                        score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' :
-                        score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' :
-                        'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'
-                      }`}
-                    >
-                      {score}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-3 text-[11px] leading-5 text-slate-500">
-                  Select your score, add an optional Quick Note below, then press send to start the assistant and save your check-in.
-                </p>
+                {!isFatiguePromptMinimized && (
+                  <div id="fatigue-score-panel" className="px-3 pb-3 animate-in slide-in-from-top-2 duration-300">
+                    <label className="mb-3 block">
+                      <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Cancer Type (Optional)
+                      </span>
+                      <select
+                        value={cancerType ?? ''}
+                        onChange={(e) => {
+                          const nextValue = e.target.value as CancerTypeOption | '';
+                          const normalizedValue = nextValue || undefined;
+                          setCancerType(normalizedValue);
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-neon-blue"
+                      >
+                        <option value="">Select a cancer type</option>
+                        {CANCER_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    
+                    <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5">
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                        <button
+                          key={score}
+                          type="button"
+                          onClick={() => handleFatigueScoreSelect(score)}
+                          className={`min-h-[44px] rounded-lg font-bold text-xs transition-all border ${
+                            fatigueScore === score ? 'ring-2 ring-slate-900/15 scale-[1.03]' : ''
+                          } ${
+                            score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' :
+                            score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' :
+                            'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'
+                          }`}
+                        >
+                          {score}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] leading-5 text-slate-500">
+                      Select your score, add an optional Quick Note below, then press send to start the assistant and save your check-in.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1104,7 +1144,7 @@ const App: React.FC = () => {
                       : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'
                   }`}>
                     {msg.role === 'model' ? (
-                      <Suspense fallback={<p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>}>
+                      <Suspense fallback={<div className="animate-pulse space-y-2"><div className="h-3 bg-slate-200 rounded w-3/4"></div><div className="h-3 bg-slate-200 rounded w-1/2"></div><div className="h-3 bg-slate-200 rounded w-5/6"></div></div>}>
                         <MarkdownMessage content={msg.content} />
                       </Suspense>
                     ) : (
@@ -1189,8 +1229,8 @@ const App: React.FC = () => {
 };
 
   return (
-    <div ref={appScrollContainerRef} className="h-screen overflow-y-auto">
-      <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
+    <div ref={appScrollContainerRef} className="h-[100dvh] overflow-y-auto">
+      <div className="min-h-[100dvh] flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
       <nav className="sticky top-0 z-50 py-4 bg-[color:var(--color-nav)] backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-white/10">
         <a
           href={TAB_PATHS[AppTab.HOME]}
@@ -1218,7 +1258,7 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="flex-1 py-4">
+      <main className="flex-1 min-h-0 py-4">
         {renderContent()}
       </main>
 

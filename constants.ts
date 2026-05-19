@@ -32,6 +32,7 @@ import theCrashShakeImage from './media/nutrition/the_crash_shake.jpg';
 import wallPushUpsImage from './media/exercises/wall push ups.jpg';
 import wallSlidesImage from './media/exercises/wall slides.jpg';
 import zucchiniFetaMuffinsImage from './media/nutrition/zucchini__feta_muffins.jpg';
+import fortifiedMilkyDrinkImage from './media/nutrition/fortified_milky_drink.svg';
 
 export const RECIPES: Recipe[] = [
   {
@@ -273,7 +274,7 @@ export const RECIPES: Recipe[] = [
     instructions: [
       'Whisk powder into warm milk for an easy-to-sip calorie boost.'
     ],
-    imageUrl: 'https://picsum.photos/seed/milky-drink/600/400',
+    imageUrl: fortifiedMilkyDrinkImage,
     prepTime: '2 mins',
     cookTime: '0 mins',
     fatigueZone: '🔴 Red',

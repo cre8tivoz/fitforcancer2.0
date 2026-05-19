@@ -41,6 +41,23 @@
     font-family: var(--font-body);
   }
 
+  /* Horizontal scroll fade affordance for category pills */
+  .scroll-fade-right {
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  @media (min-width: 768px) {
+    .scroll-fade-right {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+  }
+
   h1,
   h2,
   h3,

@@ -73,7 +73,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
           <img 
             src={recipe.imageUrl} 
             alt={recipe.title} 
-            className="w-full h-full object-fill object-center transition-transform duration-500 group-hover:scale-105" 
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" 
             referrerPolicy="no-referrer"
           />
         </div>
@@ -172,7 +172,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
               <img 
                 src={recipe.imageUrl} 
                 alt="" 
-                className="w-full h-full object-fill object-center bg-slate-50"
+                className="w-full h-full object-cover object-center bg-slate-50"
                 referrerPolicy="no-referrer"
               />
               <button 

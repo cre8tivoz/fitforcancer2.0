@@ -192,10 +192,6 @@ const App: React.FC = () => {
   const prevActiveTabRef = useRef<AppTab>(activeTab);
 
   useEffect(() => {
-    prevActiveTabRef.current = activeTab;
-  }, [activeTab]);
-
-  useEffect(() => {
     const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
     const storedFatigueZone = window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY) as '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
     const hasLoggedCheckIn = window.sessionStorage.getItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY) === 'true';
@@ -314,9 +310,13 @@ const App: React.FC = () => {
       return;
     }
 
-    // Save the PREVIOUS tab's scroll position before navigating away
-    const prevTabKey = TAB_PATHS[prevActiveTabRef.current] || '/';
+    // Capture the PREVIOUS tab value BEFORE updating the ref
+    const prevTab = prevActiveTabRef.current;
+    const prevTabKey = TAB_PATHS[prevTab] || '/';
     scrollPositionsRef.current[prevTabKey] = container.scrollTop;
+
+    // Update the ref for NEXT tab switch
+    prevActiveTabRef.current = activeTab;
 
     requestAnimationFrame(() => {
       const nextPath = TAB_PATHS[activeTab];

@@ -41,22 +41,10 @@ export default defineConfig(() => {
         workbox: {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,webp}'],
           skipWaiting: true,
           runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/picsum\.photos\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'images-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 7,
-                },
-                networkTimeoutSeconds: 3,
-              },
-            },
-          ],
+        ],
         },
       }),
     ],

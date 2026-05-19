@@ -47,7 +47,7 @@ const MovementCard: React.FC<MovementCardProps> = ({ movement }) => {
           <img 
             src={movement.imageUrl} 
             alt={movement.title} 
-            className="w-full h-full object-contain object-center p-2" 
+            className="w-full h-full object-cover object-center" 
             referrerPolicy="no-referrer"
           />
         ) : (

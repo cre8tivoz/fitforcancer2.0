@@ -201,6 +201,10 @@ git remote add origin <your-new-github-repo-url>
 git push -u origin main
 ```
 
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE). See the [contributing guidelines](CONTRIBUTING.md) for how you can help.
+
 ## Deployment Notes
 
 The project is ready for Vercel deployment as-is. If you deploy elsewhere, you will need an equivalent server-side endpoint for Gemini and equivalent security headers to avoid reintroducing client-side key exposure.

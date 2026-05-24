@@ -25,7 +25,8 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.2.1",
+    "jspdf": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",

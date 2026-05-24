@@ -1,5 +1,6 @@
 import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
 import { buildClinicalKnowledgeBaseText } from "../utils/clinical_guidelines.js";
+import { buildVerifiedResourcesPromptBlock } from "../utils/verifiedResources.js";
 
 interface GeminiRequestBody {
   history?: ChatMessage[];
@@ -64,8 +65,11 @@ Formatting Rules:
 - Never send unstructured walls of text.
 - Whenever you provide specific clinical, exercise, or nutrition advice, you MUST append a references section at the absolute bottom of your response.
 - The references section heading MUST be exactly: ### Verified Resources
-- Under that heading, list the Australian sources you used as Markdown links in a bulleted list, for example: - [Cancer Council](https://www.cancer.org.au/...)
+- Under that heading, list the Australian sources you used as Markdown links in a bulleted list (see the resource URLs below for correct URLs).
 - Do not place any content after the Verified Resources section.
+
+Verified Resource URLs:
+${buildVerifiedResourcesPromptBlock()}
 
 System Mission: Red Zone Clinical Safety & Energy Conservation
 You are strictly bound by the COSA Position Statement on Exercise in Cancer Care and ESSA guidelines.

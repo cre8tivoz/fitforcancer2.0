@@ -8,7 +8,7 @@ import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse } from './services/geminiService';
 import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
-import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2, Download } from 'lucide-react';
 
 interface SpeechRecognitionResultLike {
   readonly isFinal: boolean;
@@ -494,6 +494,45 @@ const App: React.FC = () => {
   const onFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSendMessage();
+  };
+
+  const handleExportConversation = () => {
+    if (messages.length === 0) return;
+
+    const lines: string[] = [
+      'Fit For Cancer — Conversation Export',
+      `Exported: ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+      '',
+      '─'.repeat(60),
+      '',
+    ];
+
+    for (const msg of messages) {
+      const roleLabel = msg.role === 'user' ? 'YOU' : 'ASSISTANT';
+      lines.push(`[${roleLabel}]`);
+      lines.push('');
+      // Split content into paragraphs for readability
+      const paragraphs = msg.content.split('\n').filter(Boolean);
+      for (const para of paragraphs) {
+        lines.push(`  ${para}`);
+      }
+      lines.push('');
+      lines.push('─'.repeat(60));
+      lines.push('');
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const objectUrl = URL.createObjectURL(blob);
+    const downloadLink = document.createElement('a');
+
+    downloadLink.href = objectUrl;
+    downloadLink.download = 'FitForCancer_Conversation.txt';
+    downloadLink.style.display = 'none';
+
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(objectUrl);
   };
 
   const toggleVoiceDictation = () => {
@@ -1017,6 +1056,16 @@ const App: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-3xl font-bold">Health Assistant</h1>
               <div className="flex items-center gap-3">
+                {messages.length > 1 && (
+                  <button
+                    onClick={handleExportConversation}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    aria-label="Export full conversation"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export</span>
+                  </button>
+                )}
                 {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
                   <button 
                     onClick={resetHealthAssistant}

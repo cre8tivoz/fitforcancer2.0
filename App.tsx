@@ -8,6 +8,7 @@ import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse } from './services/geminiService';
 import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
+import CaregiverExportButton from './components/CaregiverExportButton';
 import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2, Download } from 'lucide-react';
 
 interface SpeechRecognitionResultLike {
@@ -1066,6 +1067,7 @@ const App: React.FC = () => {
                     <span>Export</span>
                   </button>
                 )}
+                <CaregiverExportButton currentFatigueScore={fatigueScore} />
                 {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
                   <button 
                     onClick={resetHealthAssistant}

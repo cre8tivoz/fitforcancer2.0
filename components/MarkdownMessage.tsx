@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Check, Download } from 'lucide-react';
 import SmartChip from './SmartChip';
 import { parseMessageWithChips } from '../utils/parseMessageWithChips';
+import { generateChatPdf } from '../utils/chatPdf';
 
 interface MarkdownMessageProps {
   content: string;
@@ -15,30 +16,13 @@ const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
   const resetTimerRef = useRef<number | null>(null);
 
   const handleExport = () => {
-    const exportText = `Fit For Cancer - Support Plan\nDate: ${new Date().toLocaleDateString()}\n\n${cleanText}`;
-    const blob = new Blob([exportText], { type: 'text/plain' });
-    const objectUrl = URL.createObjectURL(blob);
-    const downloadLink = document.createElement('a');
-
-    downloadLink.href = objectUrl;
-    downloadLink.download = 'FitForCancer_Plan.txt';
-    downloadLink.style.display = 'none';
-
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    URL.revokeObjectURL(objectUrl);
-
+    if (exported) return;
     setExported(true);
-
-    if (resetTimerRef.current !== null) {
-      window.clearTimeout(resetTimerRef.current);
+    try {
+      generateChatPdf(cleanText, links);
+    } finally {
+      setTimeout(() => setExported(false), 2000);
     }
-
-    resetTimerRef.current = window.setTimeout(() => {
-      setExported(false);
-      resetTimerRef.current = null;
-    }, 2000);
   };
 
   useEffect(() => {
@@ -100,10 +84,10 @@ const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
             type="button"
             onClick={handleExport}
             className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
-            aria-label={exported ? 'Download started' : 'Download support plan'}
+            aria-label={exported ? 'Download started' : 'Download health plan PDF'}
           >
             {exported ? <Check className="h-4 w-4 text-emerald-600" /> : <Download className="h-4 w-4" />}
-            <span>{exported ? 'Saved' : 'Download'}</span>
+            <span>{exported ? 'Saved' : 'Download PDF'}</span>
           </button>
         </div>
       )}

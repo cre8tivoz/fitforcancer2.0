@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -8,12 +8,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Activity, CalendarDays, Check, Download, NotebookText } from 'lucide-react';
+import { Activity, CalendarDays, NotebookText } from 'lucide-react';
 import { EnergyHistoryEntry } from '../types';
 import { getEnergyHistory } from '../utils/patientContextStorage';
+import CaregiverExportButton from './CaregiverExportButton';
 
 interface EnergyBankProps {
   refreshKey?: number;
+  currentFatigueScore?: number | null;
 }
 
 const formatShortDate = (isoDate: string) =>
@@ -46,10 +48,8 @@ const getZoneToneClasses = (zone: 'Green' | 'Yellow' | 'Red') => {
   return 'bg-emerald-50 text-emerald-700 border-emerald-200';
 };
 
-const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
+const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueScore }) => {
   const [history, setHistory] = useState<EnergyHistoryEntry[]>([]);
-  const [exported, setExported] = useState(false);
-  const resetTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setHistory(getEnergyHistory());
@@ -88,53 +88,6 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
     return `Last ${recentEntries.length} check-ins: mostly ${dominantZone} zone.`;
   }, [recentEntries]);
 
-  const handleExportHistory = () => {
-    const exportLines = [
-      'Fit For Cancer - Energy Bank',
-      `Export Date: ${new Date().toLocaleDateString('en-AU')}`,
-      '',
-      summaryText,
-      '',
-      'History Log',
-      ...history.map((entry, index) => {
-        const zone = getZoneLabel(entry.score);
-        const note = entry.note || 'No Quick Note saved.';
-        return `${index + 1}. ${formatLongDate(entry.date)} | Score: ${entry.score}/10 | Zone: ${zone}\n   Note: ${note}`;
-      }),
-    ].join('\n');
-
-    const blob = new Blob([exportLines], { type: 'text/plain' });
-    const objectUrl = URL.createObjectURL(blob);
-    const downloadLink = document.createElement('a');
-
-    downloadLink.href = objectUrl;
-    downloadLink.download = 'FitForCancer_EnergyBank.txt';
-    downloadLink.style.display = 'none';
-
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    URL.revokeObjectURL(objectUrl);
-
-    setExported(true);
-
-    if (resetTimerRef.current !== null) {
-      window.clearTimeout(resetTimerRef.current);
-    }
-
-    resetTimerRef.current = window.setTimeout(() => {
-      setExported(false);
-      resetTimerRef.current = null;
-    }, 2000);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (resetTimerRef.current !== null) {
-        window.clearTimeout(resetTimerRef.current);
-      }
-    };
-  }, []);
 
   if (history.length === 0) {
     return (
@@ -195,15 +148,7 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0 }) => {
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Entries Saved</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{history.length}</p>
             </div>
-            <button
-              type="button"
-              onClick={handleExportHistory}
-              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
-              aria-label={exported ? 'Energy Bank export started' : 'Export Energy Bank history'}
-            >
-              {exported ? <Check className="h-4 w-4 text-emerald-600" /> : <Download className="h-4 w-4" />}
-              <span>{exported ? 'Saved' : 'Export'}</span>
-            </button>
+            <CaregiverExportButton currentFatigueScore={currentFatigueScore ?? null} />
           </div>
         </div>
       </header>

@@ -129,12 +129,15 @@ export const generateCaregiverPdf = (currentFatigueScore: number | null): void =
   if (currentFatigueScore !== null) {
     const zoneLabel = getZoneLabel(currentFatigueScore);
     const zoneColor = ZONE_COLORS[zoneLabel];
-    doc.setFillColor(zoneColor);
-    doc.roundedRect(margin, y - 2, pad(20), pad(6), 1.5, 1.5, 'F');
+    const zoneDisplay = getZoneDisplayLabel(currentFatigueScore);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
+    const zoneTextWidth = doc.getTextWidth(zoneDisplay);
+    const badgeWidth = Math.max(pad(28), zoneTextWidth + pad(4));
+    doc.setFillColor(zoneColor);
+    doc.roundedRect(margin, y - 2, badgeWidth, pad(6), 1.5, 1.5, 'F');
     doc.setTextColor(COLORS.white);
-    doc.text(getZoneDisplayLabel(currentFatigueScore), margin + 2, y + 1.5);
+    doc.text(zoneDisplay, margin + 2, y + 1.5);
     y += pad(8);
   }
 
@@ -293,9 +296,16 @@ export const generateCaregiverPdf = (currentFatigueScore: number | null): void =
       const zoneLabel = getZoneLabel(entry.score);
       const zoneColor = ZONE_COLORS[zoneLabel];
 
+      // Note: wrap to column width
+      const noteMaxWidth = contentW - pad(52) - 4;
+      const noteLines = entry.note
+        ? doc.splitTextToSize(entry.note, Math.max(10, noteMaxWidth))
+        : ['—'];
+      const rowHeight = Math.max(pad(4.5), noteLines.length * 2.5 + 1);
+
       if (idx % 2 === 0) {
         doc.setFillColor(COLORS.bg);
-        doc.rect(margin, y - 1.5, contentW, pad(4.5), 'F');
+        doc.rect(margin, y - 1.5, contentW, rowHeight, 'F');
       }
 
       doc.setFont('helvetica', 'normal');
@@ -310,11 +320,10 @@ export const generateCaregiverPdf = (currentFatigueScore: number | null): void =
       doc.setTextColor(COLORS.text);
       doc.text(zoneLabel, margin + pad(35), y + 0.5);
 
-      // Truncate note
-      const note = entry.note.length > 35 ? entry.note.slice(0, 35) + '…' : entry.note;
-      doc.text(note || '—', margin + pad(52), y + 0.5);
+      // Wrapped note
+      doc.text(noteLines, margin + pad(52), y + 0.5);
 
-      y += pad(5);
+      y += rowHeight + 0.5;
     });
     y += pad(3);
   }
@@ -337,30 +346,44 @@ export const generateCaregiverPdf = (currentFatigueScore: number | null): void =
     }
 
     doc.setFillColor(COLORS.surface);
-    doc.roundedRect(margin, y - 1.5, contentW, pad(8), 1, 1, 'F');
+
+    // Category badge — measure text width for dynamic badge width
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    const catTextWidth = doc.getTextWidth(rec.category);
+    const catBadgeWidth = Math.max(pad(14), catTextWidth + pad(4));
+
+    // Title — wrap to remaining width after badge
+    const titleMaxWidth = contentW - pad(16) - 4;
+    const titleLines = doc.splitTextToSize(rec.title, Math.max(10, titleMaxWidth));
+
+    // Description — already wrapped
+    const descLines = doc.splitTextToSize(rec.description, contentW - pad(4));
+
+    // Card height based on title + description lines
+    const cardHeight = pad(6) + (titleLines.length - 1) * 3 + descLines.length * 2.5;
+    doc.roundedRect(margin, y - 1.5, contentW, cardHeight, 1, 1, 'F');
 
     // Category badge
     doc.setFillColor(COLORS.tertiary);
-    doc.roundedRect(margin + 1, y - 0.5, pad(14), pad(3.5), 0.8, 0.8, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
+    doc.roundedRect(margin + 1, y - 0.5, catBadgeWidth, pad(3.5), 0.8, 0.8, 'F');
     doc.setTextColor(COLORS.white);
     doc.text(rec.category, margin + 2, y + 1.2);
 
-    // Title
+    // Title (wrapped)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(COLORS.text);
-    doc.text(rec.title, margin + pad(16), y + 0.5);
+    doc.text(titleLines, margin + pad(16), y + 0.5);
 
     // Description
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(COLORS.textMuted);
-    const descLines = doc.splitTextToSize(rec.description, contentW - pad(4));
-    doc.text(descLines, margin + 2, y + pad(4));
+    const descY = y + pad(3) + (titleLines.length - 1) * 3;
+    doc.text(descLines, margin + 2, descY);
 
-    y += pad(10);
+    y += cardHeight + 2;
   });
 
   y += pad(3);
@@ -389,6 +412,13 @@ export const generateCaregiverPdf = (currentFatigueScore: number | null): void =
   const discLines = doc.splitTextToSize(disclaimer, contentW);
   doc.text(discLines, margin, y);
   y += pad(discLines.length * 2 + 2);
+
+  // Donation footer line (Sprint 4)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(COLORS.textMuted);
+  doc.text('Made with ❤️ by Fit For Cancer — free at fitforcancer.vercel.app', margin, y);
+  y += pad(4);
 
   // App branding footer
   doc.setFillColor(COLORS.nav);

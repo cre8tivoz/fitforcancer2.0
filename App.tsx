@@ -344,7 +344,10 @@ const App: React.FC = () => {
     if (typeof window === 'undefined' || window.location.pathname === nextPath) {
       return;
     }
-
+    // Don't overwrite standalone routes like /why-free
+    if (window.location.pathname === '/why-free') {
+      return;
+    }
     window.history.pushState({ tab: activeTab }, '', nextPath);
   }, [activeTab]);
 

@@ -339,50 +339,75 @@ export const generateCaregiverPdf = (currentFatigueScore: number | null): void =
   const recommendations = getRecommendationsForZone(currentZone);
 
   recommendations.forEach((rec) => {
-    // Check page overflow
+    // Check page overflow before starting a new card
     if (y > pageH - pad(25)) {
       doc.addPage();
       y = margin;
     }
 
-    doc.setFillColor(COLORS.surface);
+    // ── Measure everything before drawing ──
 
-    // Category badge — measure text width for dynamic badge width
+    // Category badge
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6);
     const catTextWidth = doc.getTextWidth(rec.category);
     const catBadgeWidth = Math.max(pad(14), catTextWidth + pad(4));
+    const catBadgeHeight = pad(3.5);
 
-    // Title — wrap to remaining width after badge
-    const titleMaxWidth = contentW - pad(16) - 4;
-    const titleLines = doc.splitTextToSize(rec.title, Math.max(10, titleMaxWidth));
-
-    // Description — already wrapped
-    const descLines = doc.splitTextToSize(rec.description, contentW - pad(4));
-
-    // Card height based on title + description lines
-    const cardHeight = pad(6) + (titleLines.length - 1) * 3 + descLines.length * 2.5;
-    doc.roundedRect(margin, y - 1.5, contentW, cardHeight, 1, 1, 'F');
-
-    // Category badge
-    doc.setFillColor(COLORS.tertiary);
-    doc.roundedRect(margin + 1, y - 0.5, catBadgeWidth, pad(3.5), 0.8, 0.8, 'F');
-    doc.setTextColor(COLORS.white);
-    doc.text(rec.category, margin + 2, y + 1.2);
-
-    // Title (wrapped)
+    // Title
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(COLORS.text);
-    doc.text(titleLines, margin + pad(16), y + 0.5);
+    const titleLines = doc.splitTextToSize(rec.title, contentW - pad(4));
+    const titleLineHeight = 3.2;
 
     // Description
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.setTextColor(COLORS.textMuted);
-    const descY = y + pad(3) + (titleLines.length - 1) * 3;
-    doc.text(descLines, margin + 2, descY);
+    const descMaxWidth = contentW - pad(4);
+    const descLines = doc.splitTextToSize(rec.description, descMaxWidth);
+    const descLineHeight = 2.8;
 
+    // Card height: top padding(2) + badge + gap(1.5) + title lines + gap(1.5) + desc lines + bottom padding(2)
+    const cardHeight =
+      pad(2) +
+      catBadgeHeight +
+      pad(1.5) +
+      (titleLines.length - 1) * titleLineHeight +
+      pad(1.5) +
+      descLines.length * descLineHeight +
+      pad(2);
+
+    // ── Draw card background ──
+    doc.setFillColor(COLORS.surface);
+    doc.roundedRect(margin, y, contentW, cardHeight, 1, 1, 'F');
+
+    let cy = y; // cursor y inside the card
+
+    // Category badge (top-left)
+    cy += pad(2);
+    doc.setFillColor(COLORS.tertiary);
+    doc.roundedRect(margin + 1, cy, catBadgeWidth, catBadgeHeight, 0.8, 0.8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(COLORS.white);
+    doc.text(rec.category, margin + 2, cy + catBadgeHeight - 0.8);
+    cy += catBadgeHeight + pad(1.5);
+
+    // Title (wrapped, full width — badge sits above, not beside)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(COLORS.text);
+    doc.text(titleLines, margin + 2, cy);
+    cy += (titleLines.length - 1) * titleLineHeight + pad(1.5);
+
+    // Description (wrapped)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(COLORS.textMuted);
+    doc.text(descLines, margin + 2, cy);
+    cy += descLines.length * descLineHeight + pad(2);
+
+    // Advance y past this card
     y += cardHeight + 2;
   });
 

@@ -320,14 +320,17 @@ const App: React.FC = () => {
     // Update the ref for NEXT tab switch
     prevActiveTabRef.current = activeTab;
 
+    // Restore scroll position after tab content renders
     requestAnimationFrame(() => {
-      const nextPath = TAB_PATHS[activeTab];
-      const savedPosition = nextPath ? scrollPositionsRef.current[nextPath] : undefined;
-      if (savedPosition !== undefined && savedPosition > 0) {
-        container?.scrollTo({ top: savedPosition, left: 0, behavior: 'auto' });
-      } else {
-        container?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      }
+      requestAnimationFrame(() => {
+        const nextPath = TAB_PATHS[activeTab];
+        const savedPosition = nextPath ? scrollPositionsRef.current[nextPath] : undefined;
+        if (savedPosition !== undefined && savedPosition > 0) {
+          container?.scrollTo({ top: savedPosition, left: 0, behavior: 'auto' });
+        } else {
+          container?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        }
+      });
     });
   }, [activeTab]);
 
@@ -557,14 +560,12 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={typeof window !== 'undefined' && window.location.pathname === '/why-free' ? 'why-free' : activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
+      <motion.div
+        key={typeof window !== 'undefined' && window.location.pathname === '/why-free' ? 'why-free' : activeTab}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15 }}
+      >
           {(() => {
             // /why-free route is a standalone page (no nav tabs)
             if (typeof window !== 'undefined' && window.location.pathname === '/why-free') {
@@ -1060,7 +1061,7 @@ const App: React.FC = () => {
         );
       case AppTab.ASSISTANT:
         return (
-          <div className="flex flex-1 min-h-0 flex-col">
+          <div className="flex flex-1 flex-col min-h-0 overscroll-contain">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-3xl font-bold">Health Assistant</h1>
               <div className="flex items-center gap-3">
@@ -1295,13 +1296,12 @@ const App: React.FC = () => {
     }
   })()}
 </motion.div>
-</AnimatePresence>
 );
 };
 
   return (
-    <div ref={appScrollContainerRef} className="h-[100dvh] overflow-y-auto">
-      <div className="min-h-[100dvh] flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
+    <div ref={appScrollContainerRef} className="h-dvh w-screen overflow-x-hidden overflow-y-auto">
+      <div className="min-h-dvh flex flex-col max-w-4xl w-full mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
       <nav className="sticky top-0 z-50 py-4 bg-[color:var(--color-nav)] backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-white/10">
         <a
           href={TAB_PATHS[AppTab.HOME]}

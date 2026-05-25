@@ -13,6 +13,7 @@ import {
   Globe,
   MessageSquare,
 } from 'lucide-react';
+import SupportThisApp from './SupportThisApp';
 
 const INTERACTIVE_FOCUS_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]';
@@ -560,6 +561,8 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
           </p>
         </div>
       </div>
+
+      <SupportThisApp />
     </div>
   );
 };

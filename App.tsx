@@ -9,6 +9,7 @@ import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse } from './services/geminiService';
 import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
 import CaregiverExportButton from './components/CaregiverExportButton';
+import WhyThisIsFree from './components/WhyThisIsFree';
 import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2, Download } from 'lucide-react';
 
 interface SpeechRecognitionResultLike {
@@ -555,13 +556,17 @@ const App: React.FC = () => {
     return (
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeTab}
+          key={typeof window !== 'undefined' && window.location.pathname === '/why-free' ? 'why-free' : activeTab}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
         >
           {(() => {
+            // /why-free route is a standalone page (no nav tabs)
+            if (typeof window !== 'undefined' && window.location.pathname === '/why-free') {
+              return <WhyThisIsFree />;
+            }
             switch (activeTab) {
               case AppTab.HOME:
                 return (
@@ -1047,7 +1052,7 @@ const App: React.FC = () => {
       case AppTab.ENERGY_BANK:
         return (
           <Suspense fallback={<div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading Energy Bank...</div>}>
-            <EnergyBank refreshKey={energyHistoryRefreshKey} />
+            <EnergyBank refreshKey={energyHistoryRefreshKey} currentFatigueScore={fatigueScore} />
           </Suspense>
         );
       case AppTab.ASSISTANT:

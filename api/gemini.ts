@@ -1,6 +1,7 @@
 import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
 import { buildClinicalKnowledgeBaseText } from "../utils/clinical_guidelines.js";
 import { buildVerifiedResourcesPromptBlock } from "../utils/verifiedResources.js";
+import { checkGeminiRateLimit, getHeaderValue } from "./rateLimit.js";
 
 interface GeminiRequestBody {
   history?: ChatMessage[];
@@ -28,6 +29,27 @@ interface VercelLikeResponse {
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const GEMINI_TIMEOUT_MS = 25000;
+
+const isProduction = () => process.env.NODE_ENV === "production";
+
+const logGeminiError = (message: string, detail?: unknown) => {
+  if (isProduction()) {
+    console.error(message);
+    return;
+  }
+
+  console.error(message, detail);
+};
+
+const parseGeminiJson = (responseText: string): any | null => {
+  if (!responseText) return null;
+
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return null;
+  }
+};
 
 const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?: boolean): string => {
   if (cancerType === "bowel") return "Bowel";
@@ -220,6 +242,21 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
+  const configuredAccessPassword = process.env.CHAT_ACCESS_PASSWORD || process.env.FFC_CHAT_ACCESS_PASSWORD;
+  if (configuredAccessPassword) {
+    const providedAccessPassword = getHeaderValue(req.headers, "x-chat-access-password");
+    if (providedAccessPassword !== configuredAccessPassword) {
+      res.status(401).json({ error: "Chat access is restricted" });
+      return;
+    }
+  }
+
+  const rateLimit = checkGeminiRateLimit(req.headers);
+  if (!rateLimit.allowed) {
+    res.status(429).json({ error: "Too many requests. Please wait a moment before trying again." });
+    return;
+  }
+
   const body = parseBody(req.body);
   if (!body) {
     res.status(400).json({ error: "Invalid JSON payload" });
@@ -259,19 +296,19 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     });
 
     const responseText = await geminiResponse.text();
-    const responseJson = responseText ? JSON.parse(responseText) : null;
+    const responseJson = parseGeminiJson(responseText);
 
     if (!geminiResponse.ok) {
-      const errorMessage =
-        responseJson?.error?.message || "There was an error connecting to the health assistant. Please try again.";
-      console.error("Gemini API Error:", responseJson ?? responseText);
-      res.status(geminiResponse.status).json({ error: errorMessage });
+      logGeminiError(`[gemini] upstream error status=${geminiResponse.status}`, responseJson ?? responseText);
+      res.status(geminiResponse.status).json({
+        error: "There was an error connecting to the health assistant. Please try again.",
+      });
       return;
     }
 
     const text = extractText(responseJson);
     if (!text) {
-      console.error("Gemini API returned no text:", responseJson);
+      logGeminiError("[gemini] upstream returned no text", responseJson);
       res.status(502).json({ error: "The health assistant returned an empty response. Please try again." });
       return;
     }
@@ -279,12 +316,12 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     res.status(200).json({ text });
   } catch (error) {
     if ((error as Error).name === "AbortError") {
-      console.error("Gemini API request timed out");
+      console.error("[gemini] upstream request timed out");
       res.status(504).json({ error: "The health assistant took too long to respond. Please try again." });
       return;
     }
 
-    console.error("Gemini proxy error:", error);
+    logGeminiError("[gemini] proxy error", error);
     res.status(502).json({ error: "There was an error connecting to the health assistant. Please try again." });
   } finally {
     clearTimeout(timeoutId);

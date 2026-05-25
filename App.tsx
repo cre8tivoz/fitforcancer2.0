@@ -387,7 +387,6 @@ const App: React.FC = () => {
     setMessages(INITIAL_CHAT_MESSAGES);
     setInput('');
     setIsLoading(false);
-    setChatAuthError(null);
     setFatigueScore(null);
     setFatigueZone(null);
     setCancerType(undefined);

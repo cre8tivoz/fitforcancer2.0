@@ -194,9 +194,13 @@ const App: React.FC = () => {
   const prevActiveTabRef = useRef<AppTab>(activeTab);
 
   useEffect(() => {
-    const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
-    const storedFatigueZone = window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY) as '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
-    const hasLoggedCheckIn = window.sessionStorage.getItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY) === 'true';
+    // Try sessionStorage first (survives tab switches), then localStorage (survives page kills)
+    const storedFatigueScore = window.sessionStorage.getItem(FATIGUE_SCORE_STORAGE_KEY)
+      || window.localStorage.getItem(FATIGUE_SCORE_STORAGE_KEY);
+    const storedFatigueZone = window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY)
+      || window.localStorage.getItem(FATIGUE_ZONE_STORAGE_KEY) as '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
+    const hasLoggedCheckIn = window.sessionStorage.getItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY) === 'true'
+      || window.localStorage.getItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY) === 'true';
     const storedPatientContext = loadPatientContext();
 
     if (storedFatigueScore !== null) {
@@ -222,16 +226,20 @@ const App: React.FC = () => {
   useEffect(() => {
     if (fatigueScore === null) {
       window.sessionStorage.removeItem(FATIGUE_SCORE_STORAGE_KEY);
+      window.localStorage.removeItem(FATIGUE_SCORE_STORAGE_KEY);
     } else {
       window.sessionStorage.setItem(FATIGUE_SCORE_STORAGE_KEY, String(fatigueScore));
+      window.localStorage.setItem(FATIGUE_SCORE_STORAGE_KEY, String(fatigueScore));
     }
   }, [fatigueScore]);
 
   useEffect(() => {
     if (!fatigueZone) {
       window.sessionStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
+      window.localStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
     } else {
       window.sessionStorage.setItem(FATIGUE_ZONE_STORAGE_KEY, fatigueZone);
+      window.localStorage.setItem(FATIGUE_ZONE_STORAGE_KEY, fatigueZone);
     }
   }, [fatigueZone]);
 
@@ -399,6 +407,9 @@ const App: React.FC = () => {
     setCancerType(undefined);
     setHasLoggedDailyCheckIn(false);
     window.sessionStorage.removeItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY);
+    window.localStorage.removeItem(DAILY_CHECKIN_LOGGED_STORAGE_KEY);
+    window.localStorage.removeItem(FATIGUE_SCORE_STORAGE_KEY);
+    window.localStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
   };
 
   const clearSavedPatientData = () => {

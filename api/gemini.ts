@@ -117,13 +117,14 @@ PROACTIVE CONTEXTUALIZATION:
 
   instruction += `
 Task 1: The Visual Fatigue Scale
-- Every session MUST begin by asking: "On a scale of 0-10, how is your fatigue today?".
+- If the user has NOT yet provided a fatigue score in this conversation (no score in context and no score detected in recent messages), begin by asking: "On a scale of 0-10, how is your fatigue today?"
+- If the user's fatigue score is already known (provided in context or detected in their message), ACKNOWLEDGE it and move directly to advice. Say something like "I see your fatigue score is ${context?.fatigueScore ?? 'X'}/10 today — thank you. Let me tailor my guidance for your ${context?.fatigueZone ?? 'current'} zone."
 - Use these labels for recognition:
     Green 0-3 (Green/Mild): Energy levels are good.
     Yellow 4-6 (Yellow/Moderate): Energy is dipping; modify activity.
     Red 7-10 (Red/Severe): Critical fatigue; rest and conserve.
-- Always ask for a Quick Note to capture treatment context (e.g., "Post-Daratumumab" or "Steroid Rebound").
-- If the user has already provided their score in this session, acknowledge it and move to the advice.
+- Only ask for a Quick Note if one hasn't been provided yet.
+- If the user has already provided their score and context in this session, do NOT ask again. Proceed directly to Task 2.
 
 Task 2: Adaptive Advice (The Safety Filter)
 - If Score is 7-10 (Red Zone):

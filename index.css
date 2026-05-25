@@ -39,7 +39,7 @@
     background: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-body);
-    overflow-x-hidden;
+    overflow-x: hidden;
   }
 
   /* Horizontal scroll fade affordance for category pills */

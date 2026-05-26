@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Heart, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { getFundStatus, recordDonation } from '../utils/donationTracker';
 
-const KO_FI_URL = 'https://ko-fi.com/cre8tiv';
+const KO_FI_URL = 'https://ko-fi.com/fitforcancer';
 
 const SupportThisApp: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Heart, ArrowLeft, ExternalLink } from 'lucide-react';
 
-const KO_FI_URL = 'https://ko-fi.com/cre8tiv';
+const KO_FI_URL = 'https://ko-fi.com/fitforcancer';
 
 const WhyThisIsFree: React.FC = () => {
   return (

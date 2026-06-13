@@ -71,8 +71,13 @@ const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?:
 };
 
 const MAX_HISTORY_MESSAGES = 40;
-const MAX_MESSAGE_CHARS = 4000;
-const MAX_TOTAL_CHARS = 24000;
+// The assistant is instructed to return long, structured guidance (exercises,
+// nutrition, safety notes, a references section). Real single replies run
+// ~5-6k chars, and each reply is sent back as history on the next turn, so
+// these caps must comfortably exceed a legitimate response while still
+// bounding abuse / Gemini token spend per request.
+const MAX_MESSAGE_CHARS = 16000;
+const MAX_TOTAL_CHARS = 200000;
 const VALID_ROLES = new Set(["user", "model"]);
 const VALID_CANCER_TYPES = new Set(["bowel", "melanoma", "breast", "prostate", "lung", "blood_myeloma", "other"]);
 

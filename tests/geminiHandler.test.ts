@@ -87,7 +87,7 @@ describe("/api/gemini handler", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a message with content > 4000 chars", async () => {
+  it("rejects a message with content > 16000 chars", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -97,7 +97,7 @@ describe("/api/gemini handler", () => {
       {
         method: "POST",
         headers: { "x-forwarded-for": "10.0.0.4" },
-        body: { history: [{ role: "user", content: "x".repeat(4001) }] },
+        body: { history: [{ role: "user", content: "x".repeat(16001) }] },
       } as any,
       res as any,
     );
@@ -106,14 +106,15 @@ describe("/api/gemini handler", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects total content > 24000 chars", async () => {
+  it("rejects total content > 200000 chars", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const history = Array.from({ length: 12 }, (_, i) => ({
+    // 14 messages * 15000 chars = 210000, over the 200000 total cap
+    const history = Array.from({ length: 14 }, () => ({
       role: "user" as const,
-      content: "x".repeat(2001),
+      content: "x".repeat(15000),
     }));
     const { out, res } = makeRes();
     await handler(
@@ -127,6 +128,42 @@ describe("/api/gemini handler", () => {
 
     expect(out.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a realistic multi-turn conversation with a long assistant reply (regression: the 4000-char cap broke the chat after the first answer)", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: "more exercises" }] } }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // A real assistant guidance reply is ~5-6k chars; simulate one at ~6600.
+    const longAssistantReply = "### Exercise guidance\n".repeat(300);
+    expect(longAssistantReply.length).toBeGreaterThan(4000);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.11" },
+        body: {
+          history: [
+            { role: "user", content: "My fatigue score today is 3/10." },
+            { role: "model", content: longAssistantReply },
+            { role: "user", content: "What other exercises can I do?" },
+          ],
+          context: { fatigueScore: 3, fatigueZone: "🟢 Green", isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect((out.body as any).text).toBe("more exercises");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("rejects invalid role 'system'", async () => {

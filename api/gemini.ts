@@ -2,6 +2,14 @@ import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
 import { buildClinicalKnowledgeBaseText } from "../utils/clinical_guidelines.js";
 import { buildVerifiedResourcesPromptBlock } from "../utils/verifiedResources.js";
 import { checkGeminiRateLimit, getHeaderValue } from "./rateLimit.js";
+import { timingSafeEqual } from "node:crypto";
+
+const safeEqual = (a: string, b: string): boolean => {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+};
 
 interface GeminiRequestBody {
   history?: ChatMessage[];
@@ -60,6 +68,53 @@ const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?:
   if (cancerType === "blood_myeloma" || isMyelomaPatient) return "Blood/Myeloma";
   if (cancerType === "other") return "Other/Prefer not to say";
   return "Not specified";
+};
+
+const MAX_HISTORY_MESSAGES = 40;
+const MAX_MESSAGE_CHARS = 4000;
+const MAX_TOTAL_CHARS = 24000;
+const VALID_ROLES = new Set(["user", "model"]);
+const VALID_CANCER_TYPES = new Set(["bowel", "melanoma", "breast", "prostate", "lung", "blood_myeloma", "other"]);
+
+const validateRequestBody = (body: GeminiRequestBody): string | null => {
+  if (!Array.isArray(body.history) || body.history.length === 0) {
+    return "Request history is required";
+  }
+  if (body.history.length > MAX_HISTORY_MESSAGES) {
+    return "Request history is too long";
+  }
+  for (const msg of body.history) {
+    if (!msg || !VALID_ROLES.has(msg.role) || typeof msg.content !== "string" || msg.content.length < 1 || msg.content.length > MAX_MESSAGE_CHARS) {
+      return "Request history contains an invalid message";
+    }
+  }
+  const totalChars = body.history.reduce((sum, msg) => sum + msg.content.length, 0);
+  if (totalChars > MAX_TOTAL_CHARS) {
+    return "Request history is too large";
+  }
+  const cancerType = body.cancerType ?? body.context?.cancerType;
+  if (cancerType !== undefined && cancerType !== null && !VALID_CANCER_TYPES.has(cancerType)) {
+    return "Invalid cancer type";
+  }
+  if (body.context !== undefined && body.context !== null) {
+    if (typeof body.context !== "object" || Array.isArray(body.context)) {
+      return "Invalid context";
+    }
+    const { fatigueScore, fatigueZone, isMyelomaPatient, cancerType: ctxCancer } = body.context;
+    if (fatigueScore !== null && fatigueScore !== undefined && (!Number.isInteger(fatigueScore) || fatigueScore < 0 || fatigueScore > 10)) {
+      return "Invalid context";
+    }
+    if (fatigueZone !== null && fatigueZone !== undefined && (typeof fatigueZone !== "string" || fatigueZone.length > 20)) {
+      return "Invalid context";
+    }
+    if (isMyelomaPatient !== undefined && typeof isMyelomaPatient !== "boolean") {
+      return "Invalid context";
+    }
+    if (ctxCancer !== undefined && ctxCancer !== null && !VALID_CANCER_TYPES.has(ctxCancer)) {
+      return "Invalid context";
+    }
+  }
+  return null;
 };
 
 const getSystemInstruction = (
@@ -160,7 +215,6 @@ Task 5: Steroid Rebound Protocol
 
 Task 6: Interaction Design
 - After the user provides their fatigue score, you MUST say: "Based on your fatigue level (Score: ${context?.fatigueScore ?? "X"}/10), I've updated your Nutrition and Exercise Panels. Here are the best recipes for your energy budget today:".
-- If the score changed to Red (7-10), you must also state: "I've updated your Exercise Panel to the Red Zone (Score ${context?.fatigueScore ?? "X"}/10). We are pausing strength training today to focus on recovery and gentle stretching."
 - List 2-3 specific recipes from your library that match their zone.
 - Display the recipes in a clean Markdown table or formatted list with the appropriate zone marker.
 
@@ -246,13 +300,13 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   const configuredAccessPassword = process.env.CHAT_ACCESS_PASSWORD || process.env.FFC_CHAT_ACCESS_PASSWORD;
   if (configuredAccessPassword) {
     const providedAccessPassword = getHeaderValue(req.headers, "x-chat-access-password");
-    if (providedAccessPassword !== configuredAccessPassword) {
+    if (!providedAccessPassword || !safeEqual(providedAccessPassword, configuredAccessPassword)) {
       res.status(401).json({ error: "Chat access is restricted" });
       return;
     }
   }
 
-  const rateLimit = checkGeminiRateLimit(req.headers);
+  const rateLimit = await checkGeminiRateLimit(req.headers);
   if (!rateLimit.allowed) {
     res.status(429).json({ error: "Too many requests. Please wait a moment before trying again." });
     return;
@@ -264,8 +318,9 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
-  if (!Array.isArray(body.history) || body.history.length === 0) {
-    res.status(400).json({ error: "Request history is required" });
+  const validationError = validateRequestBody(body);
+  if (validationError) {
+    res.status(400).json({ error: validationError });
     return;
   }
 
@@ -276,10 +331,11 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
-    const geminiResponse = await fetch(`${GEMINI_API_URL}?key=${encodeURIComponent(apiKey)}`, {
+    const geminiResponse = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
       },
       body: JSON.stringify({
         systemInstruction: {

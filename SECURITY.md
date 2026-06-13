@@ -12,7 +12,8 @@ Fit For Cancer is intentionally lightweight: no accounts, no database, no paymen
 - Added optional chat access gate:
   - set `CHAT_ACCESS_PASSWORD` or `FFC_CHAT_ACCESS_PASSWORD`
   - clients must send `x-chat-access-password`
-  - leave unset for public mode
+  - client prompts for password on 401 and remembers it in sessionStorage for the browser session
+  - server-side comparison is constant-time (`timingSafeEqual`)
 - Redacted Gemini proxy production logs:
   - no request history/context logging
   - no full upstream payload logging in production
@@ -20,7 +21,7 @@ Fit For Cancer is intentionally lightweight: no accounts, no database, no paymen
 
 ## Production notes
 
-The in-memory rate limiter is best-effort in serverless environments because each function instance has its own memory. That is acceptable for this low-cost patient-support tool today. If usage grows or abuse appears, replace it with shared storage such as Upstash, Vercel KV, Redis, or a small Supabase table.
+The rate limiter now supports Upstash Redis for durable sliding-window limiting across serverless instances (set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` via Vercel Marketplace → Upstash integration). Falls back automatically to best-effort in-memory limiting when the env vars are absent (local dev, unprovisioned deployments).
 
 ## Secrets rule
 

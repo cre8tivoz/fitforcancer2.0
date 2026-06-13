@@ -1,0 +1,340 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
+import handler from "../api/gemini";
+
+const makeRes = () => {
+  const out: { status?: number; body?: unknown } = {};
+  return {
+    out,
+    res: {
+      status: (code: number) => ({
+        json: (body: unknown) => {
+          out.status = code;
+          out.body = body;
+        },
+      }),
+    },
+  };
+};
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.CHAT_ACCESS_PASSWORD;
+  delete process.env.FFC_CHAT_ACCESS_PASSWORD;
+});
+
+describe("/api/gemini handler", () => {
+  it("returns 405 for GET requests", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const { out, res } = makeRes();
+    await handler({ method: "GET", headers: { "x-forwarded-for": "10.0.0.1" } } as any, res as any);
+    expect(out.status).toBe(405);
+    expect((out.body as any).error).toContain("Method not allowed");
+  });
+
+  it("accepts a valid minimal body and forwards to Gemini with x-goog-api-key header", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "hello" }] } }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.2" },
+        body: { history: [{ role: "user", content: "hi" }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect((out.body as any).text).toBe("hello");
+
+    // Verify fetch was called with header, not URL key
+    const fetchArgs = fetchMock.mock.calls[0];
+    expect(fetchArgs[0]).not.toContain("key=");
+    expect(fetchArgs[1].headers["x-goog-api-key"]).toBe("test-key");
+  });
+
+  it("rejects 41 messages as too long (MAX_HISTORY_MESSAGES=40)", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const history = Array.from({ length: 41 }, (_, i) => ({
+      role: "user" as const,
+      content: `message ${i}`,
+    }));
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.3" },
+        body: { history },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect((out.body as any).error).toBe("Request history is too long");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a message with content > 4000 chars", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.4" },
+        body: { history: [{ role: "user", content: "x".repeat(4001) }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects total content > 24000 chars", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const history = Array.from({ length: 12 }, (_, i) => ({
+      role: "user" as const,
+      content: "x".repeat(2001),
+    }));
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.5" },
+        body: { history },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid role 'system'", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.6" },
+        body: { history: [{ role: "system", content: "be helpful" }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-string content", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.7" },
+        body: { history: [{ role: "user", content: 42 }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid cancerType 'everything'", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.8" },
+        body: {
+          history: [{ role: "user", content: "hi" }],
+          cancerType: "everything",
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects context with out-of-range fatigueScore", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.9" },
+        body: {
+          history: [{ role: "user", content: "hi" }],
+          context: { fatigueScore: 99, fatigueZone: null, isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid body with full context and returns 200", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "adjusted advice" }] } }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.10" },
+        body: {
+          history: [{ role: "user", content: "hi" }],
+          context: {
+            fatigueScore: 7,
+            fatigueZone: "🔴 Red",
+            isMyelomaPatient: false,
+            cancerType: "lung",
+          },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect((out.body as any).text).toBe("adjusted advice");
+  });
+});
+
+describe("/api/gemini access gate", () => {
+  it("returns 401 when gate is enabled and no header is sent", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.CHAT_ACCESS_PASSWORD = "letmein";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.200.1" },
+        body: { history: [{ role: "user", content: "hi" }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(401);
+    expect((out.body as any).error).toBe("Chat access is restricted");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when gate is enabled and wrong header is sent", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.CHAT_ACCESS_PASSWORD = "letmein";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.200.2", "x-chat-access-password": "wrong" },
+        body: { history: [{ role: "user", content: "hi" }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(401);
+    expect((out.body as any).error).toBe("Chat access is restricted");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 when gate is enabled and correct header is sent", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.CHAT_ACCESS_PASSWORD = "letmein";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.200.3", "x-chat-access-password": "letmein" },
+        body: { history: [{ role: "user", content: "hi" }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it("returns 200 when gate is disabled (no env) and no header is sent", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    delete process.env.CHAT_ACCESS_PASSWORD;
+    delete process.env.FFC_CHAT_ACCESS_PASSWORD;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.200.4" },
+        body: { history: [{ role: "user", content: "hi" }] },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalled();
+  });
+});

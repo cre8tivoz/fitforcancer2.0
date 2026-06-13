@@ -8,6 +8,7 @@ import MovementCard from './components/MovementCard';
 import BrandLockup from './components/BrandLockup';
 import { getGeminiResponse } from './services/geminiService';
 import { clearPatientContext, loadPatientContext, saveDailyCheckIn, savePatientContext } from './utils/patientContextStorage';
+import { detectFatigueScore, getFatigueZone } from './utils/fatigueScore';
 import CaregiverExportButton from './components/CaregiverExportButton';
 import WhyThisIsFree from './components/WhyThisIsFree';
 import { Search, Filter, X, BookOpen, Activity, WifiOff, Zap, UtensilsCrossed, Droplets, Coffee, AlertCircle, MessageCircle, House, Dumbbell, Utensils, ShieldCheck, Mic, ChartColumnIncreasing, Globe, CheckCircle2, Download } from 'lucide-react';
@@ -420,8 +421,7 @@ const App: React.FC = () => {
   const handleFatigueScoreSelect = (score: number) => {
     setFatigueScore(score);
 
-    const zone: '\u{1F7E2} Green' | '\u{1F7E1} Yellow' | '\u{1F534} Red' =
-      score >= 7 ? '\u{1F534} Red' : score >= 4 ? '\u{1F7E1} Yellow' : '\u{1F7E2} Green';
+    const zone = getFatigueZone(score);
 
     setFatigueZone(zone);
     setExerciseZoneFilter(null);
@@ -470,12 +470,11 @@ const App: React.FC = () => {
       return;
     }
 
-    const scoreMatch = textToSend.match(/\b([0-9]|10)\b/);
-    if (scoreMatch) {
-      const score = parseInt(scoreMatch[1]);
-      updatedScore = score;
-      handleFatigueScoreSelect(score);
-      updatedZone = score >= 7 ? '\u{1F534} Red' : score >= 4 ? '\u{1F7E1} Yellow' : '\u{1F7E2} Green';
+    const detectedScore = detectFatigueScore(textToSend);
+    if (detectedScore !== null) {
+      updatedScore = detectedScore;
+      handleFatigueScoreSelect(detectedScore);
+      updatedZone = getFatigueZone(detectedScore);
     }
 
     if (isInitialCheckIn && updatedScore !== null) {

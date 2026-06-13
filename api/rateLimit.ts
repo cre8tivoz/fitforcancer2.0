@@ -1,3 +1,6 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
 interface RateLimitBucket {
   count: number;
   resetAt: number;
@@ -7,6 +10,23 @@ const buckets = new Map<string, RateLimitBucket>();
 
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT = 20;
+
+let durableLimiter: Ratelimit | null | undefined;
+
+const getDurableLimiter = (): Ratelimit | null => {
+  if (durableLimiter !== undefined) return durableLimiter;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  durableLimiter =
+    url && token
+      ? new Ratelimit({
+          redis: Redis.fromEnv(),
+          limiter: Ratelimit.slidingWindow(DEFAULT_LIMIT, "10 m"),
+          prefix: "ffc:gemini",
+        })
+      : null;
+  return durableLimiter;
+};
 
 const nowMs = () => Date.now();
 
@@ -67,9 +87,20 @@ export const checkRateLimit = (
   return { allowed: true, remaining: Math.max(limit - existing.count, 0), resetAt: existing.resetAt };
 };
 
-export const checkGeminiRateLimit = (
+export const checkGeminiRateLimit = async (
   headers: Record<string, string | string[] | undefined> | undefined,
-): RateLimitResult => {
+): Promise<RateLimitResult> => {
   const ip = getClientIp(headers);
+  const limiter = getDurableLimiter();
+
+  if (limiter) {
+    try {
+      const result = await limiter.limit(`gemini:${ip}`);
+      return { allowed: result.success, remaining: result.remaining, resetAt: result.reset };
+    } catch (error) {
+      console.error("[rateLimit] durable limiter failed, falling back to in-memory");
+    }
+  }
+
   return checkRateLimit(`gemini:${ip}`);
 };

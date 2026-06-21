@@ -122,7 +122,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
             ref={triggerRef}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-full py-2.5 bg-neon-blue text-neon-dark rounded-xl font-bold text-sm hover:bg-neon-blue/90 transition-all shadow-sm shadow-neon-blue/20 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-neon-blue text-neon-dark rounded-xl font-bold text-sm hover:bg-neon-blue/90 transition-all shadow-sm shadow-neon-blue/20 flex items-center justify-center gap-2"
             onClick={() => setIsModalOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={isModalOpen}

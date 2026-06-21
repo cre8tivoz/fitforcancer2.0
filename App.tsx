@@ -622,7 +622,7 @@ const App: React.FC = () => {
                       fatigueZone === '🔴 Red' ? 'bg-white text-rose-600' : 
                       fatigueZone === '🟡 Yellow' ? 'bg-amber-950 text-amber-400' : 
                       'bg-neon-dark text-neon-blue'
-                    } px-6 py-2.5 font-bold rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md flex items-center gap-2`}
+                    } px-6 py-3 font-bold rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md flex items-center gap-2`}
                   >
                     <MessageCircle className="w-4 h-4" />
                     Talk to Health Assistant
@@ -631,7 +631,7 @@ const App: React.FC = () => {
                   {fatigueZone && (
                     <button 
                       onClick={() => setActiveTab(AppTab.ASSISTANT)}
-                      className="px-6 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 font-bold rounded-full hover:bg-white/20 transition-all"
+                      className="px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 font-bold rounded-full hover:bg-white/20 transition-all"
                     >
                       Update Fatigue Score
                     </button>
@@ -914,7 +914,7 @@ const App: React.FC = () => {
                     placeholder="Search ingredients or recipes..."
                     value={recipeSearchQuery}
                     onChange={(e) => setRecipeSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all text-sm"
+                    className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all text-sm"
                   />
                   {recipeSearchQuery && (
                     <button 

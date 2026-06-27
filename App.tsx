@@ -766,8 +766,7 @@ const App: React.FC = () => {
                       role="radio"
                       aria-checked={exerciseZoneFilter === 'All'}
                       onClick={() => setExerciseZoneFilter(exerciseZoneFilter === 'All' ? null : 'All')}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
-                        exerciseZoneFilter === 'All' 
+                      className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-all ${exerciseZoneFilter === 'All'
                           ? 'bg-white shadow-sm text-slate-900 border border-slate-200' 
                           : 'text-slate-400 hover:text-slate-600'
                       } ${CONTROL_FOCUS_CLASS}`}
@@ -783,7 +782,7 @@ const App: React.FC = () => {
                           role="radio"
                           aria-checked={isActive}
                           onClick={() => setExerciseZoneFilter(exerciseZoneFilter === zone ? null : zone)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                          className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                             isActive 
                               ? 'bg-white shadow-sm text-slate-900 border border-slate-200' 
                               : 'text-slate-400 hover:text-slate-600'
@@ -945,7 +944,7 @@ const App: React.FC = () => {
                           role="radio"
                           aria-checked={recipeZoneFilter === 'All'}
                           onClick={() => setRecipeZoneFilter(recipeZoneFilter === 'All' ? null : 'All')}
-                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                             recipeZoneFilter === 'All' 
                               ? 'bg-slate-900 text-white shadow-md' 
                               : 'text-slate-400 hover:text-slate-600'
@@ -962,7 +961,7 @@ const App: React.FC = () => {
                               role="radio"
                               aria-checked={isActive}
                               onClick={() => setRecipeZoneFilter(recipeZoneFilter === zone ? null : zone)}
-                              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                                 isActive 
                                   ? 'bg-white shadow-md text-slate-900 border border-slate-100' 
                                   : 'text-slate-400 hover:text-slate-600'

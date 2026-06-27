@@ -23,7 +23,7 @@ const CaregiverExportButton: React.FC<CaregiverExportButtonProps> = ({ currentFa
     <button
       onClick={handleExport}
       disabled={generating}
-      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 hover:text-emerald-900 disabled:opacity-50"
+      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 hover:text-emerald-900 disabled:opacity-50"
       aria-label="Export caregiver summary PDF"
     >
       {generating ? (

@@ -15,21 +15,21 @@
   },
   "dependencies": {
     "@google/genai": "1.52.0",
-    "@tailwindcss/vite": "4.3.1",
+    "@tailwindcss/vite": "^4.3.2",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "framer-motion": "12.42.0",
+    "framer-motion": "^12.42.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.575.0",
-    "motion": "12.42.0",
+    "motion": "^12.42.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-markdown": "^10.1.0",
-    "recharts": "3.9.0",
+    "recharts": "^3.9.2",
     "remark-gfm": "^4.0.1",
-    "tailwindcss": "4.3.1"
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@types/node": "22.20.0",

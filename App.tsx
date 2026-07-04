@@ -1077,7 +1077,7 @@ const App: React.FC = () => {
                 {messages.length > 1 && (
                   <button
                     onClick={handleExportConversation}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
                     aria-label="Export full conversation"
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -1088,7 +1088,8 @@ const App: React.FC = () => {
                 {(fatigueScore !== null || cancerType || isMyelomaPatient) && (
                   <button 
                     onClick={resetHealthAssistant}
-                    className="text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
+                    className="inline-flex min-h-11 items-center text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
+                    aria-label="Reset health assistant conversation"
                   >
                     Reset Health Assistant
                   </button>

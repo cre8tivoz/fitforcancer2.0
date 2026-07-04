@@ -83,7 +83,7 @@ const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
           <button
             type="button"
             onClick={handleExport}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
             aria-label={exported ? 'Download started' : 'Download health plan PDF'}
           >
             {exported ? <Check className="h-4 w-4 text-emerald-600" /> : <Download className="h-4 w-4" />}

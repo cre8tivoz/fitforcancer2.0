@@ -39,7 +39,7 @@ const MovementCard: React.FC<MovementCardProps> = ({ movement }) => {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 group flex flex-col h-full"
+      className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-shadow transition-transform duration-500 group flex flex-col h-full"
     >
       {/* Movement Visual Header */}
       <div className="relative aspect-video bg-slate-50 overflow-hidden border-b border-slate-100">

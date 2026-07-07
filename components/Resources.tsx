@@ -281,11 +281,11 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Visit ${item.title} resource (opens in new tab)`}
-                    className={`group flex h-full flex-col rounded-xl border border-slate-100 bg-slate-50 p-4 transition-all hover:border-neon-blue/30 hover:bg-white ${INTERACTIVE_FOCUS_CLASS}`}
+                    className={`group flex h-full flex-col rounded-xl border border-slate-100 bg-slate-50 p-4 transition-shadow transition-transform transition-colors hover:border-neon-blue/30 hover:bg-white ${INTERACTIVE_FOCUS_CLASS}`}
                   >
                     <div className="mb-2 flex items-start justify-between gap-4">
                       <h4 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-neon-blue">{item.title}</h4>
-                      <span className="rounded-lg bg-white p-1.5 text-slate-400 transition-all group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
+                      <span className="rounded-lg bg-white p-1.5 text-slate-400 transition-shadow transition-transform transition-colors group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </span>
                     </div>
@@ -504,7 +504,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
                 <button
                   type="button"
                   onClick={onClearSavedData}
-                  className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-all hover:border-rose-300 hover:text-rose-600 ${INTERACTIVE_FOCUS_CLASS}`}
+                  className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-shadow transition-transform transition-colors hover:border-rose-300 hover:text-rose-600 ${INTERACTIVE_FOCUS_CLASS}`}
                 >
                   Clear My Saved Data
                 </button>
@@ -536,7 +536,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
                       <h3 className="font-bold text-slate-900 transition-colors group-hover:text-neon-blue">{source.title}</h3>
                       <p className="text-sm leading-relaxed text-slate-600">{source.description}</p>
                     </div>
-                    <span className="rounded-lg bg-slate-100 p-2 text-slate-400 transition-all group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
+                    <span className="rounded-lg bg-slate-100 p-2 text-slate-400 transition-shadow transition-transform transition-colors group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
                       <ExternalLink className="h-5 w-5" />
                     </span>
                   </div>

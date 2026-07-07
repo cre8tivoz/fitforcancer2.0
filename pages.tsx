@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { AppTab, Recipe, Movement, CancerTypeOption } from '../types';
-import { RECIPES, MOVEMENTS } from '../constants';
-import MovementCard from '../components/MovementCard';
-import NutritionCard from '../components/NutritionCard';
+import { AppTab, Recipe, Movement, CancerTypeOption } from './types';
+import { RECIPES, MOVEMENTS } from './constants';
+import MovementCard from './components/MovementCard';
+import NutritionCard from './components/NutritionCard';
+import { getFatigueZone } from './utils/fatigueScore';
 import { Search, Filter, X, Zap, AlertCircle, UtensilsCrossed, Droplets, Coffee, MessageCircle, Activity, Utensils, ShieldCheck, BookOpen } from 'lucide-react';
 
 // ─── HOME PAGE ──────────────────────────────────────────────

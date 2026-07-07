@@ -73,4 +73,9 @@
     background: color-mix(in srgb, var(--color-accent) 55%, white);
     color: var(--color-nav);
   }
+
+  .tabular-nums,
+  .txt-num {
+    font-variant-numeric: tabular-nums;
+  }
 }

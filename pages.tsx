@@ -18,7 +18,7 @@ export const HomePage: React.FC<{
       fatigueZone === '🔴 Red' ? 'bg-rose-500 text-white shadow-rose-200' :
       fatigueZone === '🟡 Yellow' ? 'bg-amber-400 text-amber-950 shadow-amber-100' :
       'bg-neon-blue text-neon-dark shadow-neon-blue/20'
-    } rounded-2xl p-8 shadow-lg transition-all duration-500 relative overflow-hidden`}>
+    } rounded-2xl p-8 shadow-lg transition-shadow transition-transform duration-500 relative overflow-hidden`}>
       <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
       <div className="relative z-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
@@ -47,7 +47,7 @@ export const HomePage: React.FC<{
               fatigueZone === '🔴 Red' ? 'bg-white text-rose-600' :
               fatigueZone === '🟡 Yellow' ? 'bg-amber-950 text-amber-400' :
               'bg-neon-dark text-neon-blue'
-            } px-6 py-3 font-bold rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md flex items-center gap-2`}
+            } px-6 py-3 font-bold rounded-full hover:opacity-90 transition-shadow transition-transform transition-colors hover:scale-105 shadow-md flex items-center gap-2`}
           >
             <MessageCircle className="w-4 h-4" />
             Talk to Health Assistant
@@ -55,7 +55,7 @@ export const HomePage: React.FC<{
           {fatigueZone && (
             <button
               onClick={() => onNavigate(AppTab.ASSISTANT)}
-              className="px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 font-bold rounded-full hover:bg-white/20 transition-all"
+              className="px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 font-bold rounded-full hover:bg-white/20 transition-shadow transition-transform transition-colors"
             >
               Update Fatigue Score
             </button>
@@ -190,13 +190,13 @@ export const ExercisePage: React.FC<{
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <span id="exercise-zone-filter-label" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Energy Zone Filter:</span>
         <div role="radiogroup" aria-labelledby="exercise-zone-filter-label" className="flex bg-slate-100 p-1 rounded-full border border-slate-200">
-          <button type="button" role="radio" aria-checked={exerciseZoneFilter === 'All'} onClick={() => onExerciseZoneFilterChange(exerciseZoneFilter === 'All' ? 'All' : 'All')} className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-all ${exerciseZoneFilter === 'All' ? 'bg-white shadow-sm text-slate-900 border border-slate-200' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+          <button type="button" role="radio" aria-checked={exerciseZoneFilter === 'All'} onClick={() => onExerciseZoneFilterChange(exerciseZoneFilter === 'All' ? 'All' : 'All')} className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors ${exerciseZoneFilter === 'All' ? 'bg-white shadow-sm text-slate-900 border border-slate-200' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
             All
           </button>
           {(['🟢 Green', '🟡 Yellow', '🔴 Red'] as const).map((zone) => {
             const isActive = exerciseZoneFilter === zone || (exerciseZoneFilter === null && fatigueZone === zone);
             return (
-              <button key={zone} type="button" role="radio" aria-checked={isActive} onClick={() => onExerciseZoneFilterChange(exerciseZoneFilter === zone ? 'All' : zone)} className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${isActive ? 'bg-white shadow-sm text-slate-900 border border-slate-200' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+              <button key={zone} type="button" role="radio" aria-checked={isActive} onClick={() => onExerciseZoneFilterChange(exerciseZoneFilter === zone ? 'All' : zone)} className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors flex items-center gap-1.5 ${isActive ? 'bg-white shadow-sm text-slate-900 border border-slate-200' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                 {zone}
               </button>
             );
@@ -293,7 +293,7 @@ export const NutritionPage: React.FC<{
             <label htmlFor="nutrition-search" className="mb-1.5 ml-1 block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Search recipes</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input id="nutrition-search" type="text" placeholder="Search ingredients or recipes..." value={recipeSearchQuery} onChange={(e) => onSearchChange(e.target.value)} className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm transition-all text-sm focus:outline-none focus:ring-2 focus:ring-neon-blue" />
+              <input id="nutrition-search" type="text" placeholder="Search ingredients or recipes..." value={recipeSearchQuery} onChange={(e) => onSearchChange(e.target.value)} className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm transition-shadow transition-transform transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-neon-blue" />
               {recipeSearchQuery && (
                 <button type="button" onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2" aria-label="Clear recipe search">
                   <X className="w-4 h-4" />
@@ -309,13 +309,13 @@ export const NutritionPage: React.FC<{
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Energy Zone</span>
                 <div role="radiogroup" aria-label="Nutrition energy zone filter" className="flex bg-white p-1 rounded-full border border-slate-200 shadow-sm">
-                  <button type="button" role="radio" aria-checked={recipeZoneFilter === 'All'} onClick={() => onRecipeZoneFilterChange(recipeZoneFilter === 'All' ? 'All' : 'All')} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-all ${recipeZoneFilter === 'All' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+                  <button type="button" role="radio" aria-checked={recipeZoneFilter === 'All'} onClick={() => onRecipeZoneFilterChange(recipeZoneFilter === 'All' ? 'All' : 'All')} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors ${recipeZoneFilter === 'All' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                     All
                   </button>
                   {(['🟢 Green', '🟡 Yellow', '🔴 Red'] as const).map((zone) => {
                     const isActive = recipeZoneFilter === zone || (recipeZoneFilter === null && fatigueZone === zone);
                     return (
-                      <button key={zone} type="button" role="radio" aria-checked={isActive} onClick={() => onRecipeZoneFilterChange(recipeZoneFilter === zone ? 'All' : zone)} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${isActive ? 'bg-white shadow-md text-slate-900 border border-slate-100' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+                      <button key={zone} type="button" role="radio" aria-checked={isActive} onClick={() => onRecipeZoneFilterChange(recipeZoneFilter === zone ? 'All' : zone)} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors flex items-center gap-1.5 ${isActive ? 'bg-white shadow-md text-slate-900 border border-slate-100' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                         {zone}
                       </button>
                     );
@@ -326,7 +326,7 @@ export const NutritionPage: React.FC<{
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
                 <div role="radiogroup" aria-label="Recipe category filter" className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible scroll-fade-right">
                   {categories.map(cat => (
-                    <button key={cat} type="button" role="radio" aria-checked={recipeCategoryFilter === cat} onClick={() => onCategoryFilterChange(recipeCategoryFilter === cat ? 'All' : cat)} className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${recipeCategoryFilter === cat ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+                    <button key={cat} type="button" role="radio" aria-checked={recipeCategoryFilter === cat} onClick={() => onCategoryFilterChange(recipeCategoryFilter === cat ? 'All' : cat)} className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-shadow transition-transform transition-colors border ${recipeCategoryFilter === cat ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                       {cat}
                     </button>
                   ))}
@@ -413,7 +413,7 @@ export const ChatPage: React.FC<{ placeholder?: boolean }> = () => {
             </h3>
             <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5">
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                <button key={score} type="button" onClick={() => setFatigueScore(score)} className={`min-h-[44px] rounded-lg font-bold text-xs transition-all border ${fatigueScore === score ? 'ring-2 ring-slate-900/15 scale-[1.03]' : ''} ${score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' : score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'}`}>
+                <button key={score} type="button" onClick={() => setFatigueScore(score)} className={`min-h-[44px] rounded-lg font-bold text-xs transition-shadow transition-transform transition-colors border ${fatigueScore === score ? 'ring-2 ring-slate-900/15 scale-[1.03]' : ''} ${score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' : score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'}`}>
                   {score}
                 </button>
               ))}
@@ -450,8 +450,8 @@ export const ChatPage: React.FC<{ placeholder?: boolean }> = () => {
           {fatigueScore === null ? 'Quick Note' : 'Health Assistant message'}
         </label>
         <div className="flex gap-2">
-          <input id="assistant-message" type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={fatigueScore === null ? 'Add a Quick Note about today...' : 'Ask about fatigue, nausea, appetite...'} className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-all" />
-          <button type="submit" disabled={isLoading} className="p-4 bg-neon-blue text-neon-dark rounded-xl shadow-md hover:bg-neon-blue/90 disabled:opacity-50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2">
+          <input id="assistant-message" type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={fatigueScore === null ? 'Add a Quick Note about today...' : 'Ask about fatigue, nausea, appetite...'} className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-shadow transition-transform transition-colors" />
+          <button type="submit" disabled={isLoading} className="p-4 bg-neon-blue text-neon-dark rounded-xl shadow-md hover:bg-neon-blue/90 disabled:opacity-50 transition-shadow transition-transform transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
           </button>
         </div>

@@ -22,7 +22,7 @@ const TabButton = ({ href, active, onClick, children }: TabButtonProps) => (
       }
     }}
     aria-current={active ? 'page' : undefined}
-    className={`inline-flex min-h-11 items-center px-4 py-2 rounded-full text-sm font-semibold transition-all ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]`}
+    className={`inline-flex min-h-11 items-center px-4 py-2 rounded-full text-sm font-semibold transition-shadow transition-transform transition-colors ${active ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]`}
   >
     {children}
   </a>
@@ -38,7 +38,7 @@ interface MobileTabButtonProps {
 const MobileTabButton = ({ label, icon, active, onClick }: MobileTabButtonProps) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center gap-1 transition-all ${active ? 'text-neon-blue' : 'text-white/50 grayscale'}`}
+    className={`flex flex-col items-center justify-center gap-1 transition-shadow transition-transform transition-colors ${active ? 'text-neon-blue' : 'text-white/50 grayscale'}`}
   >
     <span className="text-xl">{icon}</span>
     <span className="text-[10px] font-bold uppercase tracking-tighter text-white">{label}</span>
@@ -117,7 +117,7 @@ export default function AppShell({ activeTab, onTabChange, children }: AppShellP
             <div className="flex flex-col items-center gap-4">
               <button
                 onClick={() => onTabChange(AppTab.RESOURCES)}
-                className={`inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-neon-blue hover:text-neon-blue transition-all shadow-sm uppercase tracking-wider ${CONTROL_FOCUS_CLASS}`}
+                className={`inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-neon-blue hover:text-neon-blue transition-shadow transition-transform transition-colors shadow-sm uppercase tracking-wider ${CONTROL_FOCUS_CLASS}`}
               >
                 <BookOpen className="w-3 h-3" />
                 View Evidence Base & Resources

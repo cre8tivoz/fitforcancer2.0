@@ -67,7 +67,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
     <>
       <motion.div 
         whileHover={{ y: -5 }}
-        className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all group flex flex-col h-full"
+        className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow transition-transform transition-colors group flex flex-col h-full"
       >
         <div className="relative overflow-hidden h-48 bg-slate-50">
           <img 
@@ -122,7 +122,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
             ref={triggerRef}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-full py-3 bg-neon-blue text-neon-dark rounded-xl font-bold text-sm hover:bg-neon-blue/90 transition-all shadow-sm shadow-neon-blue/20 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-neon-blue text-neon-dark rounded-xl font-bold text-sm hover:bg-neon-blue/90 transition-shadow transition-transform transition-colors shadow-sm shadow-neon-blue/20 flex items-center justify-center gap-2"
             onClick={() => setIsModalOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={isModalOpen}

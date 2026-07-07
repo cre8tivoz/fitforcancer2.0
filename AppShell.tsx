@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { AppTab } from './types';
 import BrandLockup from './components/BrandLockup';
 import { BookOpen, Globe, House, Dumbbell, UtensilsCrossed, MessageSquare, ChartColumnIncreasing, CheckCircle2, X } from 'lucide-react';
+import { usePrefersReducedMotion } from './hooks/usePrefersReducedMotion';
 
 interface TabButtonProps {
   href: string;
@@ -169,6 +170,8 @@ export default function AppShell({ activeTab, onTabChange, children }: AppShellP
 }
 
 function AccessibilityModal({ onClose }: { onClose: () => void }) {
+  const reduced = usePrefersReducedMotion();
+
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -177,57 +180,48 @@ function AccessibilityModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
+  if (reduced) {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 py-6" onClick={onClose}>
+        <div id="accessibility-statement-dialog" role="dialog" aria-modal="true" aria-labelledby="accessibility-statement-title" className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-7" onClick={(e) => e.stopPropagation()}>
+          <ModalContent onClose={onClose} />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 py-6"
-      onClick={onClose}
-    >
-      <motion.div
-        id="accessibility-statement-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="accessibility-statement-title"
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-7"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-3">
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-              <Globe className="h-3.5 w-3.5" />
-              Accessibility Statement
-            </span>
-            <div>
-              <h2 id="accessibility-statement-title" className="text-2xl font-bold text-slate-900">
-                Our accessibility commitment
-              </h2>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                Fit For Cancer is designed to meet WCAG 2.2 AA expectations and support Australian digital inclusion standards.
-              </p>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700" aria-label="Close accessibility statement">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="mt-6 space-y-4 text-sm leading-7 text-slate-600">
-          <div className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-primary)]" />
-            <p>We design mobile-first interfaces with readable typography, clear labels, and touch-friendly controls.</p>
-          </div>
-        </div>
-        <div className="mt-6 flex justify-end">
-          <button type="button" onClick={onClose} className={`inline-flex min-h-11 items-center rounded-2xl bg-[color:var(--color-nav)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[color:var(--color-primary)] ${CONTROL_FOCUS_CLASS}`}>
-            Close
-          </button>
-        </div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 py-6" onClick={onClose}>
+      <motion.div id="accessibility-statement-dialog" role="dialog" aria-modal="true" aria-labelledby="accessibility-statement-title" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ duration: 0.2, ease: 'easeOut' }} className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-7" onClick={(e) => e.stopPropagation()}>
+        <ModalContent onClose={onClose} />
       </motion.div>
     </motion.div>
+  );
+}
+
+function ModalContent({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
+            <Globe className="h-3.5 w-3.5" />
+            Accessibility Statement
+          </span>
+          <div>
+            <h2 id="accessibility-statement-title" className="text-2xl font-bold text-slate-900">Our accessibility commitment</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">Fit For Cancer is designed to meet WCAG 2.2 AA expectations.</p>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500" aria-label="Close">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center rounded-2xl bg-[color:var(--color-nav)] px-4 py-2 text-sm font-semibold text-white">
+          Close
+        </button>
+      </div>
+    </>
   );
 }

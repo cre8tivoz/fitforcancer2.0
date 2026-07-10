@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
-import { AppTab } from './types';
+import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage, ExercisePage, NutritionPage, ChatPage } from './pages';
-import { useFatigueState } from './hooks/useFatigueState';
+import { FatigueState, useFatigueState } from './hooks/useFatigueState';
+import { BookOpen, ChartColumnIncreasing, Dumbbell, House, MessageSquare, UtensilsCrossed } from 'lucide-react';
 
 const EnergyBank = React.lazy(() => import('./components/EnergyBank'));
 const Resources = React.lazy(() => import('./components/Resources'));
@@ -26,6 +27,15 @@ const navItems = [
   { to: '/energy-bank', label: 'Energy Bank' },
   { to: '/assistant', label: 'AI Chat' },
   { to: '/resources', label: 'Resources' },
+];
+
+const mobileNavItems = [
+  { to: '/', label: 'Home', icon: House },
+  { to: '/exercise', label: 'Move', icon: Dumbbell },
+  { to: '/nutrition', label: 'Eat', icon: UtensilsCrossed },
+  { to: '/energy-bank', label: 'Trends', icon: ChartColumnIncreasing },
+  { to: '/assistant', label: 'Chat', icon: MessageSquare },
+  { to: '/resources', label: 'Resources', icon: BookOpen },
 ];
 
 const CONTROL_FOCUS_CLASS =
@@ -62,20 +72,76 @@ const Layout: React.FC = () => {
           <Link to="/resources" className={CONTROL_FOCUS_CLASS}>View Evidence Base & Resources</Link>
         </div>
       </footer>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--color-surface)]/95 backdrop-blur-md border-t border-[color:var(--color-primary)]/10 px-4 py-3 flex justify-between sm:hidden z-50 shadow-[0_-10px_30px_-18px_rgba(26,40,33,0.35)]">
+        {mobileNavItems.map(({ to, label, icon: Icon }) => (
+          <Link
+            key={to}
+            to={to}
+            aria-current={location.pathname === to ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center gap-1 transition-shadow transition-transform transition-colors ${location.pathname === to ? 'text-neon-blue' : 'text-white/50 grayscale'} ${CONTROL_FOCUS_CLASS}`}
+          >
+            <span className="text-xl"><Icon className="w-4 h-4" /></span>
+            <span className="text-[10px] font-bold uppercase tracking-tighter text-white">{label}</span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 };
 
 const App: React.FC = () => {
+  const { state: fatigueState, setState: setFatigueState } = useFatigueState();
+  const [exerciseZoneFilter, setExerciseZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
+  const [recipeZoneFilter, setRecipeZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
+  const [recipeCategoryFilter, setRecipeCategoryFilter] = useState<Recipe['category'] | 'All'>('All');
+  const [energyHistoryRefreshKey, setEnergyHistoryRefreshKey] = useState(0);
+
+  const onExerciseZoneFilterChange = useCallback((zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All') => {
+    setExerciseZoneFilter((prev) => prev === zone ? null : zone);
+  }, []);
+
   return (
     <ErrorBoundary>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<HomePageContainer />} />
-          <Route path="/exercise" element={<ExercisePageContainer />} />
-          <Route path="/nutrition" element={<NutritionPageContainer />} />
-          <Route path="/energy-bank" element={<React.Suspense fallback={<div>Loading...</div>}><EnergyBank /></React.Suspense>} />
-          <Route path="/assistant" element={<ChatPage />} />
+          <Route path="/" element={<HomePageContainer fatigueState={fatigueState} />} />
+          <Route
+            path="/exercise"
+            element={
+              <ExercisePageContainer
+                fatigueState={fatigueState}
+                exerciseZoneFilter={exerciseZoneFilter}
+                onExerciseZoneFilterChange={onExerciseZoneFilterChange}
+              />
+            }
+          />
+          <Route
+            path="/nutrition"
+            element={
+              <NutritionPageContainer
+                fatigueState={fatigueState}
+                recipeZoneFilter={recipeZoneFilter}
+                recipeCategoryFilter={recipeCategoryFilter}
+                recipeSearchQuery={recipeSearchQuery}
+                onRecipeZoneFilterChange={(zone) => setRecipeZoneFilter((prev) => prev === zone ? null : zone)}
+                onCategoryFilterChange={setRecipeCategoryFilter}
+                onSearchChange={setRecipeSearchQuery}
+              />
+            }
+          />
+          <Route path="/energy-bank" element={<React.Suspense fallback={<div>Loading...</div>}><EnergyBank refreshKey={energyHistoryRefreshKey} currentFatigueScore={fatigueState.score} /></React.Suspense>} />
+          <Route
+            path="/assistant"
+            element={
+              <ChatPage
+                fatigueState={fatigueState}
+                setFatigueState={setFatigueState}
+                onEnergyHistoryChange={() => setEnergyHistoryRefreshKey((current) => current + 1)}
+              />
+            }
+          />
           <Route path="/resources" element={<React.Suspense fallback={<div>Loading...</div>}><Resources onClearSavedData={() => {}} /></React.Suspense>} />
           <Route path="/why-free" element={<React.Suspense fallback={<div>Loading...</div>}><WhyThisIsFree /></React.Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -85,9 +151,8 @@ const App: React.FC = () => {
   );
 };
 
-const HomePageContainer: React.FC = () => {
+const HomePageContainer: React.FC<{ fatigueState: FatigueState }> = ({ fatigueState }) => {
   const navigate = useNavigate();
-  const { state: fatigueState } = useFatigueState();
   return (
     <HomePage
       fatigueScore={fatigueState.score}
@@ -97,30 +162,52 @@ const HomePageContainer: React.FC = () => {
   );
 };
 
-const ExercisePageContainer: React.FC = () => {
-  const { state: fatigueState } = useFatigueState();
+interface ExercisePageContainerProps {
+  fatigueState: FatigueState;
+  exerciseZoneFilter: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null;
+  onExerciseZoneFilterChange: (zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All') => void;
+}
+
+const ExercisePageContainer: React.FC<ExercisePageContainerProps> = ({ fatigueState, exerciseZoneFilter, onExerciseZoneFilterChange }) => {
   return (
     <ExercisePage
       fatigueScore={fatigueState.score}
       fatigueZone={fatigueState.zone}
-      exerciseZoneFilter={null}
+      exerciseZoneFilter={exerciseZoneFilter}
       isMyelomaPatient={fatigueState.cancerType === 'blood_myeloma'}
-      onExerciseZoneFilterChange={() => {}}
+      onExerciseZoneFilterChange={onExerciseZoneFilterChange}
     />
   );
 };
 
-const NutritionPageContainer: React.FC = () => {
-  const { state: fatigueState } = useFatigueState();
+interface NutritionPageContainerProps {
+  fatigueState: FatigueState;
+  recipeZoneFilter: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null;
+  recipeCategoryFilter: Recipe['category'] | 'All';
+  recipeSearchQuery: string;
+  onRecipeZoneFilterChange: (zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All') => void;
+  onCategoryFilterChange: (cat: Recipe['category'] | 'All') => void;
+  onSearchChange: (q: string) => void;
+}
+
+const NutritionPageContainer: React.FC<NutritionPageContainerProps> = ({
+  fatigueState,
+  recipeZoneFilter,
+  recipeCategoryFilter,
+  recipeSearchQuery,
+  onRecipeZoneFilterChange,
+  onCategoryFilterChange,
+  onSearchChange,
+}) => {
   return (
     <NutritionPage
       fatigueZone={fatigueState.zone}
-      recipeZoneFilter={null}
-      recipeCategoryFilter="All"
-      recipeSearchQuery=""
-      onRecipeZoneFilterChange={() => {}}
-      onCategoryFilterChange={() => {}}
-      onSearchChange={() => {}}
+      recipeZoneFilter={recipeZoneFilter}
+      recipeCategoryFilter={recipeCategoryFilter}
+      recipeSearchQuery={recipeSearchQuery}
+      onRecipeZoneFilterChange={onRecipeZoneFilterChange}
+      onCategoryFilterChange={onCategoryFilterChange}
+      onSearchChange={onSearchChange}
     />
   );
 };

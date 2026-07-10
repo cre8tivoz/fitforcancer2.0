@@ -16,6 +16,9 @@ const makeRes = () => {
   };
 };
 
+const getForwardedGeminiBody = (fetchMock: ReturnType<typeof vi.fn>) =>
+  JSON.parse(fetchMock.mock.calls[0][1].body);
+
 afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.GEMINI_API_KEY;
@@ -280,6 +283,107 @@ describe("/api/gemini handler", () => {
 
     expect(out.status).toBe(200);
     expect((out.body as any).text).toBe("adjusted advice");
+  });
+
+  it("forwards the clinical system instruction with fatigue and cancer context", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "red zone guidance" }] } }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.12" },
+        body: {
+          history: [{ role: "user", content: "My fatigue score is 8/10 and I have lung cancer." }],
+          context: {
+            fatigueScore: 8,
+            fatigueZone: "🔴 Red",
+            isMyelomaPatient: false,
+            cancerType: "lung",
+          },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    const forwardedBody = getForwardedGeminiBody(fetchMock);
+    const systemInstruction = forwardedBody.systemInstruction.parts[0].text;
+
+    expect(systemInstruction).toContain("Role: You are an empathetic, highly specialized oncology fitness and nutrition assistant");
+    expect(systemInstruction).toContain("Fatigue Score: 8");
+    expect(systemInstruction).toContain("Fatigue Zone: 🔴 Red");
+    expect(systemInstruction).toContain("Cancer Type: Lung");
+    expect(systemInstruction).toContain("Because you're in the Red Zone (Score 8/10)");
+    expect(systemInstruction).toContain("Focus on diaphragmatic breathing");
+    expect(systemInstruction).toContain("### Verified Resources");
+    expect(forwardedBody.contents).toEqual([
+      {
+        role: "user",
+        parts: [{ text: "My fatigue score is 8/10 and I have lung cancer." }],
+      },
+    ]);
+  });
+
+  it("only applies the first-response disclaimer requirement to the first assistant response", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "guidance" }] } }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out: firstOut, res: firstRes } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.13" },
+        body: {
+          history: [{ role: "user", content: "My fatigue is 4/10." }],
+          context: { fatigueScore: 4, fatigueZone: "🟡 Yellow", isMyelomaPatient: false },
+        },
+      } as any,
+      firstRes as any,
+    );
+
+    expect(firstOut.status).toBe(200);
+    const firstInstruction = getForwardedGeminiBody(fetchMock).systemInstruction.parts[0].text;
+    expect(firstInstruction).toContain("Because this is your first response in the current session");
+
+    const { out: followUpOut, res: followUpRes } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.14" },
+        body: {
+          history: [
+            { role: "user", content: "My fatigue is 4/10." },
+            { role: "model", content: "Here is some guidance." },
+            { role: "user", content: "What should I eat?" },
+          ],
+          context: { fatigueScore: 4, fatigueZone: "🟡 Yellow", isMyelomaPatient: false },
+        },
+      } as any,
+      followUpRes as any,
+    );
+
+    expect(followUpOut.status).toBe(200);
+    const followUpInstruction = JSON.parse(fetchMock.mock.calls[1][1].body).systemInstruction.parts[0].text;
+    expect(followUpInstruction).toContain("You may include a brief reminder about your supportive-care role when clinically appropriate.");
+    expect(followUpInstruction).not.toContain("Because this is your first response in the current session");
   });
 });
 

@@ -36,6 +36,7 @@ describe("App.tsx — smoke", () => {
     expect(within(n).getByText("Home")).toBeInTheDocument();
     expect(within(n).getByText("Exercise")).toBeInTheDocument();
     expect(within(n).getByText("Nutrition")).toBeInTheDocument();
+    expect(within(n).getByText("ATHENA")).toBeInTheDocument();
   });
 
   it("renders the mobile bottom navigation links", () => {
@@ -43,7 +44,7 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText("Move")).toBeInTheDocument();
     expect(screen.getByText("Eat")).toBeInTheDocument();
     expect(screen.getByText("Trends")).toBeInTheDocument();
-    expect(screen.getByText("Chat")).toBeInTheDocument();
+    expect(screen.getAllByText("ATHENA").length).toBeGreaterThan(0);
   });
 
   it("renders the lazy-loaded tabs without error", () => {
@@ -73,34 +74,43 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText("Hydrating Watermelon & Mint Cooler")).toBeInTheDocument();
   });
 
-  it("shares the chat fatigue score with the rest of the app", async () => {
+  it("locks an ATHENA energy score without calling Gemini and shares it with the app", async () => {
     const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: "8" }));
-    await user.click(within(nav()).getByText("Home"));
+    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
 
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/I see you've selected 8 today/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nutrition" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Movement" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Just a chat" })).toBeInTheDocument();
+
+    await user.click(within(nav()).getByText("Home"));
     expect(screen.getByText(/Red Zone Active/i)).toBeInTheDocument();
   });
 
-  it("sends chat messages to the Gemini API and saves the first check-in", async () => {
+  it("sends the first real ATHENA message with the selected energy context", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ text: "Personalised oncology guidance." }),
+      json: async () => ({ text: "That sounds like a rough day. Let's keep this manageable." }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: "8" }));
-    await user.type(screen.getByRole("textbox", { name: /health assistant message/i }), "Post chemo fatigue");
-    await user.click(screen.getByRole("button", { name: /send message/i }));
+    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "Post chemo fatigue");
+    await user.click(screen.getByRole("button", { name: /send message to ATHENA/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("Personalised oncology guidance.")).toBeInTheDocument();
-    expect(screen.queryByText(/The AI assistant will respond here/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/rough day/i)).toBeInTheDocument();
 
     const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(requestBody.context.fatigueScore).toBe(8);
@@ -108,7 +118,18 @@ describe("App.tsx — smoke", () => {
 
     const history = JSON.parse(window.localStorage.getItem("energy_history") || "[]");
     expect(history).toHaveLength(1);
-    expect(history[0]).toMatchObject({ score: 8, note: "Post chemo fatigue" });
+    expect(history[0]).toMatchObject({ score: 8, note: "" });
+  });
+
+  it("explains who ATHENA is and how she is tuned", async () => {
+    const user = userEvent.setup();
+    renderWithRouter("/assistant");
+
+    await user.click(screen.getByText("Who is ATHENA?"));
+
+    expect(screen.getByText(/Greek mythology/i)).toBeInTheDocument();
+    expect(screen.getByText(/wisdom and practical strategy/i)).toBeInTheDocument();
+    expect(screen.getByText(/sources come forward when you ask/i)).toBeInTheDocument();
   });
 
   it("clears saved browser data from Resources", async () => {

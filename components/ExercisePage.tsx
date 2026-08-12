@@ -3,7 +3,6 @@ import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
 
 interface ExercisePageProps {
-  fatigueScore: number | null;
   fatigueZone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
   exerciseZoneFilter: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null;
   isMyelomaPatient: boolean;
@@ -11,7 +10,6 @@ interface ExercisePageProps {
 }
 
 const ExercisePage: React.FC<ExercisePageProps> = ({
-  fatigueScore,
   fatigueZone,
   exerciseZoneFilter,
   isMyelomaPatient,
@@ -36,9 +34,9 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
       {currentExerciseZone && (
         <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
           <p className="text-sm font-medium text-slate-800">
-            {currentExerciseZone === '🟢 Green' && `You selected ${fatigueScore ?? 'this'} today. Green shows options for days when you have more capacity for walking, strength and coordination.`}
-            {currentExerciseZone === '🟡 Yellow' && `You selected ${fatigueScore ?? 'this'} today. Yellow keeps the options shorter, supported or easier to scale back.`}
-            {currentExerciseZone === '🔴 Red' && `You selected ${fatigueScore ?? 'this'} today. Red starts with small seated or lying-down movements. Doing less — or resting — is completely valid.`}
+            {currentExerciseZone === '🟢 Green' && 'Green shows options for days when you have more capacity for walking, strength and coordination.'}
+            {currentExerciseZone === '🟡 Yellow' && 'Yellow keeps the options shorter, supported or easier to scale back.'}
+            {currentExerciseZone === '🔴 Red' && 'Red starts with small seated or lying-down movements. Doing less — or resting — is completely valid.'}
           </p>
         </div>
       )}

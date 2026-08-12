@@ -67,6 +67,13 @@ interface ResourcesProps {
 }
 
 const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
+  const [hasClearedSavedData, setHasClearedSavedData] = useState(false);
+
+  const handleClearSavedData = () => {
+    onClearSavedData();
+    setHasClearedSavedData(true);
+  };
+
   const supportResources = [
     {
       category: 'Exercise Physiologists & Physical Support',
@@ -491,36 +498,51 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         >
           <div className="space-y-6 text-sm leading-7 text-slate-600">
             <section className="space-y-2">
-              <p><strong className="text-slate-900">1. Your Data Stays With You (No Accounts)</strong></p>
-              <p>Currently, Fit For Cancer operates entirely without user accounts. Your fatigue check-in information (such as your energy levels and Quick Notes) is stored locally on your own device using your browser&apos;s temporary memory. We do not store your personal health profile in a central database. When you close your browser or clear your cache, your local session resets.</p>
+              <p><strong className="text-slate-900">1. No account required; core check-in data stays in your browser</strong></p>
+              <p>Fit for Cancer does not require a user account. Your fatigue score and zone, cancer-type context, daily check-in flag, and Energy Bank history are stored in browser storage on this device rather than in a Fit for Cancer user database. Cancer-type context expires after 14 days. Energy Bank history keeps up to 30 check-ins until you clear it. Closing the browser does not necessarily remove this saved browser data.</p>
             </section>
 
             <section className="space-y-2">
-              <p><strong className="text-slate-900">2. The AI Health Assistant</strong></p>
-              <p>When you interact with the Health Assistant, your messages and local check-in context are transmitted securely via an encrypted connection to generate a context-aware response. This data is completely anonymous. It is not linked to your name, email, or identity. Furthermore, our secure backend ensures your private conversations are never used to train public AI models.</p>
+              <p><strong className="text-slate-900">2. AI assistant messages are processed by Google Gemini</strong></p>
+              <p>When you use the AI assistant, your message and the current check-in context supplied to the assistant are sent through Fit for Cancer&apos;s server endpoint to the Google Gemini API to generate a response. Fit for Cancer does not attach a user account, name, or email address because the app does not collect those fields, but the content is still processed by an external AI provider. Google&apos;s use of Gemini API content depends on the API service and billing configuration, so we do not make a blanket claim that submitted content is never used for product improvement. Avoid adding names, contact details, or other identifying information that is not needed for your question.</p>
+              <p>
+                <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Read the current Gemini API terms <ExternalLink className="inline h-3 w-3" /></a>
+              </p>
             </section>
 
             <section className="space-y-2">
-              <p><strong className="text-slate-900">3. Voice Dictation is Strictly Local</strong></p>
-              <p>If you use the microphone feature for Quick Notes, your voice is processed entirely by your device&apos;s native browser (such as Apple&apos;s or Google&apos;s built-in accessibility features). Fit For Cancer does not record, save, or transmit your audio files to any external servers. The translation to text happens right on your phone or computer.</p>
+              <p><strong className="text-slate-900">3. Voice dictation uses your browser&apos;s speech-recognition feature</strong></p>
+              <p>Fit for Cancer uses the browser Web Speech interface for dictation. The app does not separately save an audio recording or upload an audio file to the Fit for Cancer backend. Whether speech recognition happens entirely on your device or uses a browser, operating-system, or provider service depends on the browser and device you are using, so it should not be described as guaranteed local-only processing.</p>
             </section>
 
             <section className="space-y-2">
-              <p><strong className="text-slate-900">4. Australian Privacy Principles (APPs)</strong></p>
-              <p>We are guided by the Australian Privacy Act 1988, specifically focusing on data minimisation. We only ask for the minimum amount of context required to provide useful, evidence-informed support for your current session. Because we do not collect identifiable electronic health records (EHR), you remain in control of the information you choose to enter.</p>
+              <p><strong className="text-slate-900">4. Privacy-focused site analytics and performance data</strong></p>
+              <p>Fit for Cancer uses Vercel Web Analytics and Speed Insights to understand page usage and site performance. Vercel documents these services as collecting anonymised traffic and performance data rather than maintaining an identifiable cross-site visitor profile. This can include page or route, referrer, approximate country, browser or device information, and performance metrics. Fit for Cancer does not send your fatigue score, cancer type, Quick Notes, or chat message content to Vercel as custom analytics events.</p>
+              <p className="flex flex-wrap gap-x-4 gap-y-2">
+                <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Web Analytics privacy <ExternalLink className="inline h-3 w-3" /></a>
+                <a href="https://vercel.com/docs/speed-insights/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Speed Insights privacy <ExternalLink className="inline h-3 w-3" /></a>
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <p><strong className="text-slate-900">5. Data minimisation</strong></p>
+              <p>Health-related information deserves extra care. Fit for Cancer is designed to ask for only the context needed to organise its content and generate an assistant response, and to keep the core check-in history in your browser. This disclosure is intended to explain the app&apos;s actual data flow clearly rather than make a broad claim about legal or regulatory status.</p>
             </section>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-relaxed text-slate-500">
-                  Saved patient context expires automatically after 14 days. You can remove it sooner at any time.
+                <p className="text-xs leading-relaxed text-slate-500" aria-live="polite">
+                  {hasClearedSavedData
+                    ? 'Saved browser data cleared.'
+                    : 'Clear your saved fatigue score and zone, cancer-type context, daily check-in flag, and Energy Bank history from this browser.'}
                 </p>
                 <button
                   type="button"
-                  onClick={onClearSavedData}
-                  className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-shadow transition-transform transition-colors hover:border-rose-300 hover:text-rose-600 ${INTERACTIVE_FOCUS_CLASS}`}
+                  onClick={handleClearSavedData}
+                  disabled={hasClearedSavedData}
+                  className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-shadow transition-transform transition-colors hover:border-rose-300 hover:text-rose-600 disabled:cursor-default disabled:opacity-60 ${INTERACTIVE_FOCUS_CLASS}`}
                 >
-                  Clear My Saved Data
+                  {hasClearedSavedData ? 'Saved Data Cleared' : 'Clear Saved Browser Data'}
                 </button>
               </div>
             </div>

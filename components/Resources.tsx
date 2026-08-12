@@ -99,7 +99,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         {
           title: 'Cancer Council - Nutrition Services',
           description: 'Current national Cancer Council information and resources for nutrition during and after cancer treatment.',
-          url: 'https://www.cancer.org.au/cancer-information/living-and-coping-with-cancer/living-with-cancer',
+          url: 'https://connect.cancer.org.au/cancer-information/living-and-coping/nutrition-for-people-with-cancer',
           tags: ['Information', 'Dietary advice'],
         },
       ],
@@ -183,7 +183,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         {
           title: 'Cancer Council Australia - Exercise & Cancer',
           description: 'Current national information on the benefits of exercise during and after cancer treatment, with activity tailored to symptoms, capacity, and clinical advice.',
-          url: 'https://www.cancer.org.au/cancer-information/living-and-coping-with-cancer/living-with-cancer',
+          url: 'https://connect.cancer.org.au/cancer-information/living-and-coping/exercise-for-people-with-cancer',
         },
         {
           title: 'Myeloma Australia - Exercise Info Sheet',

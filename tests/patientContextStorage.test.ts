@@ -4,6 +4,7 @@ import {
   loadPatientContext,
   clearPatientContext,
   getEnergyHistory,
+  clearEnergyHistory,
   saveDailyCheckIn,
 } from "../utils/patientContextStorage";
 
@@ -77,6 +78,18 @@ describe("getEnergyHistory", () => {
     const history = getEnergyHistory();
     expect(history).toHaveLength(1);
     expect(history[0].id).toBe(1);
+  });
+
+  it("clears the saved Energy Bank history", () => {
+    window.localStorage.setItem(
+      "energy_history",
+      JSON.stringify([{ id: 1, date: "2024-01-01", score: 5, note: "ok" }]),
+    );
+
+    clearEnergyHistory();
+
+    expect(window.localStorage.getItem("energy_history")).toBeNull();
+    expect(getEnergyHistory()).toEqual([]);
   });
 });
 

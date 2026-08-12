@@ -44,6 +44,28 @@ describe('ATHENA treatment information routing', () => {
     ).toBe('lymphoma_cll');
   });
 
+  it('uses the final occurrence when a family is mentioned more than once', () => {
+    expect(
+      detectBloodCancerFamily([
+        {
+          role: 'user',
+          content: 'They initially thought myeloma, then lymphoma, but it is definitely myeloma.',
+        },
+      ]),
+    ).toBe('myeloma');
+  });
+
+  it('allows a later correction to override a full CLL name', () => {
+    expect(
+      detectBloodCancerFamily([
+        {
+          role: 'user',
+          content: 'They initially thought chronic lymphocytic leukaemia, but confirmed myeloma.',
+        },
+      ]),
+    ).toBe('myeloma');
+  });
+
   it('routes named AML treatment context even when the cancer selector is blank', () => {
     const block = buildTreatmentInformationText(
       undefined,
@@ -86,6 +108,17 @@ describe('ATHENA treatment information routing', () => {
 
     expect(block).toContain('TREATMENT INFORMATION — BLOOD CANCER');
     expect(block).toContain('ask one short clarifying question');
+    expect(block).not.toContain('TREATMENT INFORMATION — MYELOMA');
+  });
+
+  it('does not treat the legacy myeloma boolean as proof of myeloma', () => {
+    const block = buildTreatmentInformationText(
+      'blood_myeloma',
+      [{ role: 'user', content: 'I have blood cancer. What treatments are around?' }],
+      true,
+    );
+
+    expect(block).toContain('TREATMENT INFORMATION — BLOOD CANCER');
     expect(block).not.toContain('TREATMENT INFORMATION — MYELOMA');
   });
 });

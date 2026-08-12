@@ -88,6 +88,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
   const [cancerType, setCancerType] = useState<CancerTypeOption | undefined>(fatigueState.cancerType);
   const [isEnergyPromptMinimized, setIsEnergyPromptMinimized] = useState(false);
   const [hasStartedConversation, setHasStartedConversation] = useState(false);
+  const [isEditingEnergy, setIsEditingEnergy] = useState(false);
 
   useEffect(() => {
     setCancerType(fatigueState.cancerType);
@@ -109,6 +110,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
   });
 
   const updateCancerType = (nextCancerType: CancerTypeOption | undefined) => {
+    if (isLoading) return;
+
     setCancerType(nextCancerType);
     setFatigueState((current) => ({
       ...current,
@@ -117,10 +120,11 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
   };
 
   const selectEnergyScore = (score: number) => {
-    if (fatigueState.score !== null) return;
+    if (isLoading || (fatigueState.score !== null && !isEditingEnergy)) return;
 
     const zone = getFatigueZone(score);
-    const shouldSaveCheckIn = !fatigueState.hasLoggedDailyCheckIn;
+    const isReplacement = isEditingEnergy && fatigueState.score !== null;
+    const shouldSaveCheckIn = isReplacement || !fatigueState.hasLoggedDailyCheckIn;
 
     setFatigueState((current) => ({
       ...current,
@@ -128,7 +132,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       zone,
       exerciseZoneFilter: null,
       recipeZoneFilter: null,
-      hasLoggedDailyCheckIn: shouldSaveCheckIn ? true : current.hasLoggedDailyCheckIn,
+      hasLoggedDailyCheckIn: true,
     }));
 
     if (shouldSaveCheckIn) {
@@ -136,6 +140,20 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       onEnergyHistoryChange();
       window.sessionStorage.setItem(DAILY_CHECKIN_STORAGE_KEY, 'true');
       window.localStorage.setItem(DAILY_CHECKIN_STORAGE_KEY, 'true');
+    }
+
+    setIsEditingEnergy(false);
+    setIsEnergyPromptMinimized(false);
+
+    if (isReplacement) {
+      setMessages((current) => [
+        ...current,
+        {
+          role: 'model',
+          content: `Got it — I've updated your energy to ${score} for the rest of this chat.`,
+        },
+      ]);
+      return;
     }
 
     setMessages((current) => [
@@ -148,20 +166,21 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
   };
 
   const changeEnergyScore = () => {
-    setFatigueState((current) => ({
-      ...current,
-      score: null,
-      zone: null,
-      exerciseZoneFilter: null,
-      recipeZoneFilter: null,
-      hasLoggedDailyCheckIn: false,
-    }));
-    window.sessionStorage.removeItem(DAILY_CHECKIN_STORAGE_KEY);
-    window.localStorage.removeItem(DAILY_CHECKIN_STORAGE_KEY);
+    if (isLoading) return;
+
+    setIsEditingEnergy(true);
+    setIsEnergyPromptMinimized(false);
+  };
+
+  const cancelEnergyChange = () => {
+    if (isLoading) return;
+    setIsEditingEnergy(false);
     setIsEnergyPromptMinimized(false);
   };
 
   const resetAthena = () => {
+    if (isLoading) return;
+
     speech.stopListening();
     setMessages(buildInitialMessages(null));
     setInput('');
@@ -169,6 +188,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     setCancerType(undefined);
     setIsEnergyPromptMinimized(false);
     setHasStartedConversation(false);
+    setIsEditingEnergy(false);
     setFatigueState((current) => ({
       ...current,
       score: null,
@@ -199,7 +219,11 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     const detectedCancerType = detectCancerTypeFromText(textToSend);
     if (detectedCancerType) {
       updatedCancerType = detectedCancerType;
-      updateCancerType(detectedCancerType);
+      setCancerType(detectedCancerType);
+      setFatigueState((current) => ({
+        ...current,
+        cancerType: detectedCancerType,
+      }));
     }
 
     const context: ChatContext = {
@@ -227,6 +251,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
   };
 
   const showStarterChoices = fatigueState.score !== null && !hasStartedConversation;
+  const showEnergyPicker = fatigueState.score === null || isEditingEnergy;
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overscroll-contain">
@@ -252,7 +277,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
             <button
               type="button"
               onClick={resetAthena}
-              className="inline-flex min-h-11 items-center text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors"
+              disabled={isLoading}
+              className="inline-flex min-h-11 items-center text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Reset ATHENA conversation and energy check-in"
             >
               Reset ATHENA
@@ -261,19 +287,24 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         </div>
       </div>
 
-      {fatigueState.score === null && (
+      {showEnergyPicker && (
         <div className="mb-3 bg-white rounded-xl border border-neon-blue shadow-md overflow-hidden">
           <button
             type="button"
             onClick={() => setIsEnergyPromptMinimized(!isEnergyPromptMinimized)}
-            className="w-full flex items-center justify-between p-3 hover:bg-neon-blue/5 transition-colors"
+            disabled={isLoading}
+            className="w-full flex items-center justify-between p-3 hover:bg-neon-blue/5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             aria-expanded={!isEnergyPromptMinimized}
             aria-controls="athena-energy-score-panel"
           >
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-neon-blue" />
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                {isEnergyPromptMinimized ? 'Expand to set your energy score' : 'Check Your Battery (0–10)'}
+                {isEnergyPromptMinimized
+                  ? 'Expand to set your energy score'
+                  : isEditingEnergy
+                    ? `Update Your Energy (currently ${fatigueState.score}/10)`
+                    : 'Check Your Battery (0–10)'}
               </h3>
             </div>
             <svg className={`w-4 h-4 text-slate-400 transition-transform ${isEnergyPromptMinimized ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,7 +321,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 <select
                   value={cancerType ?? ''}
                   onChange={(e) => updateCancerType((e.target.value as CancerTypeOption | '') || undefined)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-shadow transition-transform transition-colors focus:outline-none focus:ring-2 focus:ring-neon-blue"
+                  disabled={isLoading}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-shadow transition-transform transition-colors focus:outline-none focus:ring-2 focus:ring-neon-blue disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="">Select a cancer type</option>
                   {CANCER_TYPE_OPTIONS.map((option) => (
@@ -307,16 +339,31 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                     key={score}
                     type="button"
                     onClick={() => selectEnergyScore(score)}
+                    disabled={isLoading}
                     aria-label={`Set energy score to ${score}`}
-                    className={`min-h-[44px] rounded-lg font-bold text-xs transition-shadow transition-transform transition-colors border ${score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' : score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'}`}
+                    className={`min-h-[44px] rounded-lg font-bold text-xs transition-shadow transition-transform transition-colors border disabled:cursor-not-allowed disabled:opacity-50 ${fatigueState.score === score ? 'ring-2 ring-slate-900/20' : ''} ${score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' : score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'}`}
                   >
                     {score}
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-[11px] leading-5 text-slate-500">
-                Choose the number that best matches your energy today. ATHENA will use it quietly in the background and save the check-in to your Energy Bank.
-              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] leading-5 text-slate-500">
+                  {isEditingEnergy
+                    ? `Your current ${fatigueState.score}/10 stays active until you choose a replacement.`
+                    : 'Choose the number that best matches your energy today. ATHENA will use it quietly in the background and save the check-in to your Energy Bank.'}
+                </p>
+                {isEditingEnergy && (
+                  <button
+                    type="button"
+                    onClick={cancelEnergyChange}
+                    disabled={isLoading}
+                    className="min-h-11 rounded-full border border-slate-200 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Keep {fatigueState.score}/10
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -334,7 +381,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               <button
                 type="button"
                 onClick={changeEnergyScore}
-                className="ml-1 text-[9px] font-bold uppercase tracking-wider text-white/55 hover:text-white underline underline-offset-2"
+                disabled={isLoading || isEditingEnergy}
+                className="ml-1 text-[9px] font-bold uppercase tracking-wider text-white/55 hover:text-white underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Change energy score"
               >
                 Change
@@ -360,7 +408,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 key={label}
                 type="button"
                 onClick={() => onSendMessage(prompt)}
-                className="flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm transition-shadow transition-transform transition-colors hover:border-neon-blue whitespace-nowrap"
+                disabled={isLoading}
+                className="flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm transition-shadow transition-transform transition-colors hover:border-neon-blue whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Icon className="w-4 h-4 text-neon-blue" />
                 <span className="text-xs font-bold text-slate-700">{label}</span>
@@ -415,9 +464,10 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               <button
                 type="button"
                 onClick={speech.toggleListening}
+                disabled={isLoading}
                 aria-label={speech.isListening ? 'Stop voice dictation' : 'Start voice dictation for ATHENA message'}
                 aria-pressed={speech.isListening}
-                className={`p-4 rounded-xl border shadow-sm transition-shadow transition-transform transition-colors ${speech.isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}
+                className={`p-4 rounded-xl border shadow-sm transition-shadow transition-transform transition-colors ${speech.isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}
               >
                 <Mic className="w-5 h-5" />
               </button>

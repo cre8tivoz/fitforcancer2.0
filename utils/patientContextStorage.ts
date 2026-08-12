@@ -93,6 +93,14 @@ export const getEnergyHistory = (): EnergyHistoryEntry[] => {
   }
 };
 
+export const clearEnergyHistory = (): void => {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  window.localStorage.removeItem(ENERGY_HISTORY_STORAGE_KEY);
+};
+
 export const saveDailyCheckIn = (score: number, note: string): void => {
   if (!canUseLocalStorage()) {
     return;

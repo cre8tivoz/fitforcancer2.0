@@ -110,4 +110,31 @@ describe("App.tsx — smoke", () => {
     expect(history).toHaveLength(1);
     expect(history[0]).toMatchObject({ score: 8, note: "Post chemo fatigue" });
   });
+
+  it("clears saved browser data from Resources", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("fit-for-cancer-fatigue-score", "8");
+    window.localStorage.setItem("fit-for-cancer-fatigue-zone", "🔴 Red");
+    window.localStorage.setItem("fit-for-cancer-daily-checkin-logged", "true");
+    window.localStorage.setItem(
+      "fit-for-cancer-patient-context",
+      JSON.stringify({ timestamp: Date.now(), context: { cancerType: "breast" } }),
+    );
+    window.localStorage.setItem(
+      "energy_history",
+      JSON.stringify([{ id: 1, date: "2026-08-12", score: 8, note: "Post treatment" }]),
+    );
+
+    renderWithRouter("/resources");
+
+    await user.click(await screen.findByRole("button", { name: /Privacy & Sensitive Data Handling/i }));
+    await user.click(screen.getByRole("button", { name: /Clear Saved Browser Data/i }));
+
+    expect(window.localStorage.getItem("fit-for-cancer-fatigue-score")).toBeNull();
+    expect(window.localStorage.getItem("fit-for-cancer-fatigue-zone")).toBeNull();
+    expect(window.localStorage.getItem("fit-for-cancer-daily-checkin-logged")).toBeNull();
+    expect(window.localStorage.getItem("fit-for-cancer-patient-context")).toBeNull();
+    expect(window.localStorage.getItem("energy_history")).toBeNull();
+    expect(screen.getByText(/Saved browser data cleared/i)).toBeInTheDocument();
+  });
 });

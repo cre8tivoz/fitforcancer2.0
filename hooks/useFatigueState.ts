@@ -48,6 +48,36 @@ export function useFatigueState() {
     }));
   }, []);
 
+  // If saved fatigue data is cleared in another tab, discard this tab's
+  // session copies as well so a later refresh cannot restore stale values.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      const isClearedFatigueKey =
+        event.newValue === null &&
+        (event.key === FATIGUE_STORAGE_KEY ||
+          event.key === FATIGUE_ZONE_STORAGE_KEY ||
+          event.key === DAILY_CHECKIN_STORAGE_KEY);
+
+      if (!isClearedFatigueKey) return;
+
+      window.sessionStorage.removeItem(FATIGUE_STORAGE_KEY);
+      window.sessionStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
+      window.sessionStorage.removeItem(DAILY_CHECKIN_STORAGE_KEY);
+
+      setState({
+        score: null,
+        zone: null,
+        cancerType: undefined,
+        exerciseZoneFilter: null,
+        recipeZoneFilter: null,
+        hasLoggedDailyCheckIn: false,
+      });
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   // Persist fatigue score
   useEffect(() => {
     if (state.score === null) {

@@ -3,7 +3,8 @@ import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 
 import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { HomePage, ExercisePage, NutritionPage, ChatPage } from './pages';
+import { HomePage, ExercisePage, NutritionPage } from './pages';
+import AthenaChatPage from './components/AthenaChatPage';
 import {
   DAILY_CHECKIN_STORAGE_KEY,
   FATIGUE_STORAGE_KEY,
@@ -164,7 +165,7 @@ const App: React.FC = () => {
           <Route
             path="/assistant"
             element={
-              <ChatPage
+              <AthenaChatPage
                 fatigueState={fatigueState}
                 setFatigueState={setFatigueState}
                 onEnergyHistoryChange={() => setEnergyHistoryRefreshKey((current) => current + 1)}

@@ -95,7 +95,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
           <div className="mb-4 flex-1">
             <div className="flex items-center gap-1.5 mb-2 text-slate-400">
               <Info className="w-3.5 h-3.5" />
-              <h4 className="text-[10px] font-bold uppercase tracking-widest">Nutritional Benefit</h4>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest">Why it may help</h4>
             </div>
             <p className="text-xs text-slate-600 font-medium line-clamp-2 mb-3">
               {recipe.nutritionalBenefit}
@@ -212,7 +212,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
                 <div id={`recipe-benefit-${recipe.id}`} className="p-4 bg-neon-blue/5 rounded-2xl border border-neon-blue/10">
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="w-4 h-4 text-neon-blue" />
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-neon-blue">Nutritional Benefit</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-neon-blue">Why it may help</h4>
                   </div>
                   <p className="text-sm text-slate-700 font-medium">
                     {recipe.nutritionalBenefit}

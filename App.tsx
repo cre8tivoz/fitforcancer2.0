@@ -3,8 +3,9 @@ import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 
 import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { HomePage, NutritionPage } from './pages';
+import { HomePage } from './pages';
 import ExercisePage from './components/ExercisePage';
+import NutritionPage from './components/NutritionPage';
 import AthenaChatPage from './components/AthenaChatPage';
 import {
   DAILY_CHECKIN_STORAGE_KEY,

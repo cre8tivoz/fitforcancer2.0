@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 
 import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { HomePage } from './pages';
+import HomePage from './components/HomePage';
 import ExercisePage from './components/ExercisePage';
 import NutritionPage from './components/NutritionPage';
 import AthenaChatPage from './components/AthenaChatPage';
@@ -225,7 +225,6 @@ const HomePageContainer: React.FC<{ fatigueState: FatigueState }> = ({ fatigueSt
   const navigate = useNavigate();
   return (
     <HomePage
-      fatigueScore={fatigueState.score}
       fatigueZone={fatigueState.zone}
       onNavigate={(tab) => navigate(TAB_PATHS[tab])}
     />

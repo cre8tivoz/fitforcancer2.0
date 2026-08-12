@@ -98,8 +98,8 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         },
         {
           title: 'Cancer Council - Nutrition Services',
-          description: 'Access evidence-based information and support regarding diet and nutrition during and after cancer treatment.',
-          url: 'https://www.cancer.org.au/support-and-services/after-treatment/nutrition-and-cancer',
+          description: 'Current national Cancer Council information and resources for nutrition during and after cancer treatment.',
+          url: 'https://connect.cancer.org.au/cancer-information/living-and-coping/nutrition-for-people-with-cancer',
           tags: ['Information', 'Dietary advice'],
         },
       ],
@@ -176,9 +176,14 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
           url: 'https://www.essa.org.au/Public/Public/News/ESSA_Position_Statement_on_Exercise_and_Cancer.aspx',
         },
         {
+          title: 'Cancer Council Australia - Cancer-Related Fatigue',
+          description: 'Current Australian guidance distinguishing cancer-related fatigue from ordinary tiredness and outlining practical management, including regular exercise and eating well.',
+          url: 'https://www.cancer.org.au/cancer-information/screening-tests-and-treatments/cancer-side-effects/fatigue',
+        },
+        {
           title: 'Cancer Council Australia - Exercise & Cancer',
-          description: 'Detailed guidance on managing side effects through low, moderate, and vigorous intensity activities.',
-          url: 'https://www.cancer.org.au/support-and-services/after-treatment/exercise-for-people-living-with-cancer',
+          description: 'Current national information on the benefits of exercise during and after cancer treatment, with activity tailored to symptoms, capacity, and clinical advice.',
+          url: 'https://connect.cancer.org.au/cancer-information/living-and-coping/exercise-for-people-with-cancer',
         },
         {
           title: 'Myeloma Australia - Exercise Info Sheet',
@@ -234,6 +239,17 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         },
       ],
     },
+    {
+      category: 'Recent Research (2026)',
+      icon: <BookOpen className="h-5 w-5 text-indigo-600" />,
+      sources: [
+        {
+          title: 'Dai et al. (2026) - Exercise Dose and Cancer-Related Fatigue',
+          description: 'Systematic review and dose-response network meta-analysis in breast cancer survivors after primary treatment. It suggests fatigue benefit varies by exercise dose and baseline fatigue, but the certainty is low to very low, so the findings should not be used as fixed clinical targets.',
+          url: 'https://www.frontiersin.org/journals/public-health/articles/10.3389/fpubh.2026.1795975/full',
+        },
+      ],
+    },
   ];
 
   return (
@@ -255,6 +271,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         <p className="max-w-2xl opacity-80">
           To comply with TGA requirements for medical software, this application cites the following Australian evidence-based guidelines and resources used to inform our exercise, nutrition, and AI assistant data.
         </p>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Evidence reviewed: August 2026</p>
       </header>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -429,8 +446,8 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
             {[
               {
                 title: 'Managing Cancer-Related Fatigue',
-                description: 'Learn about the 3 Ps (Pacing, Prioritising, Positioning) and how to manage your energy battery during treatment.',
-                url: 'https://www.cancer.org.au/support-and-services/after-treatment/fatigue',
+                description: 'Current Cancer Council Australia guidance on cancer-related fatigue, practical management, pacing, activity, and when to speak with your treatment team.',
+                url: 'https://www.cancer.org.au/cancer-information/screening-tests-and-treatments/cancer-side-effects/fatigue',
                 cta: 'Read guide',
               },
               {

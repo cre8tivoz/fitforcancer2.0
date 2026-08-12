@@ -32,7 +32,7 @@ const navItems = [
   { to: '/exercise', label: 'Exercise' },
   { to: '/nutrition', label: 'Nutrition' },
   { to: '/energy-bank', label: 'Energy Bank' },
-  { to: '/assistant', label: 'AI Chat' },
+  { to: '/assistant', label: 'ATHENA' },
   { to: '/resources', label: 'Resources' },
 ];
 
@@ -41,7 +41,7 @@ const mobileNavItems = [
   { to: '/exercise', label: 'Move', icon: Dumbbell },
   { to: '/nutrition', label: 'Eat', icon: UtensilsCrossed },
   { to: '/energy-bank', label: 'Trends', icon: ChartColumnIncreasing },
-  { to: '/assistant', label: 'Chat', icon: MessageSquare },
+  { to: '/assistant', label: 'ATHENA', icon: MessageSquare },
   { to: '/resources', label: 'Resources', icon: BookOpen },
 ];
 

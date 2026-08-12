@@ -26,6 +26,17 @@ describe('ATHENA treatment information routing', () => {
     ).toBe('lymphoma_cll');
   });
 
+  it('does not let the nested word leukaemia steal a full CLL diagnosis', () => {
+    const block = buildTreatmentInformationText(
+      undefined,
+      [{ role: 'user', content: 'I have chronic lymphocytic leukaemia.' }],
+      false,
+    );
+
+    expect(block).toContain('TREATMENT INFORMATION — LYMPHOMA / CLL');
+    expect(block).not.toContain('TREATMENT INFORMATION — LEUKAEMIA\n');
+  });
+
   it('uses the most recent explicit family in conversation history', () => {
     expect(
       detectBloodCancerFamily([
@@ -64,6 +75,41 @@ describe('ATHENA treatment information routing', () => {
         },
       ]),
     ).toBe('myeloma');
+  });
+
+  it('ignores a family that the user says was ruled out', () => {
+    expect(
+      detectBloodCancerFamily([
+        { role: 'user', content: 'They ruled out myeloma; what blood-cancer treatments are there?' },
+      ]),
+    ).toBeNull();
+  });
+
+  it('ignores a diagnosis when the family is followed by ruled out', () => {
+    expect(
+      detectBloodCancerFamily([
+        { role: 'user', content: 'Myeloma was ruled out. They are still working out what blood cancer it is.' },
+      ]),
+    ).toBeNull();
+  });
+
+  it('keeps a positive family when an earlier family in the same message is negated', () => {
+    expect(
+      detectBloodCancerFamily([
+        { role: 'user', content: 'They ruled out myeloma and confirmed lymphoma.' },
+      ]),
+    ).toBe('lymphoma_cll');
+  });
+
+  it('routes a ruled-out family to broad blood information instead of its specific block', () => {
+    const block = buildTreatmentInformationText(
+      'blood_myeloma',
+      [{ role: 'user', content: 'They ruled out myeloma; what blood-cancer treatments are there?' }],
+      true,
+    );
+
+    expect(block).toContain('TREATMENT INFORMATION — BLOOD CANCER');
+    expect(block).not.toContain('TREATMENT INFORMATION — MYELOMA');
   });
 
   it('routes named AML treatment context even when the cancer selector is blank', () => {

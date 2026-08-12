@@ -4,7 +4,14 @@ import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage, ExercisePage, NutritionPage, ChatPage } from './pages';
-import { FatigueState, useFatigueState } from './hooks/useFatigueState';
+import {
+  DAILY_CHECKIN_STORAGE_KEY,
+  FATIGUE_STORAGE_KEY,
+  FATIGUE_ZONE_STORAGE_KEY,
+  FatigueState,
+  useFatigueState,
+} from './hooks/useFatigueState';
+import { clearEnergyHistory, clearPatientContext } from './utils/patientContextStorage';
 import { BookOpen, ChartColumnIncreasing, Dumbbell, House, MessageSquare, UtensilsCrossed } from 'lucide-react';
 
 const EnergyBank = React.lazy(() => import('./components/EnergyBank'));
@@ -102,6 +109,28 @@ const App: React.FC = () => {
     setExerciseZoneFilter((prev) => prev === zone ? null : zone);
   }, []);
 
+  const clearSavedData = useCallback(() => {
+    clearPatientContext();
+    clearEnergyHistory();
+
+    [FATIGUE_STORAGE_KEY, FATIGUE_ZONE_STORAGE_KEY, DAILY_CHECKIN_STORAGE_KEY].forEach((key) => {
+      window.localStorage.removeItem(key);
+      window.sessionStorage.removeItem(key);
+    });
+
+    setFatigueState({
+      score: null,
+      zone: null,
+      cancerType: undefined,
+      exerciseZoneFilter: null,
+      recipeZoneFilter: null,
+      hasLoggedDailyCheckIn: false,
+    });
+    setExerciseZoneFilter(null);
+    setRecipeZoneFilter(null);
+    setEnergyHistoryRefreshKey((current) => current + 1);
+  }, [setFatigueState]);
+
   return (
     <ErrorBoundary>
       <Routes>
@@ -142,7 +171,7 @@ const App: React.FC = () => {
               />
             }
           />
-          <Route path="/resources" element={<React.Suspense fallback={<div>Loading...</div>}><Resources onClearSavedData={() => {}} /></React.Suspense>} />
+          <Route path="/resources" element={<React.Suspense fallback={<div>Loading...</div>}><Resources onClearSavedData={clearSavedData} /></React.Suspense>} />
           <Route path="/why-free" element={<React.Suspense fallback={<div>Loading...</div>}><WhyThisIsFree /></React.Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

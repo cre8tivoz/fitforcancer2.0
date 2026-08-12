@@ -3,6 +3,7 @@ import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
 
 interface ExercisePageProps {
+  fatigueScore?: number | null;
   fatigueZone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
   exerciseZoneFilter: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null;
   isMyelomaPatient: boolean;

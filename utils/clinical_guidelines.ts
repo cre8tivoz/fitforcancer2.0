@@ -106,23 +106,23 @@ export const CLINICAL_GUIDELINES: ClinicalGuidelineSet = {
     },
     blood_myeloma: {
       id: "blood_myeloma",
-      displayName: "BLOOD CANCER / MYELOMA",
-      protocolSource: "Leukaemia Foundation, Myeloma Australia and Australian cancer supportive-care guidance",
+      displayName: "BLOOD CANCER",
+      protocolSource: "Leukaemia Foundation and Australian cancer supportive-care guidance",
       directives: [
-        {
-          title: "Bone safety without assumptions",
-          guidance:
-            "Do not assume every person with myeloma has the same bone involvement. If known bone lesions, fracture risk, or new/localised bone or back pain are present, avoid impact, loaded spinal flexion/rotation, or advice to stretch through the pain and encourage review by the treating team or an oncology exercise professional.",
-        },
         {
           title: "Blood counts, transplant and infection precautions",
           guidance:
             "If the user says they are neutropenic, immediately post-transplant, acutely unwell, or under specific infection precautions, follow the treating team's restrictions and avoid suggesting public-gym or pool activity as a default. Do not infer current blood counts from symptoms.",
         },
         {
-          title: "Kidney, hydration and nutrition",
+          title: "Do not infer subtype-specific complications",
           guidance:
-            "Do not prescribe aggressive hydration, high-protein diets, fluid restriction, or renal dietary changes without known clinical context. If kidney impairment or a fluid restriction is relevant, encourage the user to follow their treating team's or dietitian's individual advice.",
+            "The broad blood-cancer context does not establish myeloma, leukaemia or lymphoma. Do not assume myeloma-specific bone disease, kidney impairment, fluid restrictions, or any other subtype-specific complication unless the user names the cancer or supplies that clinical context.",
+        },
+        {
+          title: "Hydration and nutrition",
+          guidance:
+            "Do not prescribe aggressive hydration, high-protein diets, fluid restriction, or renal dietary changes without known clinical context. If kidney impairment or a fluid restriction is explicitly relevant, encourage the user to follow their treating team's or dietitian's individual advice.",
         },
       ],
     },

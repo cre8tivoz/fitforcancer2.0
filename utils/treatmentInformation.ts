@@ -146,6 +146,7 @@ const TREATMENT_INFORMATION: Record<TreatmentKey, TreatmentInformation> = {
 };
 
 const MYELOMA_PATTERN = /\b(myeloma|multiple\s+myeloma|smouldering\s+myeloma)\b/i;
+const CLL_FULL_PATTERN = /\bchronic\s+lymphocytic\s+leuk(?:aemia|emia)\b/i;
 const LYMPHOMA_PATTERN = /\b(lymphoma|hodgkin|non[-\s]?hodgkin|cll|chronic\s+lymphocytic|dlbcl|follicular\s+lymphoma|mantle\s+cell|small\s+lymphocytic|sll)\b/i;
 const LEUKAEMIA_PATTERN = /\b(leukaemia|leukemia|aml|cml|apml|acute\s+myeloid|acute\s+lymphoblastic|chronic\s+myeloid|acute\s+promyelocytic)\b/i;
 const ALL_ACRONYM_PATTERN = /\bALL\b/;
@@ -156,6 +157,10 @@ const lastMatchIndex = (text: string, pattern: RegExp): number => {
 };
 
 const detectFamilyInMessage = (text: string): BloodCancerFamily | null => {
+  // CLL's full name contains the word "leukaemia", so recognise the complete
+  // subtype before comparing generic family tokens by position.
+  if (CLL_FULL_PATTERN.test(text)) return 'lymphoma_cll';
+
   const candidates: Array<{ family: BloodCancerFamily; index: number }> = [
     { family: 'myeloma', index: lastMatchIndex(text, MYELOMA_PATTERN) },
     { family: 'lymphoma_cll', index: lastMatchIndex(text, LYMPHOMA_PATTERN) },
@@ -190,9 +195,18 @@ export const buildTreatmentInformationText = (
   isMyelomaPatient = false,
 ): string => {
   let key: TreatmentKey | null = null;
+  const detectedBloodFamily = detectBloodCancerFamily(history);
 
-  if (cancerType === 'blood_myeloma' || isMyelomaPatient) {
-    key = detectBloodCancerFamily(history) ?? (isMyelomaPatient ? 'myeloma' : 'blood_generic');
+  // A named blood-cancer family in the conversation is useful even if the
+  // optional cancer selector was never set. Keep an explicitly selected
+  // non-blood cancer authoritative rather than silently overriding it.
+  if (
+    detectedBloodFamily &&
+    (!cancerType || cancerType === 'other' || cancerType === 'blood_myeloma' || isMyelomaPatient)
+  ) {
+    key = detectedBloodFamily;
+  } else if (cancerType === 'blood_myeloma' || isMyelomaPatient) {
+    key = isMyelomaPatient ? 'myeloma' : 'blood_generic';
   } else if (cancerType && cancerType !== 'other') {
     key = cancerType;
   }

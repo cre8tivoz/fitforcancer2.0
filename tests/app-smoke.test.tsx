@@ -92,6 +92,28 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText(/Red Zone Active/i)).toBeInTheDocument();
   });
 
+  it("preserves the current energy score until a replacement is selected", async () => {
+    const user = userEvent.setup();
+    renderWithRouter("/assistant");
+
+    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /change energy score/i }));
+
+    expect(screen.getByText(/Update Your Energy \(currently 8\/10\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/current 8\/10 stays active until you choose a replacement/i)).toBeInTheDocument();
+
+    const historyBefore = JSON.parse(window.localStorage.getItem("energy_history") || "[]");
+    expect(historyBefore).toHaveLength(1);
+    expect(historyBefore[0]).toMatchObject({ score: 8 });
+
+    await user.click(within(nav()).getByText("Home"));
+    expect(screen.getByText(/Red Zone Active/i)).toBeInTheDocument();
+
+    const historyAfter = JSON.parse(window.localStorage.getItem("energy_history") || "[]");
+    expect(historyAfter).toHaveLength(1);
+    expect(historyAfter[0]).toMatchObject({ score: 8 });
+  });
+
   it("sends the first real ATHENA message with the selected energy context", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn().mockResolvedValue({
@@ -119,6 +141,38 @@ describe("App.tsx — smoke", () => {
     const history = JSON.parse(window.localStorage.getItem("energy_history") || "[]");
     expect(history).toHaveLength(1);
     expect(history[0]).toMatchObject({ score: 8, note: "" });
+  });
+
+  it("freezes energy changes and reset while an ATHENA response is pending", async () => {
+    const user = userEvent.setup();
+    let resolveFetch!: (value: unknown) => void;
+    const fetchMock = vi.fn().mockImplementation(
+      () => new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter("/assistant");
+
+    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /change energy score/i }));
+    await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "I feel wiped out today");
+    await user.click(screen.getByRole("button", { name: /send message to ATHENA/i }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: /change energy score/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /set energy score to 4/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /reset ATHENA conversation/i })).toBeDisabled();
+
+    resolveFetch({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: "Let's keep today simple." }),
+    });
+
+    expect(await screen.findByText(/keep today simple/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /set energy score to 4/i })).not.toBeDisabled());
   });
 
   it("explains who ATHENA is and how she is tuned", async () => {

@@ -93,6 +93,17 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     setCancerType(fatigueState.cancerType);
   }, [fatigueState.cancerType]);
 
+  useEffect(() => {
+    if (
+      fatigueState.score !== null &&
+      !hasStartedConversation &&
+      messages.length === 1 &&
+      messages[0]?.content === INITIAL_ATHENA_MESSAGE
+    ) {
+      setMessages(buildInitialMessages(fatigueState.score));
+    }
+  }, [fatigueState.score, hasStartedConversation, messages]);
+
   const speech = UseSpeech((transcript) => {
     setInput((current) => [current, transcript].filter(Boolean).join(' '));
   });
@@ -134,6 +145,20 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         content: `I see you've selected ${score} today. What would you like help with first — nutrition, movement, or just a chat?`,
       },
     ]);
+  };
+
+  const changeEnergyScore = () => {
+    setFatigueState((current) => ({
+      ...current,
+      score: null,
+      zone: null,
+      exerciseZoneFilter: null,
+      recipeZoneFilter: null,
+      hasLoggedDailyCheckIn: false,
+    }));
+    window.sessionStorage.removeItem(DAILY_CHECKIN_STORAGE_KEY);
+    window.localStorage.removeItem(DAILY_CHECKIN_STORAGE_KEY);
+    setIsEnergyPromptMinimized(false);
   };
 
   const resetAthena = () => {
@@ -306,6 +331,14 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 <span className="text-xs">{fatigueState.zone?.split(' ')[0] || '⚪'}</span>
                 <span className="text-[10px] font-bold">{fatigueState.score}/10</span>
               </div>
+              <button
+                type="button"
+                onClick={changeEnergyScore}
+                className="ml-1 text-[9px] font-bold uppercase tracking-wider text-white/55 hover:text-white underline underline-offset-2"
+                aria-label="Change energy score"
+              >
+                Change
+              </button>
             </div>
           )}
 

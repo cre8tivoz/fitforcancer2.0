@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
@@ -52,6 +52,10 @@ const CONTROL_FOCUS_CLASS =
 const Layout: React.FC = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-6">

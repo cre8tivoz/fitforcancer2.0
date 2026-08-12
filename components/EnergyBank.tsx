@@ -131,7 +131,7 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Energy Bank</h1>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-                A simple local record of your fatigue check-ins. It stays on this device until you clear your saved browser data.
+                Energy Bank keeps your latest 30 fatigue check-ins on this device. Adding another check-in after that removes the oldest entry; clearing your saved browser data removes the history.
               </p>
             </div>
           </div>

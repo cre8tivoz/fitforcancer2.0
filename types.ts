@@ -36,6 +36,7 @@ export interface Movement {
   safetyNote: string;
   imageUrl?: string;
   citation?: string;
+  sourceUrl?: string;
 }
 
 export interface ChatMessage {

@@ -12,21 +12,26 @@ describe('HomePage language', () => {
     expect(screen.getByText(/practical, evidence-informed support for cancer-related fatigue/i)).toBeInTheDocument();
     expect(screen.getByText(/green, yellow and red sort ideas by effort\. they are not a diagnosis/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /evidence-informed/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /check your fatigue/i })).toBeInTheDocument();
+    expect(screen.getByText(/0 means no fatigue, 10 means the worst fatigue/i)).toBeInTheDocument();
 
     expect(screen.queryByText(/safest, most effective/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/australian oncology standards/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/designed to combat cancer-related fatigue/i)).not.toBeInTheDocument();
   });
 
-  it('keeps a Red day practical without implying failure or clinical severity', () => {
+  it('keeps a Red day practical and features a Red-zone movement', () => {
     render(<HomePage fatigueZone="🔴 Red" onNavigate={vi.fn()} />);
 
     expect(screen.getByText(/low-battery day\. we'll put the easiest options first\. rest counts too/i)).toBeInTheDocument();
+    expect(screen.getByText('Diaphragmatic Breathing')).toBeInTheDocument();
+    expect(screen.queryByText('Brisk Walking')).not.toBeInTheDocument();
   });
 
-  it('keeps a Green day grounded rather than turning it into a fitness target', () => {
+  it('keeps a Green day grounded and features a Green-zone movement', () => {
     render(<HomePage fatigueZone="🟢 Green" onNavigate={vi.fn()} />);
 
     expect(screen.getByText(/without turning the day into a fitness test/i)).toBeInTheDocument();
+    expect(screen.getByText('Brisk Walking')).toBeInTheDocument();
   });
 });

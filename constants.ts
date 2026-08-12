@@ -1,4 +1,3 @@
-
 import { Recipe, Movement } from './types';
 import bicepCurlsImage from './media/exercises/bicep curls.jpg';
 import briskWalkingImage from './media/exercises/brisk walking.jpg';
@@ -33,43 +32,54 @@ import wallPushUpsImage from './media/exercises/wall push ups.jpg';
 import wallSlidesImage from './media/exercises/wall slides.jpg';
 import zucchiniFetaMuffinsImage from './media/nutrition/zucchini__feta_muffins.jpg';
 import fortifiedMilkyDrinkImage from './media/nutrition/fortified_milky_drink.svg';
+import custardTinnedPearImage from './media/nutrition/custard_tinned_pear.svg';
+import creamedRiceCupImage from './media/nutrition/creamed_rice_cup.svg';
+import microwaveBeansCheeseImage from './media/nutrition/microwave_beans_cheese.svg';
+
+const CANCER_COUNCIL_RECIPES_URL = 'https://www.cancervic.org.au/get-support/guides/managing-daily-life/nutrition/recipes-and-snacks';
+const CANCER_COUNCIL_SIDE_EFFECTS_URL = 'https://www.cancervic.org.au/get-support/guides/managing-daily-life/nutrition/treatment-side-effects-and-nutrition';
+const CANCER_COUNCIL_NUTRITION_URL = 'https://connect.cancer.org.au/cancer-information/living-and-coping/nutrition-for-people-with-cancer';
 
 export const RECIPES: Recipe[] = [
   {
     id: '1',
     title: 'Protein-Packed Berry Smoothie',
     category: 'High Protein',
-    ingredients: ['1 cup (125g) frozen mixed berries', '1 scoop (30g) vanilla protein powder', '150g Greek yogurt', '250ml unsweetened almond milk', '1 tsp (5ml) honey or maple syrup'],
+    ingredients: ['1 cup (125g) frozen mixed berries', '150g Greek yoghurt', '250ml full-cream milk', '2 tbsp full-cream milk powder', '1 tsp honey or maple syrup (optional)'],
     instructions: [
-      'Place the frozen berries, protein powder, and Greek yogurt into a blender.',
-      'Pour in the almond milk and add the honey.',
-      'Blend on high speed for 45-60 seconds until completely smooth.',
-      'Pour into a chilled glass and serve immediately.'
+      'Place the berries, yoghurt, milk and milk powder into a blender.',
+      'Blend until completely smooth.',
+      'Taste and add a little honey or maple syrup if wanted.',
+      'Serve immediately.'
     ],
     imageUrl: proteinPackedBerrySmoothieImage,
     prepTime: '5 mins',
     cookTime: '0 mins',
     fatigueZone: '🟡 Yellow',
-    nutritionalBenefit: 'High protein and antioxidants to support muscle maintenance and recovery.',
-    citation: '(Cancer Council AU)'
+    nutritionalBenefit: 'A smooth, protein- and energy-containing drink that can be easier to manage than a full meal when appetite is low.',
+    safetyNote: 'If berries sting because of mouth sores, swap them for banana or another soft, non-acidic fruit you tolerate.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   },
   {
     id: '2',
     title: 'Ginger & Turmeric Broth',
     category: 'Anti-Nausea',
-    ingredients: ['500ml vegetable or chicken stock', '2cm piece fresh ginger, thinly sliced', '1/2 tsp ground turmeric', 'Juice of 1/2 lemon', 'Pinch of sea salt'],
+    ingredients: ['500ml vegetable or chicken stock', '2cm piece fresh ginger, thinly sliced', '1/2 tsp ground turmeric (optional, for flavour)', 'Squeeze of lemon (optional)', 'Pinch of salt'],
     instructions: [
-      'In a small saucepan, combine the stock, sliced ginger, and turmeric.',
-      'Bring to a gentle simmer over medium heat for 10 minutes to infuse the flavours.',
-      'Remove from heat and strain the broth through a fine-mesh sieve into a mug.',
-      'Stir in the lemon juice and salt before sipping slowly.'
+      'Combine the stock, ginger and optional turmeric in a small saucepan.',
+      'Bring to a gentle simmer for 10 minutes.',
+      'Strain into a mug.',
+      'Add lemon only if it is comfortable for your mouth and stomach.'
     ],
     imageUrl: gingerTurmericBrothImage,
     prepTime: '5 mins',
     cookTime: '10 mins',
     fatigueZone: '🟡 Yellow',
-    nutritionalBenefit: 'Anti-inflammatory and soothing for the digestive system, helping to manage nausea.',
-    citation: '(Cancer Council AU)'
+    nutritionalBenefit: 'A light source of fluid; Cancer Council suggests trying ginger-containing foods or drinks when nausea is a problem.',
+    safetyNote: 'This is not an anti-inflammatory treatment. Omit lemon if you have mouth sores or reflux, and use a cooler temperature if hot drinks are uncomfortable.',
+    citation: 'Cancer Council Victoria — Treatment Side Effects & Nutrition (Jul 2025)',
+    sourceUrl: CANCER_COUNCIL_SIDE_EFFECTS_URL
   },
   {
     id: '3',
@@ -78,55 +88,59 @@ export const RECIPES: Recipe[] = [
     ingredients: ['2 cups (approx. 300g) grated zucchini, excess water squeezed out', '100g feta cheese, crumbled', '2 large eggs, lightly beaten', '150g self-raising flour', '60ml (1/4 cup) olive oil'],
     instructions: [
       'Preheat your oven to 180°C and grease a 6-hole muffin tin.',
-      'In a large bowl, combine the grated zucchini, crumbled feta, and beaten eggs.',
-      'Fold in the flour and olive oil until just combined (do not over-mix).',
-      'Divide the mixture evenly between the muffin holes.',
-      'Bake for 20-25 minutes until golden brown and firm to the touch.'
+      'Combine the zucchini, feta and eggs.',
+      'Fold in the flour and olive oil until just combined.',
+      'Divide between the muffin holes.',
+      'Bake for 20–25 minutes until cooked through.'
     ],
     imageUrl: zucchiniFetaMuffinsImage,
     prepTime: '15 mins',
     cookTime: '25 mins',
     fatigueZone: '🟢 Green',
-    nutritionalBenefit: 'Provides gentle fibre and protein in an easy-to-eat format.',
-    citation: '(Cancer Council AU)'
+    nutritionalBenefit: 'Eggs, feta and oil add protein and energy to a soft savoury snack that can be batch-cooked for later.',
+    safetyNote: 'If dry mouth or swallowing difficulty makes muffins hard to manage, moisten with yoghurt or a sauce, or choose a softer recipe.',
+    citation: 'Cancer Council Australia — Nutrition for People with Cancer',
+    sourceUrl: CANCER_COUNCIL_NUTRITION_URL
   },
   {
     id: '4',
     title: 'Soft Roasted Root Vegetables',
     category: 'Easy to Digest',
-    ingredients: ['200g pumpkin, peeled and cubed', '1 medium sweet potato (approx. 250g), peeled and cubed', '2 carrots, peeled and sliced into rounds', '40ml (2 tbsp) olive oil', '1 tsp dried rosemary or thyme', 'Pinch of salt'],
+    ingredients: ['200g pumpkin, peeled and cubed', '1 medium sweet potato (approx. 250g), peeled and cubed', '2 carrots, peeled and sliced', '40ml (2 tbsp) olive oil', '1 tsp dried rosemary or thyme', 'Pinch of salt'],
     instructions: [
-      'Preheat oven to 200°C and line a baking tray with baking paper.',
-      'Place all prepared vegetables in a large bowl and toss with olive oil, herbs, and salt.',
-      'Spread the vegetables in a single layer on the prepared tray.',
-      'Roast for 35-40 minutes, turning halfway, until the vegetables are very soft and slightly caramelised.',
-      'For extra ease of swallowing, mash the vegetables with a fork before serving.'
+      'Preheat oven to 200°C and line a baking tray.',
+      'Toss the vegetables with olive oil, herbs and salt.',
+      'Roast for 35–40 minutes, turning halfway, until very soft.',
+      'Mash with a fork if a softer texture is easier to eat.'
     ],
     imageUrl: softRoastedRootVegetablesImage,
     prepTime: '10 mins',
     cookTime: '40 mins',
     fatigueZone: '🟢 Green',
-    nutritionalBenefit: 'Rich in beta-carotene and complex carbohydrates for sustained energy release.',
-    citation: '(Cancer Council AU)'
+    nutritionalBenefit: 'Soft vegetables with added oil provide carbohydrate and extra energy, with the texture easy to modify when chewing is tiring.',
+    citation: 'Cancer Council Australia — Nutrition for People with Cancer',
+    sourceUrl: CANCER_COUNCIL_NUTRITION_URL
   },
   {
     id: '5',
     title: 'Poached Chicken & Steamed Greens',
     category: 'High Protein',
-    ingredients: ['1 chicken breast (approx. 200g)', '500ml low-sodium chicken stock', '1 cup broccoli florets', '1 bunch bok choy, trimmed', '1 lemon wedge for serving'],
+    ingredients: ['1 chicken breast (approx. 200g)', '500ml low-sodium chicken stock', '1 cup broccoli florets', '1 bunch bok choy, trimmed', '1 lemon wedge (optional)'],
     instructions: [
-      'In a medium saucepan, bring the chicken stock to a very gentle simmer.',
-      'Carefully place the chicken breast into the stock; it should be fully submerged.',
-      'Poach for 12-15 minutes (depending on thickness) until the chicken is cooked through and opaque.',
-      'While the chicken finishes, place a steamer basket over the pot and steam the broccoli and bok choy for 3-4 minutes until tender-crisp.',
-      'Remove the chicken, slice thinly, and serve alongside the greens with a squeeze of lemon.'
+      'Bring the chicken stock to a gentle simmer.',
+      'Poach the chicken for 12–15 minutes, or until fully cooked through.',
+      'Steam the broccoli and bok choy until tender.',
+      'Slice the chicken and serve with the vegetables.',
+      'Add lemon only if comfortable.'
     ],
     imageUrl: poachedChickenAndSteamedGreensImage,
     prepTime: '10 mins',
     cookTime: '15 mins',
     fatigueZone: '🟢 Green',
-    nutritionalBenefit: 'Lean protein for tissue repair and essential vitamins from dark leafy greens.',
-    citation: '(COSA 2020)'
+    nutritionalBenefit: 'A protein-rich meal that can help meet protein needs and support muscle maintenance during treatment.',
+    safetyNote: 'If your immunity is lowered, cook chicken thoroughly and follow the food-safety advice from your treatment team. Omit lemon if acidic foods irritate mouth sores.',
+    citation: 'Cancer Council Australia — Nutrition for People with Cancer',
+    sourceUrl: CANCER_COUNCIL_NUTRITION_URL
   },
   {
     id: '6',
@@ -134,18 +148,18 @@ export const RECIPES: Recipe[] = [
     category: 'Easy to Digest',
     ingredients: ['100g dried spaghetti or fettuccine', '40g unsalted butter, cubed', '60ml (1/4 cup) reserved pasta water', '1 tbsp finely grated mild parmesan (optional)'],
     instructions: [
-      'Cook the pasta in a large pot of boiling salted water until it is very soft (slightly past al dente for easier digestion).',
-      'Before draining, carefully scoop out 1/4 cup of the starchy pasta water.',
-      'Drain the pasta and return it to the warm pot.',
-      'Add the butter and the reserved pasta water, tossing gently until the butter is melted and the pasta is coated in a glossy sauce.',
-      'Serve immediately, topped with parmesan if desired.'
+      'Cook the pasta until soft.',
+      'Reserve 1/4 cup of pasta water, then drain.',
+      'Return the pasta to the warm pot and add butter and enough reserved water to keep it moist.',
+      'Top with parmesan if wanted.'
     ],
     imageUrl: classicSpaghettiWithButterImage,
     prepTime: '5 mins',
     cookTime: '12 mins',
     fatigueZone: '🟢 Green',
-    nutritionalBenefit: 'Simple carbohydrates that are easy on the stomach when appetite is low.',
-    citation: '(Cancer Council AU)'
+    nutritionalBenefit: 'Soft pasta with butter and optional cheese provides energy in a mild meal when appetite is limited.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   },
   {
     id: '7',
@@ -153,133 +167,208 @@ export const RECIPES: Recipe[] = [
     category: 'Anti-Nausea',
     ingredients: ['2 chicken drumsticks, skin and visible fat removed', '1.5L cold water', '100g (1/2 cup) white long-grain rice', '1 stalk celery, very finely diced', '1 small carrot, very finely diced'],
     instructions: [
-      'Place the chicken drumsticks and water in a large pot. Bring to a boil, then reduce heat to low.',
-      'Simmer gently for 1 hour, occasionally skimming any foam or fat from the surface with a spoon.',
-      'Remove the chicken drumsticks. Once cool enough to handle, shred the meat and discard the bones.',
-      'Add the rice, celery, and carrot to the broth. Simmer for another 20 minutes until the rice is very soft.',
-      'Return the shredded chicken to the pot, heat through, and season with a small pinch of salt.'
+      'Place the chicken and water in a large pot. Bring to a boil, then reduce to a gentle simmer.',
+      'Cook for 1 hour, skimming excess fat if needed.',
+      'Remove the chicken, shred the meat and discard the bones.',
+      'Add rice, celery and carrot and simmer until very soft.',
+      'Return the chicken and heat through. Serve warm, cool or at room temperature depending on what smells easiest to tolerate.'
     ],
     imageUrl: lowFlavourChickenAndRiceSoupImage,
     prepTime: '10 mins',
     cookTime: '1 hour 20 mins',
     fatigueZone: '🟢 Green',
-    nutritionalBenefit: 'Hydrating and nourishing with minimal aroma to avoid triggering nausea.',
-    citation: '(Peter Mac)'
+    nutritionalBenefit: 'A soft meal providing fluid, carbohydrate and protein; cooler serving temperatures can reduce aroma when smells trigger nausea.',
+    safetyNote: 'If your immunity is lowered, cook chicken thoroughly, refrigerate leftovers promptly and follow your treatment team’s food-safety advice.',
+    citation: 'Cancer Council Victoria — Treatment Side Effects & Nutrition (Jul 2025)',
+    sourceUrl: CANCER_COUNCIL_SIDE_EFFECTS_URL
   },
   {
     id: '8',
     title: 'High-Protein Overnight Oats',
     category: 'High Protein',
-    ingredients: ['45g (1/2 cup) rolled oats', '1 scoop (30g) vanilla protein powder', '1 tbsp (15g) LSA mix (Linseed, Sunflower, Almond)', '125ml (1/2 cup) milk of your choice', '40g (1/4 cup) frozen or fresh berries', '1 tsp honey'],
+    ingredients: ['45g (1/2 cup) rolled oats', '150g Greek yoghurt', '125ml (1/2 cup) full-cream milk', '2 tbsp full-cream milk powder', '40g soft berries or mashed banana', '1 tsp honey (optional)'],
     instructions: [
-      'In a clean glass jar or container, combine the oats, protein powder, and LSA mix.',
-      'Pour in the milk and stir thoroughly until the protein powder is fully dissolved.',
-      'Gently fold in the berries and drizzle with honey.',
-      'Seal the container and place in the refrigerator for at least 4 hours, or ideally overnight.',
-      'Stir again before eating; add a splash more milk if the consistency is too thick.'
+      'Combine the oats, yoghurt, milk and milk powder in a container.',
+      'Fold through the fruit.',
+      'Cover and refrigerate for at least 4 hours or overnight.',
+      'Add a splash of milk before eating if you prefer a softer texture.'
     ],
     imageUrl: highProteinOvernightOatsImage,
-    prepTime: '10 mins',
+    prepTime: '8 mins',
     cookTime: '0 mins',
     fatigueZone: '🟡 Yellow',
-    nutritionalBenefit: 'Slow-release energy from oats combined with high protein for satiety.',
-    citation: '(ESPEN)'
+    nutritionalBenefit: 'A make-ahead soft meal with added dairy protein and energy, useful when mornings are more tiring.',
+    safetyNote: 'If diarrhoea is active, individual fibre tolerance can change. If mouth sores are present, use a soft non-acidic fruit such as banana.',
+    citation: 'Cancer Council Victoria — Treatment Side Effects & Nutrition (Jul 2025)',
+    sourceUrl: CANCER_COUNCIL_SIDE_EFFECTS_URL
   },
   {
     id: '9',
     title: 'Red Lentil & Spinach Dhal',
     category: 'High Protein',
-    ingredients: ['200g (1 cup) red lentils, rinsed well', '750ml (3 cups) vegetable stock', '1 tsp ground turmeric', '1 tsp ground cumin', '60g (2 cups) fresh baby spinach', '125g (1/2 cup) Greek yogurt'],
+    ingredients: ['200g (1 cup) red lentils, rinsed well', '750ml (3 cups) vegetable stock', '1 tsp ground turmeric', '1 tsp ground cumin', '60g (2 cups) baby spinach', '125g (1/2 cup) Greek yoghurt'],
     instructions: [
-      'Place the rinsed lentils, vegetable stock, turmeric, and cumin in a medium saucepan.',
-      'Bring to a boil, then reduce heat and simmer for 20-25 minutes until the lentils have broken down and the mixture is thick and creamy.',
-      'Stir in the baby spinach and cook for 1-2 minutes until just wilted.',
-      'Divide into bowls and top with a generous dollop of Greek yogurt for extra protein and creaminess.'
+      'Place lentils, stock, turmeric and cumin in a saucepan.',
+      'Bring to a boil, then simmer for 20–25 minutes until very soft.',
+      'Stir in the spinach until wilted.',
+      'Serve with Greek yoghurt.'
     ],
     imageUrl: redLentilSpinachDahlImage,
     prepTime: '5 mins',
     cookTime: '25 mins',
     fatigueZone: '🟢 Green',
-    nutritionalBenefit: 'Plant-based protein and iron, essential for red blood cell production.',
-    citation: '(COSA 2020)'
+    nutritionalBenefit: 'Lentils and yoghurt provide plant-based protein in a soft meal; Cancer Council includes lentil dhal among its treatment-time meal ideas.',
+    safetyNote: 'If diarrhoea, bowel irritation or excess wind is a problem, legumes may not be comfortable. Choose a lower-fibre option and ask your team if symptoms persist.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   },
   {
     id: '10',
     title: 'Hydrating Watermelon & Mint Cooler',
     category: 'Hydrating',
-    ingredients: ['500g (approx. 3 cups) seedless watermelon, cubed', '5-6 fresh mint leaves', 'Juice of 1/2 lime', '125ml (1/2 cup) coconut water'],
+    ingredients: ['2 cups pre-cut seedless watermelon', '125ml (1/2 cup) chilled water or coconut water', '5–6 mint leaves (optional)', 'Small squeeze of lime only if tolerated'],
     instructions: [
-      'Place the watermelon cubes, mint leaves, lime juice, and coconut water into a blender.',
-      'Pulse several times, then blend on high until completely liquid.',
-      'If you have mouth sores, you may wish to strain the mixture through a sieve to remove any pulp.',
-      'Serve chilled or over ice for a refreshing, hydrating drink.'
+      'Place the watermelon, liquid and optional mint into a blender.',
+      'Blend until smooth.',
+      'Add lime only if you do not have mouth sores or reflux and acidic drinks feel comfortable.',
+      'Sip slowly.'
     ],
     imageUrl: hydratingWatermelonMintCoolerImage,
-    prepTime: '10 mins',
+    prepTime: '3 mins',
     cookTime: '0 mins',
     fatigueZone: '🔴 Red',
-    nutritionalBenefit: 'Excellent for hydration and soothing mouth sores with natural electrolytes.',
-    citation: '(Peter Mac)'
+    nutritionalBenefit: 'A cold fluid option that can help with hydration when plain water is unappealing or difficult to drink.',
+    safetyNote: 'Acidic drinks can sting with mouth sores, so omit lime in that situation. If very cold drinks hurt, let it warm slightly before drinking.',
+    citation: 'Cancer Council Victoria — Treatment Side Effects & Nutrition (Jul 2025)',
+    sourceUrl: CANCER_COUNCIL_SIDE_EFFECTS_URL
   },
   {
     id: '11',
     title: 'The "Crash" Shake',
     category: 'Zero-Prep',
-    ingredients: ['1 cup full-cream milk', '1 scoop protein powder', '1 tbsp peanut butter', '1 small banana'],
+    ingredients: ['1 cup full-cream milk', '2 tbsp full-cream milk powder', '1 tbsp smooth peanut butter', '1 small banana'],
     instructions: [
-      'Blend until smooth (or stir vigorously if a blender is too much work).'
+      'Blend until smooth.',
+      'Sip slowly and refrigerate any unused portion promptly.'
     ],
     imageUrl: theCrashShakeImage,
     prepTime: '2 mins',
     cookTime: '0 mins',
     fatigueZone: '🔴 Red',
-    nutritionalBenefit: 'High protein and healthy fats to stabilize energy during steroid rebound.',
-    citation: '(Peter Mac)'
+    nutritionalBenefit: 'A protein- and energy-dense drink for times when fatigue or low appetite makes a full meal hard to manage.',
+    safetyNote: 'If nausea is active, fatty foods such as peanut butter may be harder to tolerate. Leave it out and use a simpler milk-and-banana shake if that sits better.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   },
   {
     id: '12',
-    title: 'Energy Blitz Greek Yogurt',
-    category: 'Quick Assembly',
-    ingredients: ['1 individual tub Greek yogurt', '1 tbsp honey', '1 tbsp hemp hearts or chia seeds'],
+    title: 'Energy Blitz Greek Yoghurt',
+    category: 'Zero-Prep',
+    ingredients: ['1 individual tub full-fat Greek yoghurt', '1 tsp honey (optional)', '1 tbsp chia or hemp seeds (optional)'],
     instructions: [
-      'Stir honey and seeds directly into the tub.'
+      'Eat the yoghurt straight from the tub or stir in honey if wanted.',
+      'Add seeds only if their texture is comfortable for you.'
     ],
     imageUrl: energyBlitzGreekYoghurtImage,
-    prepTime: '2 mins',
+    prepTime: '1 min',
     cookTime: '0 mins',
-    fatigueZone: '🟡 Yellow',
-    nutritionalBenefit: 'High calcium and protein; seeds provide anti-inflammatory omega-3s.',
-    citation: '(Cancer Council AU)'
+    fatigueZone: '🔴 Red',
+    nutritionalBenefit: 'A ready-to-eat protein-containing snack requiring almost no preparation, useful when energy for cooking is very low.',
+    safetyNote: 'Skip the seeds if you have mouth sores, dry mouth, swallowing difficulty or treatment-related diarrhoea and the texture is uncomfortable.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   },
   {
     id: '13',
     title: 'Sardine "Emergency" Toast',
     category: 'Quick Assembly',
-    ingredients: ['1 tin sardines in oil', '1 slice whole-grain toast (optional)', 'squeeze of lemon'],
+    ingredients: ['1 tin sardines in oil, drained if preferred', '1 slice soft buttered toast or bread (optional)', 'Squeeze of lemon only if tolerated'],
     instructions: [
-      'Mash sardines directly in the tin and eat with a fork or on toast.'
+      'Mash the sardines directly in the tin.',
+      'Eat with a fork or on soft buttered toast.',
+      'Add lemon only if acidic foods are comfortable.'
     ],
     imageUrl: sardineEmergencyToastImage,
     prepTime: '3 mins',
     cookTime: '0 mins',
     fatigueZone: '🟡 Yellow',
-    nutritionalBenefit: 'Lean protein and iron to help combat anemia-related fatigue.',
-    citation: '(COSA 2020)'
+    nutritionalBenefit: 'A fast savoury protein option that requires little preparation.',
+    safetyNote: 'Strong food smells can worsen nausea. Dry toast can also be difficult with dry mouth or mouth sores; use soft bread, add moisture, or choose another option if needed.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   },
   {
     id: '14',
     title: 'Fortified Milky Drink',
     category: 'Zero-Prep',
-    ingredients: ['1 cup warm milk', '1 tbsp milk powder (Sustagen or similar)', '1 tsp Milo/Horlicks'],
+    ingredients: ['1 cup full-cream milk', '1–2 tbsp full-cream milk powder', '1 tsp Milo or Horlicks (optional)'],
     instructions: [
-      'Whisk powder into warm milk for an easy-to-sip calorie boost.'
+      'Whisk the milk powder into warm or cold milk.',
+      'Add Milo or Horlicks if wanted and sip slowly.'
     ],
     imageUrl: fortifiedMilkyDrinkImage,
     prepTime: '2 mins',
     cookTime: '0 mins',
     fatigueZone: '🔴 Red',
-    nutritionalBenefit: 'Liquid calories are easier to consume when too tired for solid meals.',
-    citation: '(Peter Mac)'
+    nutritionalBenefit: 'An enriched drink that adds protein and energy when fatigue or low appetite makes solid food difficult.',
+    safetyNote: 'If you have diabetes, kidney disease, persistent diarrhoea or another condition affecting what you can drink, check the best fortification option with your dietitian or treatment team.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
+  },
+  {
+    id: '15',
+    title: 'Custard & Pear Cup',
+    category: 'Zero-Prep',
+    ingredients: ['1 individual tub ready-to-eat custard', '1/2 cup tinned pear in juice, drained and chopped or mashed'],
+    instructions: [
+      'Spoon the custard into a bowl or eat from the tub.',
+      'Top with the soft tinned pear, chopping or mashing it as needed.'
+    ],
+    imageUrl: custardTinnedPearImage,
+    prepTime: '1 min',
+    cookTime: '0 mins',
+    fatigueZone: '🔴 Red',
+    nutritionalBenefit: 'A soft, ready-to-eat snack with no cooking; Cancer Council specifically recommends tinned fruit and milk-based puddings as easy treatment-time options.',
+    safetyNote: 'If chewing or swallowing is difficult, mash the pear very well or use smooth pureed fruit. Avoid acidic fruits if mouth sores are active.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
+  },
+  {
+    id: '16',
+    title: 'Creamed Rice Cup',
+    category: 'Zero-Prep',
+    ingredients: ['1 individual tub ready-made creamed rice or rice pudding', 'Splash of full-cream milk or cream if a softer texture is wanted', 'Pinch of cinnamon (optional)'],
+    instructions: [
+      'Eat chilled or warm gently according to preference.',
+      'Stir in a little milk or cream if you want it softer or more energy-dense.'
+    ],
+    imageUrl: creamedRiceCupImage,
+    prepTime: '1 min',
+    cookTime: '0 mins',
+    fatigueZone: '🔴 Red',
+    nutritionalBenefit: 'A soft, ready-to-eat milk pudding providing energy and some protein with almost no preparation.',
+    safetyNote: 'If treatment-related diarrhoea has made lactose harder to tolerate, use a lactose-free version or another option recommended by your dietitian.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
+  },
+  {
+    id: '17',
+    title: 'Microwave Beans & Cheese',
+    category: 'Quick Assembly',
+    ingredients: ['1/2 can baked beans', '30g grated cheese', '1 slice soft buttered bread or toast (optional)'],
+    instructions: [
+      'Place the baked beans in a microwave-safe bowl and heat until steaming.',
+      'Stir through or top with grated cheese until melted.',
+      'Eat on its own or with soft buttered bread.'
+    ],
+    imageUrl: microwaveBeansCheeseImage,
+    prepTime: '2 mins',
+    cookTime: '2 mins',
+    fatigueZone: '🟡 Yellow',
+    nutritionalBenefit: 'A quick warm meal combining beans and cheese for protein and energy with minimal preparation.',
+    safetyNote: 'Beans may worsen wind or bowel irritation for some people. If diarrhoea, colitis or significant bloating is active, choose another option and follow your treatment team’s advice.',
+    citation: 'Cancer Council Victoria — Recipes & Snacks (Jun 2026)',
+    sourceUrl: CANCER_COUNCIL_RECIPES_URL
   }
 ];
 

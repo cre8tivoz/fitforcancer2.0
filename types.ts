@@ -19,7 +19,9 @@ export interface Recipe {
   cookTime: string;
   fatigueZone: '🟢 Green' | '🟡 Yellow' | '🔴 Red';
   nutritionalBenefit: string;
+  safetyNote?: string;
   citation?: string;
+  sourceUrl?: string;
 }
 
 export interface Movement {

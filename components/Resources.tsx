@@ -74,9 +74,9 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
       items: [
         {
           title: 'ESSA - Find an Accredited Exercise Physiologist',
-          description: 'Search for an AEP who specialises in oncology to help you manage treatment side effects safely.',
+          description: 'Search for an AEP with oncology experience who can help tailor movement to your treatment, symptoms, and current capacity.',
           url: 'https://www.essa.org.au/find-aep',
-          tags: ['Find a professional', 'Exercise prescriptions'],
+          tags: ['Find a professional', 'Exercise support'],
         },
         {
           title: 'Pinc & Steel Cancer Rehab',
@@ -92,15 +92,15 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
       items: [
         {
           title: 'Dietitians Australia - Find a Dietitian',
-          description: 'Connect with an Accredited Practising Dietitian (APD) with experience in oncology nutrition.',
+          description: 'Connect with an Accredited Practising Dietitian (APD), including dietitians with oncology nutrition experience.',
           url: 'https://dietitiansaustralia.org.au/find-an-apd',
-          tags: ['Find a professional', 'Clinical nutrition'],
+          tags: ['Find a professional', 'Nutrition support'],
         },
         {
           title: 'Cancer Council - Nutrition Services',
-          description: 'Current national Cancer Council information and resources for nutrition during and after cancer treatment.',
+          description: 'Current Cancer Council information for eating well, maintaining nutrition, and managing treatment-related eating problems.',
           url: 'https://connect.cancer.org.au/cancer-information/living-and-coping/nutrition-for-people-with-cancer',
-          tags: ['Information', 'Dietary advice'],
+          tags: ['Information', 'Nutrition'],
         },
       ],
     },
@@ -110,19 +110,19 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
       items: [
         {
           title: 'Beyond Blue',
-          description: 'Providing information and support to help everyone in Australia achieve their best possible mental health.',
+          description: 'Australian mental health information and support for anxiety, depression, and emotional wellbeing.',
           url: 'https://www.beyondblue.org.au/',
-          tags: ['Mental health', 'Anxiety', 'Depression'],
+          tags: ['Mental health', 'Support'],
         },
         {
           title: 'Lifeline Australia',
-          description: '24/7 crisis support and suicide prevention services for all Australians experiencing emotional distress.',
+          description: '24/7 crisis support for Australians experiencing emotional distress.',
           url: 'https://www.lifeline.org.au/',
           tags: ['Crisis support', '24/7 service'],
         },
         {
           title: 'Canteen',
-          description: 'Supporting young people (12-25) when cancer turns their world upside down.',
+          description: 'Support for young people aged 12-25 affected by cancer.',
           url: 'https://www.canteen.org.au/',
           tags: ['Youth support', 'Family'],
         },
@@ -134,27 +134,27 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
       items: [
         {
           title: 'Cancer Council Australia',
-          description: 'The leading national body for cancer control, providing support services and information.',
+          description: 'National cancer information, practical support, and links to state and territory Cancer Councils.',
           url: 'https://www.cancer.org.au/',
           tags: ['General support', 'Information'],
         },
         {
           title: 'Myeloma Australia',
-          description: 'Dedicated to supporting those living with myeloma through specialised nurses and community groups.',
+          description: 'Specialist information, nurses, and community support for people living with myeloma.',
           url: 'https://myeloma.org.au/',
           tags: ['Specialist support', 'Nurses'],
         },
         {
           title: 'Breast Cancer Network Australia (BCNA)',
-          description: 'Ensuring Australians affected by breast cancer receive the very best support and care.',
+          description: 'Information, advocacy, and peer support for Australians affected by breast cancer.',
           url: 'https://www.bcna.org.au/',
           tags: ['Breast cancer', 'Support network'],
         },
         {
           title: 'Leukaemia Foundation',
-          description: 'Supporting people living with blood cancer, including leukaemia, lymphoma, and myeloma.',
+          description: 'Support and information for people living with blood cancer, including leukaemia, lymphoma, and myeloma.',
           url: 'https://www.leukaemia.org.au/',
-          tags: ['Blood cancer', 'Research'],
+          tags: ['Blood cancer', 'Support'],
         },
       ],
     },
@@ -162,79 +162,74 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
 
   const citations = [
     {
-      category: 'Exercise & Physical Activity (Oncology Standards)',
+      category: 'Exercise & Physical Activity Guidance',
       icon: <Activity className="h-5 w-5 text-blue-600" />,
       sources: [
         {
           title: 'COSA Position Statement on Exercise in Cancer Care',
-          description: 'The foundational Australian document mandating that exercise be a standard part of cancer care to counteract side effects like fatigue.',
+          description: 'Australian position statement supporting exercise as part of cancer care, with activity individualised to the person, their treatment, and current capacity.',
           url: 'https://www.cosa.org.au/groups/exercise-cancer-care/position-statement/',
         },
         {
           title: 'ESSA Consensus Statement - Exercise & Cancer',
-          description: 'Provides the clinical framework for Accredited Exercise Physiologists (AEPs) to prescribe tailored, safe movement based on the FITT principle.',
+          description: 'Professional guidance on individualising exercise for people affected by cancer, including aerobic and resistance activity.',
           url: 'https://www.essa.org.au/Public/Public/News/ESSA_Position_Statement_on_Exercise_and_Cancer.aspx',
         },
         {
           title: 'Cancer Council Australia - Cancer-Related Fatigue',
-          description: 'Current Australian guidance distinguishing cancer-related fatigue from ordinary tiredness and outlining practical management, including regular exercise and eating well.',
+          description: 'Current Australian guidance explaining cancer-related fatigue and practical management approaches, including activity, pacing, nutrition, and clinical review when needed.',
           url: 'https://www.cancer.org.au/cancer-information/screening-tests-and-treatments/cancer-side-effects/fatigue',
         },
         {
           title: 'Cancer Council Australia - Exercise & Cancer',
-          description: 'Current national information on the benefits of exercise during and after cancer treatment, with activity tailored to symptoms, capacity, and clinical advice.',
+          description: 'Patient-facing information about exercise during and after cancer treatment, with activity adjusted to symptoms, capacity, and advice from the treating team.',
           url: 'https://connect.cancer.org.au/cancer-information/living-and-coping/exercise-for-people-with-cancer',
         },
         {
           title: 'Myeloma Australia - Exercise Info Sheet',
-          description: 'Evidence-based justifications for supervised, individualised programmes that prioritise bone health.',
+          description: 'Myeloma-specific information about movement, supervision, and bone-health considerations.',
           url: 'https://myeloma.org.au/resources/exercise-and-myeloma/',
         },
       ],
     },
     {
-      category: 'Nutrition & Dietetics (Oncology Standards)',
+      category: 'Nutrition & Dietetics Guidance',
       icon: <Utensils className="h-5 w-5 text-orange-600" />,
       sources: [
         {
           title: 'Cancer Council Victoria - Nutrition for People Living with Cancer',
-          description: 'Defines the "Nourishing Diet" (High Protein High Energy) required to manage treatment-induced malnutrition.',
+          description: 'Practical treatment-time nutrition information, including nourishing foods, maintaining intake, and managing common eating difficulties.',
           url: 'https://www.cancervic.org.au/get-support/nutrition-and-cancer',
         },
         {
           title: 'COSA Cancer-Related Malnutrition Toolkit',
-          description: 'A clinical implementation guide used to screen and treat nutrition-impact symptoms.',
+          description: 'Clinical resources for recognising and managing cancer-related malnutrition and nutrition-impact symptoms.',
           url: 'https://www.cosa.org.au/groups/nutrition/malnutrition-toolkit/',
         },
         {
           title: 'ESPEN Practical Guideline: Clinical Nutrition in Cancer',
-          description: 'Peer-reviewed evidence supporting protein intake above 1 g/kg/day and energy requirement management.',
+          description: 'Peer-reviewed clinical nutrition guidance covering energy, protein, and nutrition support during cancer care.',
           url: 'https://www.espen.org/guidelines-home/espen-guidelines',
         },
         {
           title: 'Peter MacCallum Cancer Centre Resources',
-          description: 'Specific Australian guidelines for nourishing diets during chemotherapy and steroid cycles.',
+          description: 'Australian cancer nutrition information and practical resources for people experiencing treatment-related eating problems.',
           url: 'https://www.petermac.org/services/support-services/nutrition/nutrition-resources',
         },
       ],
     },
     {
-      category: 'Therapeutic Movement & Safety (Physiotherapy Standards)',
+      category: 'Movement, Rehabilitation & Safety',
       icon: <Heart className="h-5 w-5 text-rose-600" />,
       sources: [
         {
-          title: 'Australian Physiotherapy Association (APA) - Five Facts on Cancer',
-          description: 'Establishes exercise as the number one treatment for cancer-related fatigue (CRF).',
+          title: 'Australian Physiotherapy Association (APA)',
+          description: 'Professional physiotherapy information relevant to mobility, rehabilitation, symptom management, and recovery.',
           url: 'https://australian.physio/',
         },
         {
-          title: 'APA - Physiotherapy Cancer Care Continuum',
-          description: 'Justifies the use of prehabilitation and restorative movement to improve recovery times.',
-          url: 'https://australian.physio/',
-        },
-        {
-          title: 'Exercise Modification & Progression (Cancer Exercise Toolkit)',
-          description: 'Clinical rules for regressing exercise based on hematological markers and bone disease.',
+          title: 'Cancer Exercise Toolkit',
+          description: 'Australian resources for adapting exercise to treatment effects, symptoms, functional capacity, and safety considerations.',
           url: 'https://cancerexercisetoolkit.org.au/',
         },
       ],
@@ -245,10 +240,37 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
       sources: [
         {
           title: 'Dai et al. (2026) - Exercise Dose and Cancer-Related Fatigue',
-          description: 'Systematic review and dose-response network meta-analysis in breast cancer survivors after primary treatment. It suggests fatigue benefit varies by exercise dose and baseline fatigue, but the certainty is low to very low, so the findings should not be used as fixed clinical targets.',
+          description: 'Systematic review and dose-response network meta-analysis in breast cancer survivors after primary treatment. It suggests fatigue benefit varies by exercise dose and baseline fatigue, but certainty is low to very low, so the findings should not be treated as fixed targets.',
           url: 'https://www.frontiersin.org/journals/public-health/articles/10.3389/fpubh.2026.1795975/full',
         },
       ],
+    },
+  ];
+
+  const articles = [
+    {
+      title: 'Managing Cancer-Related Fatigue',
+      description: 'Cancer Council Australia guidance on cancer-related fatigue, practical management, pacing, activity, and when to speak with your treatment team.',
+      url: 'https://www.cancer.org.au/cancer-information/screening-tests-and-treatments/cancer-side-effects/fatigue',
+      cta: 'Read guide',
+    },
+    {
+      title: 'Exercise Safety for Myeloma',
+      description: 'Myeloma-specific considerations for bone health, supervision, and safe movement.',
+      url: 'https://myeloma.org.au/resources/exercise-and-myeloma/',
+      cta: 'Read article',
+    },
+    {
+      title: 'Nutrition During Treatment',
+      description: 'Practical information for appetite changes, nausea, taste changes, and maintaining nutrition during treatment.',
+      url: 'https://www.cancervic.org.au/get-support/nutrition-and-cancer',
+      cta: 'View resources',
+    },
+    {
+      title: 'Mental Health & Cancer',
+      description: 'Information about the emotional impact of cancer and where to find psychological support in Australia.',
+      url: 'https://www.beyondblue.org.au/the-facts/cancer-and-mental-health',
+      cta: 'Access support',
     },
   ];
 
@@ -258,7 +280,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         <div className="flex items-start gap-3">
           <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-600" />
           <p className="text-xs leading-relaxed text-amber-800">
-            <strong>Clinical Safety Note:</strong> This evidence base is provided to support your journey. Please ensure you have medical clearance from your oncology team before starting any new exercise or nutrition protocols.
+            <strong>Using Fit for Cancer:</strong> This app provides evidence-informed self-management support. Your fatigue check-in helps organise content by your current energy; it is not a diagnosis, clinical triage tool, or treatment prescription. If you develop new or worsening symptoms, or are unsure what is safe for you, contact your treating team.
           </p>
         </div>
       </div>
@@ -269,7 +291,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
           <h1 className="text-3xl font-bold">Evidence & Resources</h1>
         </div>
         <p className="max-w-2xl opacity-80">
-          To comply with TGA requirements for medical software, this application cites the following Australian evidence-based guidelines and resources used to inform our exercise, nutrition, and AI assistant data.
+          These are the Australian guidance, support services, and research sources used to inform Fit for Cancer&apos;s movement, nutrition, fatigue-support, and assistant content. We link to the source material so you can see where the information comes from and explore it in more detail.
         </p>
         <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Evidence reviewed: August 2026</p>
       </header>
@@ -284,16 +306,16 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         </div>
 
         <div className="divide-y divide-slate-100">
-          {supportResources.map((section, sectionIndex) => (
-            <div key={sectionIndex} className="p-6">
+          {supportResources.map((section) => (
+            <div key={section.category} className="p-6">
               <div className="mb-4 flex items-center gap-2">
                 {section.icon}
                 <h3 className="text-sm font-semibold text-slate-900">{section.category}</h3>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {section.items.map((item, itemIndex) => (
+                {section.items.map((item) => (
                   <a
-                    key={itemIndex}
+                    key={item.title}
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -302,14 +324,14 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
                   >
                     <div className="mb-2 flex items-start justify-between gap-4">
                       <h4 className="text-sm font-bold text-slate-900 transition-colors group-hover:text-neon-blue">{item.title}</h4>
-                      <span className="rounded-lg bg-white p-1.5 text-slate-400 transition-shadow transition-transform transition-colors group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
+                      <span className="rounded-lg bg-white p-1.5 text-slate-400 transition-colors group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </span>
                     </div>
                     <p className="mb-3 flex-grow text-xs leading-relaxed text-slate-600">{item.description}</p>
                     <div className="flex flex-wrap gap-2">
-                      {item.tags.map((tag, tagIndex) => (
-                        <span key={tagIndex} className="rounded border border-slate-100 bg-white px-2 py-1 text-xs font-medium text-slate-500">
+                      {item.tags.map((tag) => (
+                        <span key={tag} className="rounded border border-slate-100 bg-white px-2 py-1 text-xs font-medium text-slate-500">
                           {tag}
                         </span>
                       ))}
@@ -324,7 +346,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         <div className="border-t border-slate-100 bg-slate-50 p-4 text-center">
           <p className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
             <MessageSquare className="h-3.5 w-3.5" />
-            Need immediate support? Call Cancer Council on{' '}
+            Need Cancer Council support? Call{' '}
             <a href="tel:131120" className="font-bold text-slate-900 hover:underline" aria-label="Call Cancer Council on 1 3 1 1 2 0">
               13 11 20
             </a>
@@ -339,99 +361,99 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         >
           <div className="prose prose-slate max-w-none">
             <p className="mb-6 text-slate-600">
-              This guide is designed for anyone navigating a health journey, focusing on energy management rather than specific diagnoses.
+              Cancer treatment can make energy unpredictable. The traffic-light system is a simple way to organise movement and food ideas around how you feel today, without pretending a single score can explain everything happening in your body.
             </p>
 
             <h3 className="mb-3 text-lg font-bold text-slate-900">Why the Traffic Light System?</h3>
             <p className="mb-4 text-slate-600">
-              Managing a health condition can make your energy levels feel like a moving target. This tool uses a 0-10 scale and a traffic light system to help you match your daily activities to your current energy budget.
+              You rate your fatigue from 0-10. Fit for Cancer uses that self-reported check-in to prioritise content with a matching effort level. You can update the score or view another zone whenever you want.
             </p>
 
             <ul className="mb-8 space-y-4">
               <li className="flex gap-3">
-                <span className="text-xl">Green</span>
+                <span className="text-xl">🟢</span>
                 <div>
                   <strong className="text-slate-900">Green (Score 0-3):</strong>
-                  <p className="text-slate-600">Your energy is stable. This is the time to focus on building your strength and stamina.</p>
+                  <p className="text-slate-600">Lower fatigue today. The app surfaces more active movement and standard-prep food ideas.</p>
                 </div>
               </li>
               <li className="flex gap-3">
-                <span className="text-xl">Yellow</span>
+                <span className="text-xl">🟡</span>
                 <div>
                   <strong className="text-slate-900">Yellow (Score 4-6):</strong>
-                  <p className="text-slate-600">Your energy is dipping. We pivot to active rest, with gentle movements that keep you mobile without draining you.</p>
+                  <p className="text-slate-600">Moderate fatigue. The emphasis shifts toward shorter movement, easier preparation, and conserving some energy for the rest of your day.</p>
                 </div>
               </li>
               <li className="flex gap-3">
-                <span className="text-xl">Red</span>
+                <span className="text-xl">🔴</span>
                 <div>
                   <strong className="text-slate-900">Red (Score 7-10):</strong>
-                  <p className="text-slate-600">Your energy is low. The priority shifts to recovery and energy conservation. We focus on breathing and gentle circulation to help your body recharge.</p>
+                  <p className="text-slate-600">Higher fatigue. The app prioritises restorative or very low-effort movement and food options that require little preparation.</p>
                 </div>
               </li>
             </ul>
 
-            <h3 className="mb-3 text-lg font-bold text-slate-900">How it helps you:</h3>
+            <h3 className="mb-3 text-lg font-bold text-slate-900">What the system does:</h3>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                <h4 className="mb-2 font-bold text-slate-900">Safety First</h4>
-                <p className="text-sm text-slate-600">Automatically filters out high-intensity activities when you are in a high-fatigue state.</p>
+                <h4 className="mb-2 font-bold text-slate-900">Lower-effort first</h4>
+                <p className="text-sm text-slate-600">When fatigue is high, lower-effort options are surfaced first rather than asking you to push through.</p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                <h4 className="mb-2 font-bold text-slate-900">Smart Nutrition</h4>
-                <p className="text-sm text-slate-600">Matches meal ideas to your energy budget, from standard cooking when you are feeling Green to zero-prep Red Zone snacks.</p>
+                <h4 className="mb-2 font-bold text-slate-900">Treatment-aware nutrition</h4>
+                <p className="text-sm text-slate-600">Recipe cards include practical side-effect notes and direct links to the guidance that informed them.</p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                <h4 className="mb-2 font-bold text-slate-900">Empowerment</h4>
-                <p className="text-sm text-slate-600">You are the expert on your body. Update your score at any time to see the recommendations change instantly.</p>
+                <h4 className="mb-2 font-bold text-slate-900">You stay in control</h4>
+                <p className="text-sm text-slate-600">The score is a filter, not a verdict. You can change it, browse other zones, or choose an option that better matches how you feel.</p>
               </div>
             </div>
           </div>
         </CollapsibleCard>
 
         <CollapsibleCard
-          title="Clinician Summary: Technical Evidence Base"
+          title="How Fit for Cancer Uses Evidence"
           icon={<Stethoscope className="h-6 w-6 text-blue-600" />}
         >
           <div className="prose prose-slate max-w-none">
-            <p className="mb-6 italic text-slate-600">A technical overview for oncologists, haematologists, and allied health professionals.</p>
+            <p className="mb-6 italic text-slate-600">A technical overview for clinicians, allied health professionals, and anyone who wants to understand how the app translates evidence into content.</p>
 
-            <h3 className="mb-3 text-lg font-bold text-slate-900">Clinical Framework:</h3>
+            <h3 className="mb-3 text-lg font-bold text-slate-900">Evidence translation, not clinical triage</h3>
             <p className="mb-6 text-slate-600">
-              The Fit For Cancer Assistant is built on the COSA Position Statement on Exercise in Cancer Care and ESSA Consensus Guidelines. It utilises a Visual Analogue Scale (VAS) for fatigue to dynamically triage patients into three intensity tiers.
+              Fit for Cancer uses a simple 0-10 self-reported fatigue check-in to organise content into three effort bands. It does not use that score to diagnose a condition, determine clinical severity, or make treatment decisions.
             </p>
 
             <div className="space-y-6">
               <section>
                 <h4 className="mb-2 flex items-center gap-2 font-bold text-slate-900">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-700">1</span>
-                  Exercise Triage
+                  Movement content
                 </h4>
                 <ul className="list-disc space-y-2 pl-10 text-slate-600">
-                  <li><strong>Red Zone (Severe Fatigue):</strong> Prioritises restorative movement to prevent deconditioning while minimising orthostatic strain, such as supine ankle pumps and diaphragmatic breathing.</li>
-                  <li><strong>Yellow and Green Zones:</strong> Scales intensity from low-load mobility to resistance-based strength training, aligning with APA Oncology Physiotherapy standards.</li>
+                  <li>Movement ideas are grouped by relative effort, with lower-effort seated, supine, breathing, and mobility options prioritised on higher-fatigue days.</li>
+                  <li>Published Australian exercise-oncology guidance informs the overall direction, while individual movement claims and safety notes are reviewed separately against their sources.</li>
                 </ul>
               </section>
 
               <section>
                 <h4 className="mb-2 flex items-center gap-2 font-bold text-slate-900">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-700">2</span>
-                  Nutritional Intervention
+                  Nutrition content
                 </h4>
                 <ul className="list-disc space-y-2 pl-10 text-slate-600">
-                  <li>Recommendations focus on High Protein High Energy (HPHE) snacks and meal frequency to combat treatment-induced sarcopenia and malnutrition.</li>
-                  <li>Specific logic is included for steroid rebound, such as dexamethasone, prioritising hydration and low-glycaemic fuel to manage the post-steroid crash.</li>
+                  <li>Food ideas are organised around preparation effort, protein and energy density, hydration, and common treatment-related eating difficulties.</li>
+                  <li>Recipe cards include source links and treatment-side-effect notes where a food may not suit everyone, rather than presenting any recipe as a treatment.</li>
                 </ul>
               </section>
 
               <section>
                 <h4 className="mb-2 flex items-center gap-2 font-bold text-slate-900">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-700">3</span>
-                  TGA & Safety Guardrails
+                  Safety boundaries
                 </h4>
                 <ul className="list-disc space-y-2 pl-10 text-slate-600">
-                  <li>The system includes active contraindication alerts for bone pain and localised discomfort, particularly relevant for patients with metastatic disease or multiple myeloma.</li>
-                  <li>All guidance is designed as a supportive adjunct to clinical care and includes mandatory medical consultation disclaimers.</li>
+                  <li>The app highlights situations where symptoms, bone-health concerns, treatment effects, or uncertainty should prompt input from the treating team or an appropriate allied health professional.</li>
+                  <li>Evidence links are shown openly so users and clinicians can check the source material rather than relying on an unexplained recommendation.</li>
                 </ul>
               </section>
             </div>
@@ -443,32 +465,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
           icon={<BookOpen className="h-6 w-6 text-indigo-600" />}
         >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {[
-              {
-                title: 'Managing Cancer-Related Fatigue',
-                description: 'Current Cancer Council Australia guidance on cancer-related fatigue, practical management, pacing, activity, and when to speak with your treatment team.',
-                url: 'https://www.cancer.org.au/cancer-information/screening-tests-and-treatments/cancer-side-effects/fatigue',
-                cta: 'Read guide',
-              },
-              {
-                title: 'Exercise Safety for Myeloma',
-                description: 'Specific considerations for bone health and safe movement for multiple myeloma patients.',
-                url: 'https://myeloma.org.au/resources/exercise-and-myeloma/',
-                cta: 'Read article',
-              },
-              {
-                title: 'Nutrition During Chemotherapy',
-                description: 'Tips for managing nausea, taste changes, and maintaining your weight during active treatment cycles.',
-                url: 'https://www.cancervic.org.au/get-support/nutrition-and-cancer',
-                cta: 'View resources',
-              },
-              {
-                title: 'Mental Health & Cancer',
-                description: 'Understanding the emotional impact of a diagnosis and where to find psychological support in Australia.',
-                url: 'https://www.beyondblue.org.au/the-facts/cancer-and-mental-health',
-                cta: 'Access support',
-              },
-            ].map((article) => (
+            {articles.map((article) => (
               <a
                 key={article.title}
                 href={article.url}
@@ -495,12 +492,12 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
           <div className="space-y-6 text-sm leading-7 text-slate-600">
             <section className="space-y-2">
               <p><strong className="text-slate-900">1. Your Data Stays With You (No Accounts)</strong></p>
-              <p>Currently, Fit For Cancer operates entirely without user accounts. Your triage information (such as your energy levels and Quick Notes) is stored locally on your own device using your browser&apos;s temporary memory. We do not store your personal health profile in a central database. When you close your browser or clear your cache, your local session resets.</p>
+              <p>Currently, Fit For Cancer operates entirely without user accounts. Your fatigue check-in information (such as your energy levels and Quick Notes) is stored locally on your own device using your browser&apos;s temporary memory. We do not store your personal health profile in a central database. When you close your browser or clear your cache, your local session resets.</p>
             </section>
 
             <section className="space-y-2">
               <p><strong className="text-slate-900">2. The AI Health Assistant</strong></p>
-              <p>When you interact with the Health Assistant, your messages and local triage context are transmitted securely via an encrypted connection to generate your personalised advice. This data is completely anonymous. It is not linked to your name, email, or identity. Furthermore, our secure backend ensures your private conversations are never used to train public AI models.</p>
+              <p>When you interact with the Health Assistant, your messages and local check-in context are transmitted securely via an encrypted connection to generate a context-aware response. This data is completely anonymous. It is not linked to your name, email, or identity. Furthermore, our secure backend ensures your private conversations are never used to train public AI models.</p>
             </section>
 
             <section className="space-y-2">
@@ -510,7 +507,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
 
             <section className="space-y-2">
               <p><strong className="text-slate-900">4. Australian Privacy Principles (APPs)</strong></p>
-              <p>We are guided by the Australian Privacy Act 1988, specifically focusing on Data Minimisation. We only ask for the minimum amount of context required to provide safe, evidence-based support for your current session. Because we do not collect identifiable electronic health records (EHR), you remain in complete, anonymous control of your digital footprint.</p>
+              <p>We are guided by the Australian Privacy Act 1988, specifically focusing on data minimisation. We only ask for the minimum amount of context required to provide useful, evidence-informed support for your current session. Because we do not collect identifiable electronic health records (EHR), you remain in control of the information you choose to enter.</p>
             </section>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -532,16 +529,16 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {citations.map((section, sectionIndex) => (
-          <section key={sectionIndex} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {citations.map((section) => (
+          <section key={section.category} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-6 py-4">
               {section.icon}
               <h2 className="text-base font-semibold text-slate-900">{section.category}</h2>
             </div>
             <div className="divide-y divide-slate-100">
-              {section.sources.map((source, sourceIndex) => (
+              {section.sources.map((source) => (
                 <a
-                  key={sourceIndex}
+                  key={source.title}
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -553,7 +550,7 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
                       <h3 className="font-bold text-slate-900 transition-colors group-hover:text-neon-blue">{source.title}</h3>
                       <p className="text-sm leading-relaxed text-slate-600">{source.description}</p>
                     </div>
-                    <span className="rounded-lg bg-slate-100 p-2 text-slate-400 transition-shadow transition-transform transition-colors group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
+                    <span className="rounded-lg bg-slate-100 p-2 text-slate-400 transition-colors group-hover:bg-neon-blue/10 group-hover:text-neon-blue">
                       <ExternalLink className="h-5 w-5" />
                     </span>
                   </div>
@@ -564,17 +561,17 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-rose-100 bg-rose-50 p-8 shadow-sm">
-        <h3 className="mb-3 flex items-center gap-2 font-bold text-rose-900">
-          <ShieldAlert className="h-5 w-5" />
-          TGA Compliance & Clinical Safety
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 shadow-sm">
+        <h3 className="mb-3 flex items-center gap-2 font-bold text-slate-900">
+          <ShieldAlert className="h-5 w-5 text-slate-600" />
+          Using Fit for Cancer safely
         </h3>
-        <div className="space-y-4 text-sm leading-relaxed text-rose-800">
+        <div className="space-y-3 text-sm leading-relaxed text-slate-600">
           <p>
-            <strong>Mandatory Medical Disclaimer:</strong> This application is designed to <strong>complement</strong>, rather than replace, professional medical advice. The information provided is for educational purposes and is aligned with Australian oncology standards (COSA & ESSA).
+            Fit for Cancer is an evidence-informed support tool, not a replacement for individualised medical, exercise physiology, physiotherapy, or dietetic care. Use the ideas here alongside the advice you receive from your treating team.
           </p>
           <p>
-            It does not replace the personalised guidance of your <strong>medical oncologist, haematologist, or specialised physiotherapist</strong>. All clinical advice is traceable to the recognised Australian authorities listed above. If you are experiencing any new or worsening symptoms, please contact your medical team immediately.
+            If something feels wrong, symptoms are new or worsening, or your treatment team has given you specific restrictions, follow their advice and seek appropriate clinical support rather than relying on the app.
           </p>
         </div>
       </div>

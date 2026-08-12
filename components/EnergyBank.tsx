@@ -88,7 +88,6 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
     return `Last ${recentEntries.length} check-ins: mostly ${dominantZone} zone.`;
   }, [recentEntries]);
 
-
   if (history.length === 0) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -100,7 +99,7 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Energy Bank</h1>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-                Track how your energy changes over time and keep a personal log you can share with your care team.
+                Track how your fatigue changes over time and keep a personal log you can share with your care team.
               </p>
             </div>
           </div>
@@ -112,8 +111,7 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
           </div>
           <h2 className="mt-4 text-lg font-bold text-slate-900">No check-ins saved yet</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-slate-600">
-            Your Energy Bank will start filling up after you choose a fatigue score and send your first Quick Note in
-            the Health Assistant.
+            Your Energy Bank starts filling up as soon as you choose a fatigue score in ATHENA.
           </p>
         </section>
       </div>
@@ -133,8 +131,7 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Energy Bank</h1>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-                A simple local record of your fatigue scores and Quick Notes. This stays on your device and is separate
-                from the live clinical context used by the AI assistant.
+                Energy Bank keeps your latest 30 fatigue check-ins on this device. Adding another check-in after that removes the oldest entry; clearing your saved browser data removes the history.
               </p>
             </div>
           </div>
@@ -156,8 +153,8 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">30-Day Energy Trend</h2>
-            <p className="text-sm leading-6 text-slate-500">Scores are plotted from 0 to 10 so your zones stay easy to read.</p>
+            <h2 className="text-lg font-bold text-slate-900">30-Day Fatigue Trend</h2>
+            <p className="text-sm leading-6 text-slate-500">Scores run from 0 = no fatigue to 10 = worst fatigue, matching your traffic-light zones.</p>
           </div>
         </div>
 
@@ -209,10 +206,10 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
                     <div className="space-y-1" key={entry.id}>
                       <p className="text-xs font-bold text-slate-900">Score: {value}/10</p>
                       <p className="max-w-52 text-xs leading-5 text-slate-500">
-                        {entry.note || 'No Quick Note saved for this check-in.'}
+                        {entry.note || 'No note saved for this check-in.'}
                       </p>
                     </div>,
-                    'Energy',
+                    'Fatigue',
                   ];
                 }}
               />
@@ -251,7 +248,7 @@ const EnergyBank: React.FC<EnergyBankProps> = ({ refreshKey = 0, currentFatigueS
                   <span className="text-xs font-medium text-slate-500">{zone} zone</span>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-700">
-                  {entry.note || 'No Quick Note saved.'}
+                  {entry.note || 'No note saved.'}
                 </p>
               </article>
             );

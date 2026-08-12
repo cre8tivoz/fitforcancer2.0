@@ -152,18 +152,26 @@ const LEUKAEMIA_PATTERN = /\b(leukaemia|leukemia|aml|cml|apml|acute\s+myeloid|ac
 const ALL_ACRONYM_PATTERN = /\bALL\b/;
 
 const lastMatchIndex = (text: string, pattern: RegExp): number => {
-  const match = text.match(pattern);
-  return match?.index ?? -1;
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const globalPattern = new RegExp(pattern.source, flags);
+  let lastIndex = -1;
+  let match: RegExpExecArray | null;
+
+  while ((match = globalPattern.exec(text)) !== null) {
+    lastIndex = match.index;
+    if (match[0].length === 0) globalPattern.lastIndex += 1;
+  }
+
+  return lastIndex;
 };
 
 const detectFamilyInMessage = (text: string): BloodCancerFamily | null => {
-  // CLL's full name contains the word "leukaemia", so recognise the complete
-  // subtype before comparing generic family tokens by position.
-  if (CLL_FULL_PATTERN.test(text)) return 'lymphoma_cll';
-
   const candidates: Array<{ family: BloodCancerFamily; index: number }> = [
     { family: 'myeloma', index: lastMatchIndex(text, MYELOMA_PATTERN) },
-    { family: 'lymphoma_cll', index: lastMatchIndex(text, LYMPHOMA_PATTERN) },
+    {
+      family: 'lymphoma_cll',
+      index: Math.max(lastMatchIndex(text, CLL_FULL_PATTERN), lastMatchIndex(text, LYMPHOMA_PATTERN)),
+    },
     {
       family: 'leukaemia',
       index: Math.max(lastMatchIndex(text, LEUKAEMIA_PATTERN), lastMatchIndex(text, ALL_ACRONYM_PATTERN)),
@@ -206,7 +214,9 @@ export const buildTreatmentInformationText = (
   ) {
     key = detectedBloodFamily;
   } else if (cancerType === 'blood_myeloma' || isMyelomaPatient) {
-    key = isMyelomaPatient ? 'myeloma' : 'blood_generic';
+    // `blood_myeloma` and the legacy boolean are broad blood-cancer signals.
+    // Neither is proof that the user has myeloma without an explicit mention.
+    key = 'blood_generic';
   } else if (cancerType && cancerType !== 'other') {
     key = cancerType;
   }

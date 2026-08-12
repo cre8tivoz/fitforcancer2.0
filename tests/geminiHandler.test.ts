@@ -25,7 +25,7 @@ const successfulGeminiFetch = (text = "hello") =>
     status: 200,
     text: async () =>
       JSON.stringify({
-        candidates: [{ content: { parts: [{ text }] } }],
+        candidates: [{ content: { parts: [{ text }] }],
       }),
   });
 
@@ -273,7 +273,7 @@ describe("/api/gemini handler", () => {
     expect((out.body as any).text).toBe("adjusted advice");
   });
 
-  it("forwards the ATHENA companion instruction with silent energy and cancer context", async () => {
+  it("forwards the ATHENA companion instruction with silent fatigue and cancer context", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const fetchMock = successfulGeminiFetch("That sounds rough. Let's keep it simple.");
     vi.stubGlobal("fetch", fetchMock);
@@ -301,9 +301,12 @@ describe("/api/gemini handler", () => {
     const systemInstruction = forwardedBody.systemInstruction.parts[0].text;
 
     expect(systemInstruction).toContain("You are ATHENA");
-    expect(systemInstruction).toContain("Selected energy score: 8/10");
-    expect(systemInstruction).toContain("Internal energy band: 🔴 Red");
+    expect(systemInstruction).toContain("Selected fatigue score: 8/10");
+    expect(systemInstruction).toContain("Internal fatigue band: 🔴 Red");
     expect(systemInstruction).toContain("Cancer context: Lung");
+    expect(systemInstruction).toContain("TREATMENT INFORMATION — LUNG CANCER");
+    expect(systemInstruction).toContain("One brief acknowledgement is usually enough");
+    expect(systemInstruction).toContain("Do not use \"ask your doctor\" as a substitute for information");
     expect(systemInstruction).toContain("Do NOT append a references section by default");
     expect(systemInstruction).toContain("I don't have a physical body");
     expect(systemInstruction).toContain("least cognitively demanding response");
@@ -317,6 +320,127 @@ describe("/api/gemini handler", () => {
         parts: [{ text: "I'm wiped out and my legs ache today." }],
       },
     ]);
+  });
+
+  it("routes a named myeloma conversation to Australian myeloma treatment information", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = successfulGeminiFetch("general information");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.15" },
+        body: {
+          history: [
+            { role: "user", content: "I have myeloma." },
+            { role: "model", content: "Okay." },
+            { role: "user", content: "What other treatments are there?" },
+          ],
+          context: {
+            fatigueScore: 5,
+            fatigueZone: "🟡 Yellow",
+            isMyelomaPatient: true,
+            cancerType: "blood_myeloma",
+          },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    const instruction = getForwardedGeminiBody(fetchMock).systemInstruction.parts[0].text;
+    expect(instruction).toContain("TREATMENT INFORMATION — MYELOMA");
+    expect(instruction).toContain("Myeloma Australia — Understanding your treatment");
+    expect(instruction).toContain("Cancer Australia — Myeloma treatment options");
+    expect(instruction).not.toContain("TREATMENT INFORMATION — LYMPHOMA / CLL");
+  });
+
+  it("routes leukaemia and lymphoma/CLL separately instead of treating all blood cancer as myeloma", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = successfulGeminiFetch("general information");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out: amlOut, res: amlRes } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.16" },
+        body: {
+          history: [{ role: "user", content: "I have AML. What treatments are generally used?" }],
+          context: {
+            fatigueScore: 5,
+            fatigueZone: "🟡 Yellow",
+            isMyelomaPatient: false,
+            cancerType: "blood_myeloma",
+          },
+        },
+      } as any,
+      amlRes as any,
+    );
+
+    const { out: cllOut, res: cllRes } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.17" },
+        body: {
+          history: [{ role: "user", content: "I have CLL. What treatment types might I hear about?" }],
+          context: {
+            fatigueScore: 5,
+            fatigueZone: "🟡 Yellow",
+            isMyelomaPatient: false,
+            cancerType: "blood_myeloma",
+          },
+        },
+      } as any,
+      cllRes as any,
+    );
+
+    expect(amlOut.status).toBe(200);
+    expect(cllOut.status).toBe(200);
+    const amlInstruction = getForwardedGeminiBody(fetchMock, 0).systemInstruction.parts[0].text;
+    const cllInstruction = getForwardedGeminiBody(fetchMock, 1).systemInstruction.parts[0].text;
+
+    expect(amlInstruction).toContain("TREATMENT INFORMATION — LEUKAEMIA");
+    expect(amlInstruction).toContain("Leukaemia Foundation — In treatment");
+    expect(amlInstruction).not.toContain("TREATMENT INFORMATION — MYELOMA");
+
+    expect(cllInstruction).toContain("TREATMENT INFORMATION — LYMPHOMA / CLL");
+    expect(cllInstruction).toContain("Lymphoma Australia — Treatments for Lymphoma and CLL");
+    expect(cllInstruction).not.toContain("TREATMENT INFORMATION — MYELOMA");
+  });
+
+  it("keeps general treatment education allowed while preserving a firm personal-decision boundary", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const fetchMock = successfulGeminiFetch("general information");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.18" },
+        body: {
+          history: [{ role: "user", content: "Can you explain the treatment options without choosing one for me?" }],
+          context: {
+            fatigueScore: 4,
+            fatigueZone: "🟡 Yellow",
+            isMyelomaPatient: false,
+            cancerType: "prostate",
+          },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    const instruction = getForwardedGeminiBody(fetchMock).systemInstruction.parts[0].text;
+    expect(instruction).toContain("General treatment information is a valid ATHENA use case");
+    expect(instruction).toContain("You may provide general information about treatments and treatment classes");
+    expect(instruction).toContain("do not decide which one is better for this individual");
+    expect(instruction).toContain("Do not recommend changing the dose, timing, frequency, or schedule");
   });
 
   it("keeps the same companion guardrails across turns without a forced first-response disclaimer", async () => {

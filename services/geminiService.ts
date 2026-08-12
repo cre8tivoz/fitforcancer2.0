@@ -42,7 +42,7 @@ export const getGeminiResponse = async (history: ChatMessage[], context?: ChatCo
     // If 401 and we have a stored password, prompt and retry once
     if (result.status === 401 && typeof window !== "undefined") {
       const userPassword = window.prompt(
-        "This chat is access-restricted. Enter the access password:",
+        "ATHENA is access-restricted. Enter the access password:",
       );
       if (userPassword) {
         window.sessionStorage.setItem(ACCESS_PASSWORD_STORAGE_KEY, userPassword);
@@ -54,19 +54,19 @@ export const getGeminiResponse = async (history: ChatMessage[], context?: ChatCo
         if (retryResult.status === 401) {
           window.sessionStorage.removeItem(ACCESS_PASSWORD_STORAGE_KEY);
         }
-        return retryResult.data?.error || "There was an error connecting to the health assistant. Please check your connection.";
+        return retryResult.data?.error || "There was an error connecting to ATHENA. Please check your connection.";
       }
       // User cancelled the prompt
-      return result.data?.error || "There was an error connecting to the health assistant. Please check your connection.";
+      return result.data?.error || "There was an error connecting to ATHENA. Please check your connection.";
     }
 
     if (!result.ok) {
-      return result.data?.error || "There was an error connecting to the health assistant. Please check your connection.";
+      return result.data?.error || "There was an error connecting to ATHENA. Please check your connection.";
     }
 
     return result.data?.text || "I'm sorry, I couldn't generate a response. Please try again.";
   } catch (error) {
     console.error("Gemini API proxy error:", error);
-    return "There was an error connecting to the health assistant. Please check your connection.";
+    return "There was an error connecting to ATHENA. Please check your connection.";
   }
 };

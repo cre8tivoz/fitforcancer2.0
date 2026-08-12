@@ -3,7 +3,8 @@ import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 
 import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { HomePage, ExercisePage, NutritionPage, ChatPage } from './pages';
+import { HomePage, ExercisePage, NutritionPage } from './pages';
+import AthenaChatPage from './components/AthenaChatPage';
 import {
   DAILY_CHECKIN_STORAGE_KEY,
   FATIGUE_STORAGE_KEY,
@@ -32,7 +33,7 @@ const navItems = [
   { to: '/exercise', label: 'Exercise' },
   { to: '/nutrition', label: 'Nutrition' },
   { to: '/energy-bank', label: 'Energy Bank' },
-  { to: '/assistant', label: 'AI Chat' },
+  { to: '/assistant', label: 'ATHENA' },
   { to: '/resources', label: 'Resources' },
 ];
 
@@ -41,7 +42,7 @@ const mobileNavItems = [
   { to: '/exercise', label: 'Move', icon: Dumbbell },
   { to: '/nutrition', label: 'Eat', icon: UtensilsCrossed },
   { to: '/energy-bank', label: 'Trends', icon: ChartColumnIncreasing },
-  { to: '/assistant', label: 'Chat', icon: MessageSquare },
+  { to: '/assistant', label: 'ATHENA', icon: MessageSquare },
   { to: '/resources', label: 'Resources', icon: BookOpen },
 ];
 
@@ -164,7 +165,7 @@ const App: React.FC = () => {
           <Route
             path="/assistant"
             element={
-              <ChatPage
+              <AthenaChatPage
                 fatigueState={fatigueState}
                 setFatigueState={setFatigueState}
                 onEnergyHistoryChange={() => setEnergyHistoryRefreshKey((current) => current + 1)}

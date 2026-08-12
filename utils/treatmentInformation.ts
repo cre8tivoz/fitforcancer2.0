@@ -147,16 +147,35 @@ const TREATMENT_INFORMATION: Record<TreatmentKey, TreatmentInformation> = {
 
 const MYELOMA_PATTERN = /\b(myeloma|multiple\s+myeloma|smouldering\s+myeloma)\b/i;
 const LYMPHOMA_PATTERN = /\b(lymphoma|hodgkin|non[-\s]?hodgkin|cll|chronic\s+lymphocytic|dlbcl|follicular\s+lymphoma|mantle\s+cell|small\s+lymphocytic|sll)\b/i;
-const LEUKAEMIA_PATTERN = /\b(leukaemia|leukemia|aml|all|cml|apml|acute\s+myeloid|acute\s+lymphoblastic|chronic\s+myeloid|acute\s+promyelocytic)\b/i;
+const LEUKAEMIA_PATTERN = /\b(leukaemia|leukemia|aml|cml|apml|acute\s+myeloid|acute\s+lymphoblastic|chronic\s+myeloid|acute\s+promyelocytic)\b/i;
+const ALL_ACRONYM_PATTERN = /\bALL\b/;
+
+const lastMatchIndex = (text: string, pattern: RegExp): number => {
+  const match = text.match(pattern);
+  return match?.index ?? -1;
+};
+
+const detectFamilyInMessage = (text: string): BloodCancerFamily | null => {
+  const candidates: Array<{ family: BloodCancerFamily; index: number }> = [
+    { family: 'myeloma', index: lastMatchIndex(text, MYELOMA_PATTERN) },
+    { family: 'lymphoma_cll', index: lastMatchIndex(text, LYMPHOMA_PATTERN) },
+    {
+      family: 'leukaemia',
+      index: Math.max(lastMatchIndex(text, LEUKAEMIA_PATTERN), lastMatchIndex(text, ALL_ACRONYM_PATTERN)),
+    },
+  ].filter((candidate) => candidate.index >= 0);
+
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.index - a.index);
+  return candidates[0].family;
+};
 
 export const detectBloodCancerFamily = (history: ChatMessage[]): BloodCancerFamily | null => {
   const userMessages = history.filter((message) => message.role === 'user').map((message) => message.content);
 
   for (let index = userMessages.length - 1; index >= 0; index -= 1) {
-    const text = userMessages[index];
-    if (MYELOMA_PATTERN.test(text)) return 'myeloma';
-    if (LYMPHOMA_PATTERN.test(text)) return 'lymphoma_cll';
-    if (LEUKAEMIA_PATTERN.test(text)) return 'leukaemia';
+    const family = detectFamilyInMessage(userMessages[index]);
+    if (family) return family;
   }
 
   return null;

@@ -18,6 +18,14 @@ describe('ATHENA treatment information routing', () => {
     ).toBe('leukaemia');
   });
 
+  it('routes the full phrase chronic lymphocytic leukaemia to lymphoma/CLL', () => {
+    expect(
+      detectBloodCancerFamily([
+        { role: 'user', content: 'I have chronic lymphocytic leukaemia. What treatments are generally used?' },
+      ]),
+    ).toBe('lymphoma_cll');
+  });
+
   it('uses the most recent explicit family in conversation history', () => {
     expect(
       detectBloodCancerFamily([
@@ -34,6 +42,39 @@ describe('ATHENA treatment information routing', () => {
         { role: 'user', content: "I don't have myeloma, I have lymphoma." },
       ]),
     ).toBe('lymphoma_cll');
+  });
+
+  it('routes named AML treatment context even when the cancer selector is blank', () => {
+    const block = buildTreatmentInformationText(
+      undefined,
+      [{ role: 'user', content: 'I have AML. What treatment types are generally used?' }],
+      false,
+    );
+
+    expect(block).toContain('TREATMENT INFORMATION — LEUKAEMIA');
+    expect(block).toContain('Leukaemia Foundation');
+  });
+
+  it('routes named CLL treatment context even when the cancer selector is blank', () => {
+    const block = buildTreatmentInformationText(
+      undefined,
+      [{ role: 'user', content: 'I have CLL. What treatments are generally around?' }],
+      false,
+    );
+
+    expect(block).toContain('TREATMENT INFORMATION — LYMPHOMA / CLL');
+    expect(block).toContain('Lymphoma Australia');
+  });
+
+  it('routes spelled-out CLL treatment context even when the cancer selector is blank', () => {
+    const block = buildTreatmentInformationText(
+      undefined,
+      [{ role: 'user', content: 'I have chronic lymphocytic leukaemia.' }],
+      false,
+    );
+
+    expect(block).toContain('TREATMENT INFORMATION — LYMPHOMA / CLL');
+    expect(block).not.toContain('TREATMENT INFORMATION — LEUKAEMIA\n');
   });
 
   it('falls back to broad blood-cancer context when no family is named', () => {

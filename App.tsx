@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { AppTab, Recipe } from './types';
 import BrandLockup from './components/BrandLockup';
@@ -13,7 +13,7 @@ import {
   useFatigueState,
 } from './hooks/useFatigueState';
 import { clearEnergyHistory, clearPatientContext } from './utils/patientContextStorage';
-import { BookOpen, ChartColumnIncreasing, Dumbbell, House, MessageSquare, UtensilsCrossed } from 'lucide-react';
+import { BookOpen, ChartColumnIncreasing, Dumbbell, House, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
 
 const EnergyBank = React.lazy(() => import('./components/EnergyBank'));
 const Resources = React.lazy(() => import('./components/Resources'));
@@ -38,12 +38,12 @@ const navItems = [
 ];
 
 const mobileNavItems = [
-  { to: '/', label: 'Home', icon: House },
-  { to: '/exercise', label: 'Move', icon: Dumbbell },
-  { to: '/nutrition', label: 'Eat', icon: UtensilsCrossed },
-  { to: '/energy-bank', label: 'Trends', icon: ChartColumnIncreasing },
-  { to: '/assistant', label: 'ATHENA', icon: MessageSquare },
-  { to: '/resources', label: 'Resources', icon: BookOpen },
+  { to: '/', label: 'Home', description: 'Today at a glance', icon: House },
+  { to: '/exercise', label: 'Movement', description: 'Energy-aware movement', icon: Dumbbell },
+  { to: '/nutrition', label: 'Nutrition', description: 'Low-effort food ideas', icon: UtensilsCrossed },
+  { to: '/energy-bank', label: 'Energy Bank', description: 'See your recent check-ins', icon: ChartColumnIncreasing },
+  { to: '/assistant', label: 'ATHENA', description: 'Your treatment-day companion', icon: MessageSquare },
+  { to: '/resources', label: 'Resources', description: 'Evidence, support and privacy', icon: BookOpen },
 ];
 
 const CONTROL_FOCUS_CLASS =
@@ -51,49 +51,87 @@ const CONTROL_FOCUS_CLASS =
 
 const Layout: React.FC = () => {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   return (
-    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-20 sm:pb-6">
-      <nav className="sticky top-0 z-50 py-4 bg-[color:var(--color-nav)] backdrop-blur-md flex justify-between items-center px-4 sm:px-8 border-b border-white/10">
-        <Link to="/" className="flex items-center gap-3">
-          <BrandLockup compact variant="dark" className="h-10 w-auto" />
-        </Link>
-        <div className="flex bg-white/5 p-1 rounded-full border border-white/10 hidden sm:flex">
-          {navItems.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              className={`inline-flex min-h-11 items-center px-4 py-2 rounded-full text-sm font-semibold transition-all ${location.pathname === to ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'} ${CONTROL_FOCUS_CLASS}`}
-            >
-              {label}
-            </Link>
-          ))}
+    <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-6">
+      <nav className="sticky top-0 z-50 bg-[color:var(--color-nav)] backdrop-blur-md border-b border-white/10 shadow-sm">
+        <div className="flex items-center justify-between px-4 sm:px-8 py-3 sm:py-4">
+          <Link
+            to="/"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={`flex items-center gap-3 ${CONTROL_FOCUS_CLASS}`}
+            aria-label="Fit For Cancer home"
+          >
+            <BrandLockup compact variant="dark" className="h-10 w-auto max-w-[190px]" />
+          </Link>
+
+          <div className="hidden sm:flex bg-white/5 p-1 rounded-full border border-white/10">
+            {navItems.map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`inline-flex min-h-11 items-center px-4 py-2 rounded-full text-sm font-semibold transition-all ${location.pathname === to ? 'bg-neon-blue text-neon-dark shadow-lg shadow-neon-blue/20' : 'text-white/75 hover:text-white hover:bg-white/10'} ${CONTROL_FOCUS_CLASS}`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen((open) => !open)}
+            className="sm:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-nav)]"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-navigation-menu"
+            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          >
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
+
+        {isMobileMenuOpen && (
+          <div id="mobile-navigation-menu" className="sm:hidden border-t border-white/10 px-3 pb-3 pt-2">
+            <div className="grid grid-cols-1 gap-1 rounded-2xl bg-white/5 p-2">
+              {mobileNavItems.map(({ to, label, description, icon: Icon }) => {
+                const isCurrent = location.pathname === to;
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    aria-current={isCurrent ? 'page' : undefined}
+                    className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue ${isCurrent ? 'bg-neon-blue text-neon-dark' : 'text-white hover:bg-white/10'}`}
+                  >
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isCurrent ? 'bg-neon-dark/10' : 'bg-white/10'}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 text-left">
+                      <span className="block text-sm font-bold">{label}</span>
+                      <span className={`block text-xs ${isCurrent ? 'text-neon-dark/70' : 'text-white/55'}`}>{description}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-1 py-4">
         <Outlet />
       </main>
 
-      <footer className="mt-12 mb-24 sm:mb-8 p-8 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
+      <footer className="mt-12 mb-8 p-8 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col items-center gap-6">
           <BrandLockup variant="light" className="w-64 max-w-full h-auto" />
           <Link to="/resources" className={CONTROL_FOCUS_CLASS}>View Evidence Base & Resources</Link>
         </div>
       </footer>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--color-surface)]/95 backdrop-blur-md border-t border-[color:var(--color-primary)]/10 px-4 py-3 flex justify-between sm:hidden z-50 shadow-[0_-10px_30px_-18px_rgba(26,40,33,0.35)]">
-        {mobileNavItems.map(({ to, label, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            aria-current={location.pathname === to ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center gap-1 transition-shadow transition-transform transition-colors ${location.pathname === to ? 'text-neon-blue' : 'text-white/50 grayscale'} ${CONTROL_FOCUS_CLASS}`}
-          >
-            <span className="text-xl"><Icon className="w-4 h-4" /></span>
-            <span className="text-[10px] font-bold uppercase tracking-tighter text-white">{label}</span>
-          </Link>
-        ))}
-      </div>
     </div>
   );
 };

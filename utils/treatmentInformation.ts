@@ -151,35 +151,64 @@ const LYMPHOMA_PATTERN = /\b(lymphoma|hodgkin|non[-\s]?hodgkin|cll|chronic\s+lym
 const LEUKAEMIA_PATTERN = /\b(leukaemia|leukemia|aml|cml|apml|acute\s+myeloid|acute\s+lymphoblastic|chronic\s+myeloid|acute\s+promyelocytic)\b/i;
 const ALL_ACRONYM_PATTERN = /\bALL\b/;
 
-const lastMatchIndex = (text: string, pattern: RegExp): number => {
+interface FamilyMatch {
+  family: BloodCancerFamily;
+  start: number;
+  end: number;
+}
+
+const collectMatches = (text: string, pattern: RegExp, family: BloodCancerFamily): FamilyMatch[] => {
   const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
   const globalPattern = new RegExp(pattern.source, flags);
-  let lastIndex = -1;
+  const matches: FamilyMatch[] = [];
   let match: RegExpExecArray | null;
 
   while ((match = globalPattern.exec(text)) !== null) {
-    lastIndex = match.index;
+    matches.push({ family, start: match.index, end: match.index + match[0].length });
     if (match[0].length === 0) globalPattern.lastIndex += 1;
   }
 
-  return lastIndex;
+  return matches;
+};
+
+const isNegatedMatch = (text: string, match: FamilyMatch): boolean => {
+  const prefix = text.slice(Math.max(0, match.start - 55), match.start);
+  const suffix = text.slice(match.end, Math.min(text.length, match.end + 40));
+
+  const prefixNegation =
+    /(?:\bruled\s+out\b|\bexcluded\b|\bnot\s+diagnosed\s+with\b|\bdon't\s+have\b|\bdo\s+not\s+have\b|\bdoesn't\s+have\b|\bdoes\s+not\s+have\b|\bnot\s+my\b|\bno\s+evidence\s+of\b|\bnot\b|\bwithout\b)\s*(?:a\s+diagnosis\s+of\s+)?$/i.test(prefix);
+  const suffixNegation =
+    /^\s*(?:was|is|has\s+been|had\s+been)?\s*(?:ruled\s+out|excluded|not\s+confirmed)\b/i.test(suffix);
+
+  return prefixNegation || suffixNegation;
 };
 
 const detectFamilyInMessage = (text: string): BloodCancerFamily | null => {
-  const candidates: Array<{ family: BloodCancerFamily; index: number }> = [
-    { family: 'myeloma', index: lastMatchIndex(text, MYELOMA_PATTERN) },
-    {
-      family: 'lymphoma_cll',
-      index: Math.max(lastMatchIndex(text, CLL_FULL_PATTERN), lastMatchIndex(text, LYMPHOMA_PATTERN)),
-    },
-    {
-      family: 'leukaemia',
-      index: Math.max(lastMatchIndex(text, LEUKAEMIA_PATTERN), lastMatchIndex(text, ALL_ACRONYM_PATTERN)),
-    },
-  ].filter((candidate) => candidate.index >= 0);
+  const cllFullMatches = collectMatches(text, CLL_FULL_PATTERN, 'lymphoma_cll');
+  const candidates: FamilyMatch[] = [
+    ...collectMatches(text, MYELOMA_PATTERN, 'myeloma'),
+    ...cllFullMatches,
+    ...collectMatches(text, LYMPHOMA_PATTERN, 'lymphoma_cll'),
+    ...collectMatches(text, LEUKAEMIA_PATTERN, 'leukaemia'),
+    ...collectMatches(text, ALL_ACRONYM_PATTERN, 'leukaemia'),
+  ].filter((candidate) => {
+    if (isNegatedMatch(text, candidate)) return false;
+
+    // The word "leukaemia" inside the full name "chronic lymphocytic
+    // leukaemia" must not outrank that complete CLL diagnosis merely because
+    // its nested token starts later in the sentence.
+    if (
+      candidate.family === 'leukaemia' &&
+      cllFullMatches.some((cll) => candidate.start >= cll.start && candidate.end <= cll.end)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 
   if (candidates.length === 0) return null;
-  candidates.sort((a, b) => b.index - a.index);
+  candidates.sort((a, b) => b.start - a.start || b.end - a.end);
   return candidates[0].family;
 };
 

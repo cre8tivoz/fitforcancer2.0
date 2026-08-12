@@ -27,134 +27,102 @@ export interface ClinicalGuidelineSet {
 }
 
 export const CLINICAL_GUIDELINES: ClinicalGuidelineSet = {
-  title: "CLINICAL KNOWLEDGE BASE: AUSTRALIAN INTEGRATIVE ONCOLOGY & PREHABILITATION PROTOCOLS",
+  title: "ATHENA SUPPORTIVE-CARE CONTEXT — BACKGROUND ONLY",
   globalDirective: {
-    title: "GLOBAL DIRECTIVE (Chris O'Brien Lifehouse 'LivingRoom' Model)",
+    title: "HOW TO USE THIS CONTEXT",
     guidance:
-      "Integrative Oncology Rule: Always integrate evidence-based complementary therapies (e.g., targeted yoga, mindfulness, and music therapy for anxiety reduction) alongside conventional exercise prescription. Treat exercise as an adjunct therapy that manages treatment toxicities.",
+      "Use these notes silently to make supportive suggestions safer and more relevant. Do not quote protocol labels, institutional names, or rule language unless the user explicitly asks for the evidence. Do not diagnose, prescribe cancer treatment, or infer complications from cancer type alone.",
   },
   generalOncologyBaseline: {
-    title: "GENERALIZED ONCOLOGY BASELINE (Use when cancer type is not specified or no protocol-specific pathway exists)",
+    title: "GENERAL SUPPORTIVE-CARE BASELINE",
     guidance: [
-      "Use conservative, symptom-limited exercise prescription grounded in COSA and ESSA principles, with a preference for moderate intensity or lower unless the treating team has provided specific clearance.",
-      "Prioritize fatigue monitoring, pacing, hydration, nutrition support, and functional recovery over performance goals, especially during active treatment or treatment transitions.",
-      "Escalate to medical review instead of intensifying exercise if the user reports new chest pain, severe shortness of breath, dizziness, fever, sudden swelling, uncontrolled pain, or a rapid deterioration in function.",
-      "For blood cancers or myeloma, be especially cautious about infection risk, anaemia-related exertional intolerance, and bone safety; favor low-impact movement and advise haematology clearance before weight-bearing progression when bone integrity may be compromised.",
+      "Cancer-related fatigue can affect physical energy, concentration, motivation, and everyday function. Prefer small, manageable suggestions and avoid overwhelming the user with long plans.",
+      "When activity is appropriate, match movement to the person's current capacity, symptoms, usual activity, treatment context, and preferences. Avoid turning the 0-10 energy score into a clinical severity rating or a fixed exercise prescription.",
+      "Nutrition suggestions should focus on maintaining intake, hydration, protein and energy where useful, and working around common treatment-related eating difficulties. Never present a food, diet, supplement, or complementary therapy as a cancer treatment or cure.",
+      "If the user describes new or worsening chest pain, severe or unusual breathlessness, fainting or marked dizziness, fever, sudden swelling, severe or uncontrolled pain, or rapid deterioration, stop trying to solve the problem with food or movement and encourage timely assessment by their treating team or appropriate urgent care.",
+      "Use known cancer and treatment context only when it materially changes the advice. Do not repeatedly announce the user's cancer type, fatigue score, or energy zone back to them.",
     ],
   },
   cancerProtocols: {
     bowel: {
       id: "bowel",
-      displayName: "BOWEL (COLORECTAL) CANCER",
-      protocolSource: "University of Melbourne & ANZCTR Prehabilitation Trials",
+      displayName: "BOWEL / COLORECTAL CANCER",
+      protocolSource: "Australian cancer supportive-care guidance",
       directives: [
         {
-          title: "Rule",
+          title: "Surgery and recovery",
           guidance:
-            "If the user is pre-surgery, mandate 'Prehabilitation'. Recommend supervised cardiovascular and resistance training 2-8 weeks prior to surgery to improve the Ventilatory Anaerobic Threshold (VAT) and cardiorespiratory fitness (CRF).",
-        },
-        {
-          title: "Rule",
-          guidance:
-            "Post-surgery, utilize the 'SCORE Trial' Shared-Care model approach-focus on progressive functional recovery and emphasize holistic survivorship, noting that moderate-to-high intensity exercise significantly reduces all-cause mortality.",
+            "If recent or upcoming abdominal surgery, an ostomy, wound issues, or specific post-operative restrictions are relevant, keep movement suggestions conservative and encourage the user to follow their surgical or allied-health guidance. Otherwise use the general supportive-care baseline.",
         },
       ],
     },
     melanoma: {
       id: "melanoma",
       displayName: "MELANOMA",
-      protocolSource: "Peter MacCallum ABC Trial & Immunotherapy Survivorship",
+      protocolSource: "Australian cancer supportive-care guidance",
       directives: [
         {
-          title: "Rule",
+          title: "Immunotherapy awareness",
           guidance:
-            "Advanced melanoma is increasingly managed with combination immunotherapy (e.g., ipilimumab/nivolumab), which has high long-term survival rates but unique side effects.",
-        },
-        {
-          title: "Rule",
-          guidance:
-            "Exercise prescription must account for Immune-Related Adverse Events (irAEs). If the user reports sudden severe fatigue, joint pain, or shortness of breath, halt exercise recommendations and advise immediate medical review, as this may indicate immune toxicity, not standard fatigue.",
+            "If the user is receiving immunotherapy, do not assume a new symptom is a routine treatment effect. New severe or rapidly worsening fatigue, breathlessness, pain, diarrhoea, fever, or other concerning symptoms should prompt contact with the treating team rather than exercise or nutrition troubleshooting. Do not diagnose an immune-related adverse event.",
         },
       ],
     },
     breast: {
       id: "breast",
       displayName: "BREAST CANCER",
-      protocolSource: "ONJ Centre Integrative Care & Peter Mac Resistance Trials",
+      protocolSource: "Cancer Council Australia and breast-cancer supportive-care guidance",
       directives: [
         {
-          title: "Rule",
-          guidance: "For patients on targeted therapies (like CDK4/6 inhibitors), fatigue is cumulative.",
-        },
-        {
-          title: "Rule",
+          title: "Arm, shoulder and lymphoedema awareness",
           guidance:
-            "If lymph nodes were removed, apply strict lymphedema constraints: prioritize progressive, low-weight range-of-motion exercises. Do not prescribe sudden heavy upper-extremity loading. Integrate mind-body practices (like restorative yoga) to manage aromatase-inhibitor-induced joint arthralgia.",
+            "After breast or axillary surgery, favour gradual and comfortable arm and shoulder movement when the user has been cleared to resume it. If they report new or increasing arm or breast swelling, redness, fever, marked heaviness, or significant pain, recommend clinical review rather than simply increasing exercise.",
         },
       ],
     },
     prostate: {
       id: "prostate",
       displayName: "PROSTATE CANCER",
-      protocolSource: "ESSA & Chris O'Brien Lifehouse Survivorship",
+      protocolSource: "Australian exercise-oncology supportive-care guidance",
       directives: [
         {
-          title: "Rule",
+          title: "ADT and strength",
           guidance:
-            "If the patient is on Androgen Deprivation Therapy (ADT), they are at high risk for sarcopenia (muscle loss) and osteoporosis.",
-        },
-        {
-          title: "Rule",
-          guidance:
-            "Aerobic exercise alone is insufficient. You MUST prioritize heavy, supervised Resistance Training (e.g., weightlifting, bodyweight squats) to preserve bone mineral density and lean muscle mass. Ensure falls-risk assessment is considered.",
+            "If androgen-deprivation therapy is relevant, strength and bone health can matter, but do not mandate heavy lifting. Suggest appropriately scaled resistance activity when suitable and encourage professional exercise support when bone health, falls risk, pain, or other medical issues complicate the choice of exercise.",
         },
       ],
     },
     lung: {
       id: "lung",
       displayName: "LUNG CANCER",
-      protocolSource: "Peter Mac & Austin Health Cardio-Oncology",
+      protocolSource: "Cancer Council Australia supportive-care guidance",
       directives: [
         {
-          title: "Rule",
-          guidance: "Prioritize respiratory prehabilitation and pulmonary rehabilitation.",
-        },
-        {
-          title: "Rule",
+          title: "Breathlessness and pacing",
           guidance:
-            "If the patient is undergoing thoracic surgery or radiation, focus on inspiratory muscle training, pacing strategies, and energy conservation. Address the high risk of 'Cardio-Oncology' overlap (heart issues secondary to treatment) by keeping aerobic intensity strictly within the 'somewhat hard' (moderate) threshold unless medically cleared.",
+            "Use pacing and low-effort movement when breathlessness limits activity. Do not make claims about oxygen levels from conversation alone. New, severe, or clearly worsening breathlessness, chest pain, fainting, or other concerning symptoms should be directed to the treating team or urgent assessment as appropriate.",
         },
       ],
     },
     blood_myeloma: {
       id: "blood_myeloma",
-      displayName: "BLOOD CANCER (LEUKEMIA, LYMPHOMA) & MULTIPLE MYELOMA PROTOCOL",
-      protocolSource: "Leukaemia Foundation Australia, Chris O'Brien Lifehouse, Peter MacCallum Cancer Centre",
+      displayName: "BLOOD CANCER / MYELOMA",
+      protocolSource: "Leukaemia Foundation, Myeloma Australia and Australian cancer supportive-care guidance",
       directives: [
         {
-          title: "Rule 1 (The Bone vs. Organ Nuance in Myeloma)",
+          title: "Bone safety without assumptions",
           guidance:
-            "Do not assume all myeloma patients have bone disease. If the patient has lytic lesions or bone involvement, STRICTLY advise against high-impact exercise (running, jumping) and extreme spinal rotation (golf). HOWEVER, if the patient has extramedullary myeloma, light-chain disease, or explicitly states they have no bone involvement, do not arbitrarily restrict impact. Encourage progressive cardiovascular and resistance training to build their energy reserve.",
+            "Do not assume every person with myeloma has the same bone involvement. If known bone lesions, fracture risk, or new/localised bone or back pain are present, avoid impact, loaded spinal flexion/rotation, or advice to stretch through the pain and encourage review by the treating team or an oncology exercise professional.",
         },
         {
-          title: "Rule 2 (Renal Protection)",
+          title: "Blood counts, transplant and infection precautions",
           guidance:
-            "Blood cancers, particularly myeloma (via Bence Jones proteins/paraproteins), frequently cause kidney damage. You must explicitly emphasize aggressive hydration (unless medically fluid-restricted). Note: While high protein is generally good for cancer cachexia, if the patient has renal impairment, warn them that high-protein diets must be cleared by a renal dietitian.",
+            "If the user says they are neutropenic, immediately post-transplant, acutely unwell, or under specific infection precautions, follow the treating team's restrictions and avoid suggesting public-gym or pool activity as a default. Do not infer current blood counts from symptoms.",
         },
         {
-          title: "Rule 3 (The Leukaemia Foundation '5 P's' of Fatigue)",
+          title: "Kidney, hydration and nutrition",
           guidance:
-            "To manage severe Cancer-Related Fatigue (CRF) and the Dexamethasone steroid 'boom-bust' cycle, always frame exercise advice using the 5 P's: Plan (exercise on high-energy days), Prioritise (what matters most), Pace (break workouts into small chunks), Posture (use seated exercises to save energy), and Permission (validate that resting on 'crash' days is a clinical necessity).",
-        },
-        {
-          title: "Rule 4 (Transplant & Infection Control - Lifehouse Protocol)",
-          guidance:
-            "If the patient is undergoing or recovering from a Stem Cell/Bone Marrow Transplant, prioritize 'Prehabilitation' to reduce hospital stays. Post-transplant, or if the patient is neutropenic (low white blood cells) or has a central line, strictly advise against public gyms or pools due to severe infection risk. Prescribe home-based or highly isolated exercise.",
-        },
-        {
-          title: "Rule 5 (Integrative Oncology - Peter Mac)",
-          guidance:
-            "Treat physical exercise as only one pillar of movement. Actively recommend mind-body therapies (like Qigong, targeted Yoga, and mindfulness breathing) as valid, evidence-based exercises to manage 'scanxiety', peripheral neuropathy pain, and psychological distress.",
+            "Do not prescribe aggressive hydration, high-protein diets, fluid restriction, or renal dietary changes without known clinical context. If kidney impairment or a fluid restriction is relevant, encourage the user to follow their treating team's or dietitian's individual advice.",
         },
       ],
     },
@@ -164,12 +132,12 @@ export const CLINICAL_GUIDELINES: ClinicalGuidelineSet = {
 const formatProtocol = (protocol: CancerProtocol, index: number): string => {
   const rules = protocol.directives.map((directive) => `${directive.title}: ${directive.guidance}`).join("\n");
 
-  return `${index}. ${protocol.displayName} (Protocol: ${protocol.protocolSource})\n${rules}`;
+  return `${index}. ${protocol.displayName}\n${rules}`;
 };
 
 const formatGeneralBaseline = (): string => {
   const rules = CLINICAL_GUIDELINES.generalOncologyBaseline.guidance
-    .map((guidance, index) => `Rule ${index + 1}: ${guidance}`)
+    .map((guidance, index) => `Note ${index + 1}: ${guidance}`)
     .join("\n");
 
   return `${CLINICAL_GUIDELINES.generalOncologyBaseline.title}\n${rules}`;
@@ -189,7 +157,9 @@ export const buildClinicalKnowledgeBaseText = (cancerType?: ClinicalCancerType):
     `${CLINICAL_GUIDELINES.globalDirective.title}:`,
     CLINICAL_GUIDELINES.globalDirective.guidance,
     "",
-    protocolText,
+    formatGeneralBaseline(),
+    selectedProtocol ? "" : null,
+    selectedProtocol ? protocolText : null,
   ]
     .filter(Boolean)
     .join("\n")

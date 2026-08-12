@@ -23,7 +23,7 @@ describe("EnergyBank.tsx — smoke", () => {
     expect(screen.queryByText(/Health Assistant/i)).not.toBeInTheDocument();
   });
 
-  it("labels saved scores as fatigue rather than energy", () => {
+  it("labels saved scores as fatigue and discloses the 30-check-in retention cap", () => {
     window.localStorage.setItem(
       "energy_history",
       JSON.stringify([{ id: 1, date: "2026-08-12T08:00:00.000Z", score: 8, note: "" }]),
@@ -33,6 +33,9 @@ describe("EnergyBank.tsx — smoke", () => {
 
     expect(screen.getByRole("heading", { name: /30-Day Fatigue Trend/i })).toBeInTheDocument();
     expect(screen.getByText(/0 = no fatigue to 10 = worst fatigue/i)).toBeInTheDocument();
+    expect(screen.getByText(/keeps your latest 30 fatigue check-ins/i)).toBeInTheDocument();
+    expect(screen.getByText(/another check-in after that removes the oldest entry/i)).toBeInTheDocument();
+    expect(screen.queryByText(/stays on this device until you clear/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /30-Day Energy Trend/i })).not.toBeInTheDocument();
   });
 });

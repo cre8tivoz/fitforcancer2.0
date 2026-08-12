@@ -15,7 +15,7 @@ import fitForCancer14Image from './media/exercises/fit-for-cancer-14.jpg';
 import fitForCancer15Image from './media/exercises/fit-for-cancer-15.jpg';
 import mindfulBreathingStretchImage from './media/exercises/mindful breathing & stretch.jpg';
 import classicSpaghettiWithButterImage from './media/nutrition/classic_spaghetti_with_butter.jpg';
-import energyBlitzGreekYoghurtImage from './media/nutrition/energy_blitz_greek_yoghurt.jpg';
+import energyBlitzGreekYoghurtImage from './media/nutrition/energy_blitz_greek_yoghurt.webp';
 import gingerTurmericBrothImage from './media/nutrition/ginger__turmeric_broth.jpg';
 import highProteinOvernightOatsImage from './media/nutrition/high_protein_overnight_oats.jpg';
 import hydratingWatermelonMintCoolerImage from './media/nutrition/hydrating_watermelon__mint_cooler.jpg';
@@ -27,14 +27,14 @@ import redLentilSpinachDahlImage from './media/nutrition/red_lentil__spinach_dah
 import sardineEmergencyToastImage from './media/nutrition/sardine_emergency_toast.jpg';
 import seatedLegRaiseImage from './media/exercises/seated leg raise.jpg';
 import softRoastedRootVegetablesImage from './media/nutrition/soft_roasted_root_vegetables.jpg';
-import theCrashShakeImage from './media/nutrition/the_crash_shake.jpg';
+import theCrashShakeImage from './media/nutrition/the_crash_shake.webp';
 import wallPushUpsImage from './media/exercises/wall push ups.jpg';
 import wallSlidesImage from './media/exercises/wall slides.jpg';
 import zucchiniFetaMuffinsImage from './media/nutrition/zucchini__feta_muffins.jpg';
-import fortifiedMilkyDrinkImage from './media/nutrition/fortified_milky_drink.svg';
-import custardTinnedPearImage from './media/nutrition/custard_tinned_pear.svg';
-import creamedRiceCupImage from './media/nutrition/creamed_rice_cup.svg';
-import microwaveBeansCheeseImage from './media/nutrition/microwave_beans_cheese.svg';
+import fortifiedMilkyDrinkImage from './media/nutrition/fortified_milky_drink.webp';
+import custardTinnedPearImage from './media/nutrition/custard_tinned_pear.webp';
+import creamedRiceCupImage from './media/nutrition/creamed_rice_cup.webp';
+import microwaveBeansCheeseImage from './media/nutrition/microwave_beans_cheese.webp';
 
 const CANCER_COUNCIL_RECIPES_URL = 'https://www.cancervic.org.au/get-support/guides/managing-daily-life/nutrition/recipes-and-snacks';
 const CANCER_COUNCIL_SIDE_EFFECTS_URL = 'https://www.cancervic.org.au/get-support/guides/managing-daily-life/nutrition/treatment-side-effects-and-nutrition';

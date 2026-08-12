@@ -39,17 +39,23 @@ describe("App.tsx — smoke", () => {
     expect(within(n).getByText("ATHENA")).toBeInTheDocument();
   });
 
-  it("renders the mobile bottom navigation links", () => {
+  it("opens the mobile navigation menu", async () => {
+    const user = userEvent.setup();
     renderWithRouter("/");
-    expect(screen.getByText("Move")).toBeInTheDocument();
-    expect(screen.getByText("Eat")).toBeInTheDocument();
-    expect(screen.getByText("Trends")).toBeInTheDocument();
-    expect(screen.getAllByText("ATHENA").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    const menu = document.querySelector("#mobile-navigation-menu") as HTMLElement;
+    expect(menu).toBeTruthy();
+    expect(within(menu).getByRole("link", { name: /movement/i })).toBeInTheDocument();
+    expect(within(menu).getByRole("link", { name: /nutrition/i })).toBeInTheDocument();
+    expect(within(menu).getByRole("link", { name: /energy bank/i })).toBeInTheDocument();
+    expect(within(menu).getByRole("link", { name: /athena/i })).toBeInTheDocument();
   });
 
-  it("renders the lazy-loaded tabs without error", () => {
+  it("renders the movement page without error", () => {
     renderWithRouter("/exercise");
-    expect(screen.getByText(/Safe Movements/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Movement" })).toBeInTheDocument();
+    expect(screen.getByText(/effort guide, not a medical severity rating/i)).toBeInTheDocument();
   });
 
   it("updates the exercise zone filter", async () => {
@@ -60,7 +66,23 @@ describe("App.tsx — smoke", () => {
     await user.click(screen.getByRole("radio", { name: /red/i }));
 
     expect(screen.queryByText("Brisk Walking")).not.toBeInTheDocument();
-    expect(screen.getByText('Diaphragmatic "Belly" Breathing')).toBeInTheDocument();
+    expect(screen.getByText("Diaphragmatic Breathing")).toBeInTheDocument();
+    expect(screen.getByText("Seated Hamstring Stretch")).toBeInTheDocument();
+  });
+
+  it("shows the new supported balance option in Yellow", async () => {
+    const user = userEvent.setup();
+    renderWithRouter("/exercise");
+
+    await user.click(screen.getByRole("radio", { name: /yellow/i }));
+    expect(screen.getByText("Supported Balance Practice")).toBeInTheDocument();
+    expect(screen.getByText("Short Easy Walk")).toBeInTheDocument();
+  });
+
+  it("does not present movement cards as clinical protocols or DVT prevention", () => {
+    renderWithRouter("/exercise");
+    expect(screen.queryByText(/Clinical Safety Protocol/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/DVT Prevention/i)).not.toBeInTheDocument();
   });
 
   it("updates the nutrition search filter", async () => {

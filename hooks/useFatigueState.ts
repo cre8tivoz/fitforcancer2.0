@@ -25,8 +25,11 @@ export function useFatigueState() {
     recipeZoneFilter: null,
     hasLoggedDailyCheckIn: false,
   });
+  const [hasHydrated, setHasHydrated] = useState(false);
 
-  // Hydrate from storage
+  // Hydrate from storage before allowing persistence effects to write back.
+  // Without this guard, a newly opened tab renders the initial null state and
+  // can briefly remove another tab's saved fatigue keys before hydration wins.
   useEffect(() => {
     const storedScore =
       window.sessionStorage.getItem(FATIGUE_STORAGE_KEY) ||
@@ -46,6 +49,7 @@ export function useFatigueState() {
       cancerType: storedContext?.cancerType,
       hasLoggedDailyCheckIn: hasLoggedCheckIn,
     }));
+    setHasHydrated(true);
   }, []);
 
   // If saved fatigue data is cleared in another tab, discard this tab's
@@ -78,8 +82,10 @@ export function useFatigueState() {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Persist fatigue score
+  // Persist fatigue score only after the initial storage snapshot is loaded.
   useEffect(() => {
+    if (!hasHydrated) return;
+
     if (state.score === null) {
       window.sessionStorage.removeItem(FATIGUE_STORAGE_KEY);
       window.localStorage.removeItem(FATIGUE_STORAGE_KEY);
@@ -87,10 +93,12 @@ export function useFatigueState() {
       window.sessionStorage.setItem(FATIGUE_STORAGE_KEY, String(state.score));
       window.localStorage.setItem(FATIGUE_STORAGE_KEY, String(state.score));
     }
-  }, [state.score]);
+  }, [hasHydrated, state.score]);
 
-  // Persist fatigue zone
+  // Persist fatigue zone only after the initial storage snapshot is loaded.
   useEffect(() => {
+    if (!hasHydrated) return;
+
     if (!state.zone) {
       window.sessionStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
       window.localStorage.removeItem(FATIGUE_ZONE_STORAGE_KEY);
@@ -98,13 +106,16 @@ export function useFatigueState() {
       window.sessionStorage.setItem(FATIGUE_ZONE_STORAGE_KEY, state.zone);
       window.localStorage.setItem(FATIGUE_ZONE_STORAGE_KEY, state.zone);
     }
-  }, [state.zone]);
+  }, [hasHydrated, state.zone]);
 
-  // Persist cancer type
+  // Persist cancer type only after hydration so opening a new tab cannot clear
+  // an existing saved patient context before loadPatientContext has run.
   useEffect(() => {
+    if (!hasHydrated) return;
+
     if (!state.cancerType) clearPatientContext();
     else savePatientContext({ cancerType: state.cancerType });
-  }, [state.cancerType]);
+  }, [hasHydrated, state.cancerType]);
 
   return { state, setState };
 }

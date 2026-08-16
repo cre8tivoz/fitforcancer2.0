@@ -142,11 +142,30 @@ const Layout: React.FC = () => {
 const App: React.FC = () => {
   const { state: fatigueState, setState: setFatigueState } = useFatigueState();
   const athenaSession = useAthenaSession(fatigueState.score);
+  const resetAthenaSession = athenaSession.reset;
   const [exerciseZoneFilter, setExerciseZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
   const [recipeZoneFilter, setRecipeZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
   const [recipeCategoryFilter, setRecipeCategoryFilter] = useState<Recipe['category'] | 'All'>('All');
   const [energyHistoryRefreshKey, setEnergyHistoryRefreshKey] = useState(0);
+
+  // `storage` events fire in other same-origin tabs, not in the tab that
+  // performed the write. Keep ATHENA's in-memory session aligned with the
+  // cross-tab fatigue clear already handled by useFatigueState.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      const isClearedFatigueKey =
+        event.newValue === null &&
+        (event.key === FATIGUE_STORAGE_KEY ||
+          event.key === FATIGUE_ZONE_STORAGE_KEY ||
+          event.key === DAILY_CHECKIN_STORAGE_KEY);
+
+      if (isClearedFatigueKey) resetAthenaSession(null);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [resetAthenaSession]);
 
   const onExerciseZoneFilterChange = useCallback((zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All') => {
     setExerciseZoneFilter((prev) => prev === zone ? null : zone);
@@ -169,11 +188,11 @@ const App: React.FC = () => {
       recipeZoneFilter: null,
       hasLoggedDailyCheckIn: false,
     });
-    athenaSession.reset(null);
+    resetAthenaSession(null);
     setExerciseZoneFilter(null);
     setRecipeZoneFilter(null);
     setEnergyHistoryRefreshKey((current) => current + 1);
-  }, [athenaSession, setFatigueState]);
+  }, [resetAthenaSession, setFatigueState]);
 
   return (
     <ErrorBoundary>

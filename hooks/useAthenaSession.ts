@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type React from 'react';
 import type { ChatMessage } from '../types';
 
@@ -24,6 +24,8 @@ export interface AthenaSessionState {
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   hasStartedConversation: boolean;
   setHasStartedConversation: React.Dispatch<React.SetStateAction<boolean>>;
+  getGeneration: () => number;
+  isCurrentGeneration: (generation: number) => boolean;
   reset: (score?: number | null) => void;
 }
 
@@ -32,8 +34,16 @@ export const useAthenaSession = (initialScore: number | null): AthenaSessionStat
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasStartedConversation, setHasStartedConversation] = useState(false);
+  const generationRef = useRef(0);
+
+  const getGeneration = () => generationRef.current;
+  const isCurrentGeneration = (generation: number) => generationRef.current === generation;
 
   const reset = (score: number | null = null) => {
+    // Invalidate any async reply that started before this reset. The network
+    // request may still finish, but its completion must not repopulate a
+    // conversation the user has explicitly cleared.
+    generationRef.current += 1;
     setMessages(buildInitialAthenaMessages(score));
     setInput('');
     setIsLoading(false);
@@ -49,6 +59,8 @@ export const useAthenaSession = (initialScore: number | null): AthenaSessionStat
     setIsLoading,
     hasStartedConversation,
     setHasStartedConversation,
+    getGeneration,
+    isCurrentGeneration,
     reset,
   };
 };

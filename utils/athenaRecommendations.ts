@@ -1,4 +1,4 @@
-import type { ChatContext } from "../types";
+import type { ChatContext, Recipe } from "../types";
 
 export type RecommendationKind = "movement" | "recipe";
 export type RecommendationRef = { kind: RecommendationKind; id: string };
@@ -22,6 +22,8 @@ export type RecipePreference =
   | "zero_prep"
   | "quick_assembly";
 
+type RecipeCategory = Recipe["category"];
+
 interface MovementRecommendationCatalogItem {
   id: string;
   title: string;
@@ -36,21 +38,13 @@ interface RecipeRecommendationCatalogItem {
   title: string;
   zone: ZoneName;
   prepTime: string;
-  category:
-    | "High Protein"
-    | "Easy to Digest"
-    | "Hydrating"
-    | "Anti-Nausea"
-    | "Zero-Prep"
-    | "Quick Assembly"
-    | "Balanced Fuel";
-  preference: RecipePreference;
+  category: RecipeCategory;
 }
 
 // Server-safe projections of the app's canonical Movement and Nutrition catalogues.
 // They intentionally omit image imports and detailed instructions so the Vercel
-// function can use them without bundling frontend assets. A parity test keeps
-// IDs/titles/zones/categories aligned with MOVEMENTS and RECIPES.
+// function can use them without bundling frontend assets. Parity tests keep every
+// copied canonical field aligned with MOVEMENTS and RECIPES.
 export const MOVEMENT_RECOMMENDATION_CATALOG: MovementRecommendationCatalogItem[] = [
   { id: "1", title: "Brisk Walking", zone: "Green", duration: "15–30 mins", benefit: "Aerobic fitness", preferences: ["walking"] },
   { id: "2", title: "Seated Leg Extensions", zone: "Green", duration: "5–10 mins", benefit: "Thigh strength", preferences: ["seated", "strength"] },
@@ -76,24 +70,34 @@ export const MOVEMENT_RECOMMENDATION_CATALOG: MovementRecommendationCatalogItem[
 ];
 
 export const RECIPE_RECOMMENDATION_CATALOG: RecipeRecommendationCatalogItem[] = [
-  { id: "1", title: "Protein-Packed Berry Smoothie", zone: "Yellow", prepTime: "5 mins", category: "High Protein", preference: "high_protein" },
-  { id: "2", title: "Ginger & Turmeric Broth", zone: "Yellow", prepTime: "5 mins", category: "Anti-Nausea", preference: "anti_nausea" },
-  { id: "3", title: "Zucchini & Feta Muffins", zone: "Green", prepTime: "15 mins", category: "Easy to Digest", preference: "easy_to_digest" },
-  { id: "4", title: "Soft Roasted Root Vegetables", zone: "Green", prepTime: "10 mins", category: "Easy to Digest", preference: "easy_to_digest" },
-  { id: "5", title: "Poached Chicken & Steamed Greens", zone: "Green", prepTime: "10 mins", category: "High Protein", preference: "high_protein" },
-  { id: "6", title: "Classic Spaghetti with Butter", zone: "Green", prepTime: "5 mins", category: "Easy to Digest", preference: "easy_to_digest" },
-  { id: "7", title: "Low-Flavour Chicken & Rice Soup", zone: "Green", prepTime: "10 mins", category: "Anti-Nausea", preference: "anti_nausea" },
-  { id: "8", title: "High-Protein Overnight Oats", zone: "Yellow", prepTime: "8 mins", category: "High Protein", preference: "high_protein" },
-  { id: "9", title: "Red Lentil & Spinach Dhal", zone: "Green", prepTime: "5 mins", category: "High Protein", preference: "high_protein" },
-  { id: "10", title: "Hydrating Watermelon & Mint Cooler", zone: "Red", prepTime: "3 mins", category: "Hydrating", preference: "hydrating" },
-  { id: "11", title: "The \"Crash\" Shake", zone: "Red", prepTime: "2 mins", category: "Zero-Prep", preference: "zero_prep" },
-  { id: "12", title: "Energy Blitz Greek Yoghurt", zone: "Red", prepTime: "1 min", category: "Zero-Prep", preference: "zero_prep" },
-  { id: "13", title: "Sardine \"Emergency\" Toast", zone: "Yellow", prepTime: "3 mins", category: "Quick Assembly", preference: "quick_assembly" },
-  { id: "14", title: "Fortified Milky Drink", zone: "Red", prepTime: "2 mins", category: "Zero-Prep", preference: "zero_prep" },
-  { id: "15", title: "Custard & Pear Cup", zone: "Red", prepTime: "1 min", category: "Zero-Prep", preference: "zero_prep" },
-  { id: "16", title: "Creamed Rice Cup", zone: "Red", prepTime: "1 min", category: "Zero-Prep", preference: "zero_prep" },
-  { id: "17", title: "Microwave Beans & Cheese", zone: "Yellow", prepTime: "2 mins", category: "Quick Assembly", preference: "quick_assembly" },
+  { id: "1", title: "Protein-Packed Berry Smoothie", zone: "Yellow", prepTime: "5 mins", category: "High Protein" },
+  { id: "2", title: "Ginger & Turmeric Broth", zone: "Yellow", prepTime: "5 mins", category: "Anti-Nausea" },
+  { id: "3", title: "Zucchini & Feta Muffins", zone: "Green", prepTime: "15 mins", category: "Easy to Digest" },
+  { id: "4", title: "Soft Roasted Root Vegetables", zone: "Green", prepTime: "10 mins", category: "Easy to Digest" },
+  { id: "5", title: "Poached Chicken & Steamed Greens", zone: "Green", prepTime: "10 mins", category: "High Protein" },
+  { id: "6", title: "Classic Spaghetti with Butter", zone: "Green", prepTime: "5 mins", category: "Easy to Digest" },
+  { id: "7", title: "Low-Flavour Chicken & Rice Soup", zone: "Green", prepTime: "10 mins", category: "Anti-Nausea" },
+  { id: "8", title: "High-Protein Overnight Oats", zone: "Yellow", prepTime: "8 mins", category: "High Protein" },
+  { id: "9", title: "Red Lentil & Spinach Dhal", zone: "Green", prepTime: "5 mins", category: "High Protein" },
+  { id: "10", title: "Hydrating Watermelon & Mint Cooler", zone: "Red", prepTime: "3 mins", category: "Hydrating" },
+  { id: "11", title: "The \"Crash\" Shake", zone: "Red", prepTime: "2 mins", category: "Zero-Prep" },
+  { id: "12", title: "Energy Blitz Greek Yoghurt", zone: "Red", prepTime: "1 min", category: "Zero-Prep" },
+  { id: "13", title: "Sardine \"Emergency\" Toast", zone: "Yellow", prepTime: "3 mins", category: "Quick Assembly" },
+  { id: "14", title: "Fortified Milky Drink", zone: "Red", prepTime: "2 mins", category: "Zero-Prep" },
+  { id: "15", title: "Custard & Pear Cup", zone: "Red", prepTime: "1 min", category: "Zero-Prep" },
+  { id: "16", title: "Creamed Rice Cup", zone: "Red", prepTime: "1 min", category: "Zero-Prep" },
+  { id: "17", title: "Microwave Beans & Cheese", zone: "Yellow", prepTime: "2 mins", category: "Quick Assembly" },
 ];
+
+export const RECIPE_PREFERENCE_BY_CATEGORY: Record<RecipeCategory, RecipePreference> = {
+  "High Protein": "high_protein",
+  "Easy to Digest": "easy_to_digest",
+  Hydrating: "hydrating",
+  "Anti-Nausea": "anti_nausea",
+  "Zero-Prep": "zero_prep",
+  "Quick Assembly": "quick_assembly",
+  "Balanced Fuel": "any",
+};
 
 const MOVEMENT_PREFERENCES = new Set<MovementPreference>([
   "any",
@@ -185,9 +189,9 @@ export const recommendRecipes = (
   const sameZone = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
   const preferred = preference === "any"
     ? sameZone
-    : sameZone.filter((item) => item.preference === preference);
+    : sameZone.filter((item) => RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference);
   const preferenceMatched = preference === "any" || preferred.length > 0;
-  const items = (preferenceMatched ? preferred : sameZone).slice(0, 3).map(({ preference: _preference, ...item }) => item);
+  const items = (preferenceMatched ? preferred : sameZone).slice(0, 3);
 
   return {
     status: "ok" as const,

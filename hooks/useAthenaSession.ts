@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type React from 'react';
 import type { ChatMessage } from '../types';
 
@@ -36,10 +36,10 @@ export const useAthenaSession = (initialScore: number | null): AthenaSessionStat
   const [hasStartedConversation, setHasStartedConversation] = useState(false);
   const generationRef = useRef(0);
 
-  const getGeneration = () => generationRef.current;
-  const isCurrentGeneration = (generation: number) => generationRef.current === generation;
+  const getGeneration = useCallback(() => generationRef.current, []);
+  const isCurrentGeneration = useCallback((generation: number) => generationRef.current === generation, []);
 
-  const reset = (score: number | null = null) => {
+  const reset = useCallback((score: number | null = null) => {
     // Invalidate any async reply that started before this reset. The network
     // request may still finish, but its completion must not repopulate a
     // conversation the user has explicitly cleared.
@@ -48,7 +48,7 @@ export const useAthenaSession = (initialScore: number | null): AthenaSessionStat
     setInput('');
     setIsLoading(false);
     setHasStartedConversation(false);
-  };
+  }, []);
 
   return {
     messages,

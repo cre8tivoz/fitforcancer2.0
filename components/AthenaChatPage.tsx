@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Download, MessageCircle, Mic, Utensils } from 'lucide-react';
-import { CancerTypeOption, ChatContext, ChatMessage } from '../types';
+import { CancerTypeOption, ChatContext } from '../types';
 import { getFatigueZone } from '../utils/fatigueScore';
 import { getGeminiResponse } from '../services/geminiService';
 import { saveDailyCheckIn } from '../utils/patientContextStorage';
 import { DAILY_CHECKIN_STORAGE_KEY, FatigueState } from '../hooks/useFatigueState';
+import {
+  AthenaSessionState,
+  INITIAL_ATHENA_MESSAGE,
+  buildInitialAthenaMessages,
+} from '../hooks/useAthenaSession';
 import { UseSpeech } from '../hooks/useSpeech';
 import CaregiverExportButton from './CaregiverExportButton';
 import { exportConversationAsText } from '../utils/chatExport';
@@ -49,19 +54,6 @@ const ATHENA_STARTERS = [
   },
 ];
 
-const INITIAL_ATHENA_MESSAGE =
-  "Hi, I'm ATHENA — your treatment-day companion. How's your energy today? Choose a number from 0–10 and we'll go from there.";
-
-const buildInitialMessages = (score: number | null): ChatMessage[] => [
-  {
-    role: 'model',
-    content:
-      score === null
-        ? INITIAL_ATHENA_MESSAGE
-        : `Hi, I'm ATHENA — your treatment-day companion. I see your energy is set to ${score} today. What would you like help with first — nutrition, movement, or just a chat?`,
-  },
-];
-
 const detectCancerTypeFromText = (text: string): CancerTypeOption | undefined => {
   const normalizedText = text.toLowerCase();
 
@@ -79,15 +71,23 @@ interface AthenaChatPageProps {
   fatigueState: FatigueState;
   setFatigueState: React.Dispatch<React.SetStateAction<FatigueState>>;
   onEnergyHistoryChange: () => void;
+  session: AthenaSessionState;
 }
 
-const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigueState, onEnergyHistoryChange }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => buildInitialMessages(fatigueState.score));
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigueState, onEnergyHistoryChange, session }) => {
+  const {
+    messages,
+    setMessages,
+    input,
+    setInput,
+    isLoading,
+    setIsLoading,
+    hasStartedConversation,
+    setHasStartedConversation,
+    reset: resetSession,
+  } = session;
   const [cancerType, setCancerType] = useState<CancerTypeOption | undefined>(fatigueState.cancerType);
   const [isEnergyPromptMinimized, setIsEnergyPromptMinimized] = useState(false);
-  const [hasStartedConversation, setHasStartedConversation] = useState(false);
   const [isEditingEnergy, setIsEditingEnergy] = useState(false);
 
   useEffect(() => {
@@ -101,9 +101,9 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       messages.length === 1 &&
       messages[0]?.content === INITIAL_ATHENA_MESSAGE
     ) {
-      setMessages(buildInitialMessages(fatigueState.score));
+      setMessages(buildInitialAthenaMessages(fatigueState.score));
     }
-  }, [fatigueState.score, hasStartedConversation, messages]);
+  }, [fatigueState.score, hasStartedConversation, messages, setMessages]);
 
   const speech = UseSpeech((transcript) => {
     setInput((current) => [current, transcript].filter(Boolean).join(' '));
@@ -182,12 +182,9 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     if (isLoading) return;
 
     speech.stopListening();
-    setMessages(buildInitialMessages(null));
-    setInput('');
-    setIsLoading(false);
+    resetSession(null);
     setCancerType(undefined);
     setIsEnergyPromptMinimized(false);
-    setHasStartedConversation(false);
     setIsEditingEnergy(false);
     setFatigueState((current) => ({
       ...current,

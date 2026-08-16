@@ -69,15 +69,22 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(forwarded.systemInstruction.parts[0].text).toContain(
       "Never claim a specific item is \"in the app\" unless the tool returned it",
     );
+    expect(forwarded.systemInstruction.parts[0].text).toContain(
+      'For a generic request such as "recommend an exercise", use preference "any"',
+    );
+    expect(forwarded.systemInstruction.parts[0].text).toContain(
+      "Do not silently downgrade a Green or Yellow user",
+    );
   });
 
-  it("executes a movement tool against the current fatigue band and synthesises the reply", async () => {
+  it("executes a movement tool against the current fatigue band and preserves its call ID", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const toolContent = {
       role: "model",
       parts: [
         {
           functionCall: {
+            id: "call_seated_red",
             name: "recommend_movement",
             args: { preference: "seated" },
           },
@@ -125,6 +132,7 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(synthesisBody.contents.at(-2)).toEqual(toolContent);
 
     const functionResponse = synthesisBody.contents.at(-1).parts[0].functionResponse;
+    expect(functionResponse.id).toBe("call_seated_red");
     expect(functionResponse.name).toBe("recommend_movement");
     expect(functionResponse.response).toMatchObject({
       status: "ok",
@@ -135,13 +143,67 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(functionResponse.response.items.map((item: any) => item.id)).toEqual(["16", "17", "18"]);
   });
 
+  it("uses the Green catalogue baseline for a generic exercise recommendation", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const toolContent = {
+      role: "model",
+      parts: [
+        {
+          functionCall: {
+            id: "call_green_any",
+            name: "recommend_movement",
+            args: { preference: "any" },
+          },
+        },
+      ],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse({ candidates: [{ content: toolContent }] }))
+      .mockResolvedValueOnce(
+        geminiResponse({ candidates: [{ content: { role: "model", parts: [{ text: "A brisk walk is one of the Green options in the app." }] } }] }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.20.0.20" },
+        body: requestBody("Recommend an exercise for me", "🟢 Green"),
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect(out.body.recommendations).toEqual([
+      { kind: "movement", id: "1" },
+      { kind: "movement", id: "2" },
+      { kind: "movement", id: "3" },
+    ]);
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const response = synthesisBody.contents.at(-1).parts[0].functionResponse;
+    expect(response.id).toBe("call_green_any");
+    expect(response.response).toMatchObject({
+      status: "ok",
+      zone: "Green",
+      preference: "any",
+      preferenceMatched: true,
+    });
+    expect(response.response.items.map((item: any) => item.title)).toEqual([
+      "Brisk Walking",
+      "Seated Leg Extensions",
+      "Wall Squat Holds",
+    ]);
+  });
+
   it("can execute movement and recipe recommendations in one bounded tool round", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const toolContent = {
       role: "model",
       parts: [
-        { functionCall: { name: "recommend_movement", args: { preference: "mobility" } } },
-        { functionCall: { name: "recommend_recipe", args: { preference: "zero_prep" } } },
+        { functionCall: { id: "call_move", name: "recommend_movement", args: { preference: "mobility" } } },
+        { functionCall: { id: "call_food", name: "recommend_recipe", args: { preference: "zero_prep" } } },
       ],
     };
     const fetchMock = vi
@@ -175,10 +237,56 @@ describe("/api/gemini first-party recommendation tools", () => {
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
     const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
+    expect(responses.map((response: any) => [response.id, response.name])).toEqual([
+      ["call_move", "recommend_movement"],
+      ["call_food", "recommend_recipe"],
+    ]);
+  });
+
+  it("preserves IDs for parallel calls to the same tool", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const toolContent = {
+      role: "model",
+      parts: [
+        { functionCall: { id: "call_walk", name: "recommend_movement", args: { preference: "walking" } } },
+        { functionCall: { id: "call_strength", name: "recommend_movement", args: { preference: "strength" } } },
+      ],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse({ candidates: [{ content: toolContent }] }))
+      .mockResolvedValueOnce(
+        geminiResponse({ candidates: [{ content: { role: "model", parts: [{ text: "Here are walking and strength options." }] } }] }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.20.0.21" },
+        body: requestBody("Give me a walking option and a strength option", "🟢 Green"),
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect(out.body.recommendations).toEqual([
+      { kind: "movement", id: "1" },
+      { kind: "movement", id: "2" },
+      { kind: "movement", id: "3" },
+      { kind: "movement", id: "4" },
+    ]);
+
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
+    expect(responses.map((response: any) => response.id)).toEqual(["call_walk", "call_strength"]);
     expect(responses.map((response: any) => response.name)).toEqual([
       "recommend_movement",
-      "recommend_recipe",
+      "recommend_movement",
     ]);
+    expect(responses[0].response.preference).toBe("walking");
+    expect(responses[1].response.preference).toBe("strength");
   });
 
   it("does not guess catalogue intensity if a tool call arrives without a fatigue band", async () => {
@@ -191,7 +299,7 @@ describe("/api/gemini first-party recommendation tools", () => {
             {
               content: {
                 role: "model",
-                parts: [{ functionCall: { name: "recommend_movement", args: { preference: "walking" } } }],
+                parts: [{ functionCall: { id: "call_no_band", name: "recommend_movement", args: { preference: "walking" } } }],
               },
             },
           ],
@@ -215,9 +323,12 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(out.status).toBe(200);
     expect(out.body.recommendations).toBeUndefined();
     const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
-    expect(synthesisBody.contents.at(-1).parts[0].functionResponse.response).toMatchObject({
-      status: "needs_fatigue_score",
-      items: [],
+    expect(synthesisBody.contents.at(-1).parts[0].functionResponse).toMatchObject({
+      id: "call_no_band",
+      response: {
+        status: "needs_fatigue_score",
+        items: [],
+      },
     });
   });
 });

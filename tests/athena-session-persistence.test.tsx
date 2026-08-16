@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
 import App from '../App';
-import { FATIGUE_STORAGE_KEY } from '../hooks/useFatigueState';
+import {
+  DAILY_CHECKIN_STORAGE_KEY,
+  FATIGUE_STORAGE_KEY,
+  FATIGUE_ZONE_STORAGE_KEY,
+} from '../hooks/useFatigueState';
 
 const nav = () => document.querySelector('nav') as HTMLElement;
 
@@ -14,6 +18,7 @@ describe('ATHENA in-memory session continuity', () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('keeps the conversation and draft when navigating away and back', async () => {
@@ -49,6 +54,39 @@ describe('ATHENA in-memory session continuity', () => {
     expect(screen.getByText('My body feels achy today')).toBeInTheDocument();
     expect(screen.getByText(/keep this very gentle today/i)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /message ATHENA/i })).toHaveValue('Maybe something seated');
+  });
+
+  it('does not remove saved fatigue keys while hydrating a newly opened tab', async () => {
+    window.localStorage.setItem(FATIGUE_STORAGE_KEY, '8');
+    window.localStorage.setItem(FATIGUE_ZONE_STORAGE_KEY, '🔴 Red');
+    window.localStorage.setItem(DAILY_CHECKIN_STORAGE_KEY, 'true');
+
+    const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem');
+
+    render(
+      <MemoryRouter initialEntries={['/assistant']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem(FATIGUE_STORAGE_KEY)).toBe('8');
+      expect(window.sessionStorage.getItem(FATIGUE_ZONE_STORAGE_KEY)).toBe('🔴 Red');
+    });
+
+    const fatigueKeys = new Set([
+      FATIGUE_STORAGE_KEY,
+      FATIGUE_ZONE_STORAGE_KEY,
+      DAILY_CHECKIN_STORAGE_KEY,
+    ]);
+    const removedFatigueKeys = removeItemSpy.mock.calls
+      .map(([key]) => key)
+      .filter((key) => fatigueKeys.has(String(key)));
+
+    expect(removedFatigueKeys).toEqual([]);
+    expect(window.localStorage.getItem(FATIGUE_STORAGE_KEY)).toBe('8');
+    expect(window.localStorage.getItem(FATIGUE_ZONE_STORAGE_KEY)).toBe('🔴 Red');
+    expect(window.localStorage.getItem(DAILY_CHECKIN_STORAGE_KEY)).toBe('true');
   });
 
   it('does not restore a cleared conversation when an old reply finishes late', async () => {

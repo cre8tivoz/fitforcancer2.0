@@ -49,4 +49,41 @@ describe('ATHENA in-memory session continuity', () => {
     expect(screen.getByText(/keep this very gentle today/i)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /message ATHENA/i })).toHaveValue('Maybe something seated');
   });
+
+  it('does not restore a cleared conversation when an old reply finishes late', async () => {
+    const user = userEvent.setup();
+    let resolveFetch!: (value: unknown) => void;
+    const responseJson = vi.fn().mockResolvedValue({ text: 'This reply belongs to the cleared chat.' });
+    const fetchMock = vi.fn().mockImplementation(
+      () => new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/assistant']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /set energy score to 8/i }));
+    await user.type(screen.getByRole('textbox', { name: /message ATHENA/i }), 'This conversation should be cleared');
+    await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await user.click(within(nav()).getByText('Resources'));
+    await user.click(await screen.findByRole('button', { name: /Privacy & Sensitive Data Handling/i }));
+    await user.click(screen.getByRole('button', { name: /Clear Saved Browser Data/i }));
+    expect(screen.getByText(/Saved browser data cleared/i)).toBeInTheDocument();
+
+    resolveFetch({ ok: true, status: 200, json: responseJson });
+    await waitFor(() => expect(responseJson).toHaveBeenCalledTimes(1));
+
+    await user.click(within(nav()).getByText('ATHENA'));
+
+    expect(screen.queryByText('This conversation should be cleared')).not.toBeInTheDocument();
+    expect(screen.queryByText(/This reply belongs to the cleared chat/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/How's your energy today/i)).toBeInTheDocument();
+  });
 });

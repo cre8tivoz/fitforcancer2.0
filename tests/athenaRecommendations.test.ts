@@ -3,6 +3,7 @@ import { RECIPES } from "../constants";
 import { MOVEMENTS } from "../movements";
 import {
   MOVEMENT_RECOMMENDATION_CATALOG,
+  RECIPE_PREFERENCE_BY_CATEGORY,
   RECIPE_RECOMMENDATION_CATALOG,
   executeAthenaRecommendationTool,
   recommendMovements,
@@ -10,29 +11,74 @@ import {
 } from "../utils/athenaRecommendations";
 
 describe("ATHENA recommendation catalogues", () => {
-  it("keeps the server-safe movement projection aligned with the app catalogue", () => {
+  it("keeps every copied movement field aligned with the app catalogue", () => {
     expect(
-      MOVEMENT_RECOMMENDATION_CATALOG.map(({ id, title, zone }) => ({ id, title, zone })),
+      MOVEMENT_RECOMMENDATION_CATALOG.map(({ id, title, zone, duration, benefit }) => ({
+        id,
+        title,
+        zone,
+        duration,
+        benefit,
+      })),
     ).toEqual(
-      MOVEMENTS.map(({ id, title, intensity }) => ({ id, title, zone: intensity })),
+      MOVEMENTS.map(({ id, title, intensity, duration, benefit }) => ({
+        id,
+        title,
+        zone: intensity,
+        duration,
+        benefit,
+      })),
     );
   });
 
-  it("keeps the server-safe recipe projection aligned with the app catalogue", () => {
+  it("keeps every copied recipe field aligned with the app catalogue", () => {
     expect(
-      RECIPE_RECOMMENDATION_CATALOG.map(({ id, title, zone, category }) => ({ id, title, zone, category })),
+      RECIPE_RECOMMENDATION_CATALOG.map(({ id, title, zone, prepTime, category }) => ({
+        id,
+        title,
+        zone,
+        prepTime,
+        category,
+      })),
     ).toEqual(
-      RECIPES.map(({ id, title, fatigueZone, category }) => ({
+      RECIPES.map(({ id, title, fatigueZone, prepTime, category }) => ({
         id,
         title,
         zone: fatigueZone.split(" ")[1],
+        prepTime,
         category,
       })),
     );
   });
+
+  it("derives recipe preferences from category through one explicit mapping", () => {
+    expect(RECIPE_PREFERENCE_BY_CATEGORY).toEqual({
+      "High Protein": "high_protein",
+      "Easy to Digest": "easy_to_digest",
+      Hydrating: "hydrating",
+      "Anti-Nausea": "anti_nausea",
+      "Zero-Prep": "zero_prep",
+      "Quick Assembly": "quick_assembly",
+      "Balanced Fuel": "any",
+    });
+  });
 });
 
 describe("ATHENA deterministic recommendations", () => {
+  it("uses Green catalogue choices as the baseline for a generic Green exercise request", () => {
+    const result = recommendMovements("🟢 Green", "any");
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") throw new Error("expected recommendations");
+    expect(result.items.map((item) => item.id)).toEqual(["1", "2", "3"]);
+    expect(result.items.map((item) => item.title)).toEqual([
+      "Brisk Walking",
+      "Seated Leg Extensions",
+      "Wall Squat Holds",
+    ]);
+    expect(result.items.every((item) => item.zone === "Green")).toBe(true);
+  });
+
   it("returns only Red movement items on a Red fatigue day", () => {
     const result = recommendMovements("🔴 Red", "any");
 

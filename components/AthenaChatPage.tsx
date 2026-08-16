@@ -84,6 +84,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     setIsLoading,
     hasStartedConversation,
     setHasStartedConversation,
+    getGeneration,
+    isCurrentGeneration,
     reset: resetSession,
   } = session;
   const [cancerType, setCancerType] = useState<CancerTypeOption | undefined>(fatigueState.cancerType);
@@ -203,6 +205,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     const textToSend = (userPrompt || input).trim();
     if (!textToSend || isLoading || fatigueState.score === null) return;
 
+    const requestGeneration = getGeneration();
     speech.stopListening();
     setHasStartedConversation(true);
 
@@ -232,8 +235,10 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
     try {
       const aiResponse = await getGeminiResponse(newMessages, context);
+      if (!isCurrentGeneration(requestGeneration)) return;
       setMessages((current) => [...current, { role: 'model', content: aiResponse }]);
     } catch (error) {
+      if (!isCurrentGeneration(requestGeneration)) return;
       console.error('ATHENA chat error:', error);
       setMessages((current) => [
         ...current,
@@ -243,7 +248,9 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         },
       ]);
     } finally {
-      setIsLoading(false);
+      if (isCurrentGeneration(requestGeneration)) {
+        setIsLoading(false);
+      }
     }
   };
 

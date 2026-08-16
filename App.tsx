@@ -14,6 +14,7 @@ import {
   FatigueState,
   useFatigueState,
 } from './hooks/useFatigueState';
+import { useAthenaSession } from './hooks/useAthenaSession';
 import { clearEnergyHistory, clearPatientContext } from './utils/patientContextStorage';
 import { BookOpen, ChartColumnIncreasing, Dumbbell, House, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
 
@@ -140,6 +141,7 @@ const Layout: React.FC = () => {
 
 const App: React.FC = () => {
   const { state: fatigueState, setState: setFatigueState } = useFatigueState();
+  const athenaSession = useAthenaSession(fatigueState.score);
   const [exerciseZoneFilter, setExerciseZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
   const [recipeZoneFilter, setRecipeZoneFilter] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>(null);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
@@ -167,10 +169,11 @@ const App: React.FC = () => {
       recipeZoneFilter: null,
       hasLoggedDailyCheckIn: false,
     });
+    athenaSession.reset(null);
     setExerciseZoneFilter(null);
     setRecipeZoneFilter(null);
     setEnergyHistoryRefreshKey((current) => current + 1);
-  }, [setFatigueState]);
+  }, [athenaSession, setFatigueState]);
 
   return (
     <ErrorBoundary>
@@ -209,6 +212,7 @@ const App: React.FC = () => {
                 fatigueState={fatigueState}
                 setFatigueState={setFatigueState}
                 onEnergyHistoryChange={() => setEnergyHistoryRefreshKey((current) => current + 1)}
+                session={athenaSession}
               />
             }
           />

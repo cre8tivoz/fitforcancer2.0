@@ -1,4 +1,9 @@
 import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
+import {
+  ATHENA_RECOMMENDATION_TOOL_DECLARATIONS,
+  executeAthenaRecommendationTool,
+  type RecommendationRef,
+} from "../utils/athenaRecommendations.js";
 import { buildClinicalKnowledgeBaseText } from "../utils/clinical_guidelines.js";
 import { buildTreatmentInformationText } from "../utils/treatmentInformation.js";
 import { buildVerifiedResourcesPromptBlock } from "../utils/verifiedResources.js";
@@ -21,6 +26,7 @@ interface GeminiRequestBody {
 interface JsonResponse {
   error?: string;
   text?: string;
+  recommendations?: RecommendationRef[];
 }
 
 interface VercelLikeRequest {
@@ -33,6 +39,18 @@ interface VercelLikeResponse {
   status: (code: number) => {
     json: (body: JsonResponse) => void;
   };
+}
+
+interface UpstreamResult {
+  ok: boolean;
+  status: number;
+  json: any | null;
+  rawText: string;
+}
+
+interface GeminiFunctionCall {
+  name: string;
+  args?: Record<string, unknown>;
 }
 
 const GEMINI_MODEL = "gemini-2.5-flash";
@@ -58,6 +76,30 @@ const parseGeminiJson = (responseText: string): any | null => {
   } catch {
     return null;
   }
+};
+
+const callGemini = async (
+  payload: Record<string, unknown>,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<UpstreamResult> => {
+  const response = await fetch(GEMINI_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  const rawText = await response.text();
+  return {
+    ok: response.ok,
+    status: response.status,
+    json: parseGeminiJson(rawText),
+    rawText,
+  };
 };
 
 const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?: boolean): string => {
@@ -178,6 +220,15 @@ The UI handles fatigue-score selection before normal conversation. Treat a suppl
 - Never describe the 0-10 score as a diagnosis or clinical severity rating. In particular, never call a high score "critical fatigue" merely because of the number.
 - Use the score quietly to scale effort: lower-effort food and movement when fatigue is high; more involved options when fatigue is lower.
 
+FIRST-PARTY FIT FOR CANCER CATALOGUE TOOLS
+You can ask Fit for Cancer itself for real movement and recipe items already built into the app.
+- When you want to recommend a specific in-app movement/exercise, use recommend_movement instead of inventing a title.
+- When you want to recommend a specific in-app recipe/food option, use recommend_recipe instead of inventing a title.
+- The app applies the current fatigue band server-side. Never claim a specific item is "in the app" unless the tool returned it.
+- A tool may report that the requested preference had no match in the current fatigue band and return other same-band options instead. Say that plainly rather than pretending the preference matched.
+- Safety takes precedence over catalogue use. If the user's symptoms call for safety guidance rather than generic movement, deal with that first instead of reflexively calling the movement tool.
+- Tool results are suggestions from the existing app catalogue, not a medical prescription. Keep the user's stated restrictions and the safety rules below in force.
+
 CONVERSATION MODES
 Nutrition:
 - Help with low appetite, nausea, taste changes, dry mouth, hydration, simple nourishing food, or being too tired to cook.
@@ -294,6 +345,50 @@ const extractText = (payload: any): string | null => {
   return null;
 };
 
+const extractFunctionCalls = (payload: any): GeminiFunctionCall[] => {
+  const parts = payload?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return [];
+
+  return parts
+    .map((part: any) => part?.functionCall)
+    .filter((call: any) => call && typeof call.name === "string")
+    .map((call: any) => ({
+      name: call.name,
+      args: call.args && typeof call.args === "object" && !Array.isArray(call.args) ? call.args : {},
+    }));
+};
+
+const extractModelContent = (payload: any): Record<string, unknown> | null => {
+  const content = payload?.candidates?.[0]?.content;
+  return content && typeof content === "object" ? content : null;
+};
+
+const dedupeRecommendationRefs = (refs: RecommendationRef[]): RecommendationRef[] => {
+  const seen = new Set<string>();
+  return refs.filter((ref) => {
+    const key = `${ref.kind}:${ref.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const makeBaseContents = (history: ChatMessage[]) =>
+  history.map((message) => ({
+    role: message.role,
+    parts: [{ text: message.content }],
+  }));
+
+const makeSystemInstruction = (body: GeminiRequestBody) => ({
+  parts: [{ text: getSystemInstruction(body.context, body.cancerType, body.history) }],
+});
+
+const makeToolBlock = () => [
+  {
+    functionDeclarations: ATHENA_RECOMMENDATION_TOOL_DECLARATIONS,
+  },
+];
+
 export default async function handler(req: VercelLikeRequest, res: VercelLikeResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -337,46 +432,108 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
-    const geminiResponse = await fetch(GEMINI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: getSystemInstruction(body.context, body.cancerType, body.history) }],
-        },
-        contents: body.history.map((message) => ({
-          role: message.role,
-          parts: [{ text: message.content }],
-        })),
+    const systemInstruction = makeSystemInstruction(body);
+    const baseContents = makeBaseContents(body.history!);
+    const tools = makeToolBlock();
+
+    const firstResult = await callGemini(
+      {
+        systemInstruction,
+        contents: baseContents,
+        tools,
         generationConfig: {
           temperature: 0.7,
         },
-      }),
-      signal: controller.signal,
-    });
+      },
+      apiKey,
+      controller.signal,
+    );
 
-    const responseText = await geminiResponse.text();
-    const responseJson = parseGeminiJson(responseText);
-
-    if (!geminiResponse.ok) {
-      logGeminiError(`[gemini] upstream error status=${geminiResponse.status}`, responseJson ?? responseText);
-      res.status(geminiResponse.status).json({
+    if (!firstResult.ok) {
+      logGeminiError(`[gemini] upstream error status=${firstResult.status}`, firstResult.json ?? firstResult.rawText);
+      res.status(firstResult.status).json({
         error: "There was an error connecting to ATHENA. Please try again.",
       });
       return;
     }
 
-    const text = extractText(responseJson);
+    const functionCalls = extractFunctionCalls(firstResult.json);
+    let finalPayload = firstResult.json;
+    let recommendationRefs: RecommendationRef[] = [];
+
+    if (functionCalls.length > 0) {
+      const modelContent = extractModelContent(firstResult.json);
+      if (!modelContent) {
+        logGeminiError("[gemini] function call response had no model content", firstResult.json);
+        res.status(502).json({ error: "ATHENA returned an invalid tool response. Please try again." });
+        return;
+      }
+
+      const functionResponseParts = functionCalls.map((call) => {
+        const execution = executeAthenaRecommendationTool(
+          call.name,
+          call.args,
+          body.context?.fatigueZone ?? null,
+        );
+        recommendationRefs.push(...execution.refs);
+
+        return {
+          functionResponse: {
+            name: call.name,
+            response: execution.response,
+          },
+        };
+      });
+
+      recommendationRefs = dedupeRecommendationRefs(recommendationRefs);
+
+      const finalResult = await callGemini(
+        {
+          systemInstruction,
+          contents: [
+            ...baseContents,
+            modelContent,
+            {
+              role: "user",
+              parts: functionResponseParts,
+            },
+          ],
+          tools,
+          toolConfig: {
+            functionCallingConfig: {
+              mode: "NONE",
+            },
+          },
+          generationConfig: {
+            temperature: 0.7,
+          },
+        },
+        apiKey,
+        controller.signal,
+      );
+
+      if (!finalResult.ok) {
+        logGeminiError(`[gemini] tool synthesis error status=${finalResult.status}`, finalResult.json ?? finalResult.rawText);
+        res.status(finalResult.status).json({
+          error: "There was an error connecting to ATHENA. Please try again.",
+        });
+        return;
+      }
+
+      finalPayload = finalResult.json;
+    }
+
+    const text = extractText(finalPayload);
     if (!text) {
-      logGeminiError("[gemini] upstream returned no text", responseJson);
+      logGeminiError("[gemini] upstream returned no text", finalPayload);
       res.status(502).json({ error: "ATHENA returned an empty response. Please try again." });
       return;
     }
 
-    res.status(200).json({ text });
+    res.status(200).json({
+      text,
+      ...(recommendationRefs.length > 0 ? { recommendations: recommendationRefs } : {}),
+    });
   } catch (error) {
     if ((error as Error).name === "AbortError") {
       console.error("[gemini] upstream request timed out");

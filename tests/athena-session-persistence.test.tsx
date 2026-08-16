@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
 import App from '../App';
+import { FATIGUE_STORAGE_KEY } from '../hooks/useFatigueState';
 
 const nav = () => document.querySelector('nav') as HTMLElement;
 
@@ -84,6 +85,49 @@ describe('ATHENA in-memory session continuity', () => {
 
     expect(screen.queryByText('This conversation should be cleared')).not.toBeInTheDocument();
     expect(screen.queryByText(/This reply belongs to the cleared chat/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/How's your energy today/i)).toBeInTheDocument();
+  });
+
+  it('clears ATHENA and invalidates a pending reply when another tab clears fatigue data', async () => {
+    const user = userEvent.setup();
+    let resolveFetch!: (value: unknown) => void;
+    const responseJson = vi.fn().mockResolvedValue({ text: 'This reply belongs to the other-tab-cleared chat.' });
+    const fetchMock = vi.fn().mockImplementation(
+      () => new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/assistant']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /set energy score to 8/i }));
+    await user.type(screen.getByRole('textbox', { name: /message ATHENA/i }), 'This chat is open in another tab too');
+    await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await user.click(within(nav()).getByText('Exercise'));
+    expect(screen.getByRole('heading', { name: 'Movement' })).toBeInTheDocument();
+
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: FATIGUE_STORAGE_KEY,
+        oldValue: '8',
+        newValue: null,
+      }),
+    );
+
+    resolveFetch({ ok: true, status: 200, json: responseJson });
+    await waitFor(() => expect(responseJson).toHaveBeenCalledTimes(1));
+
+    await user.click(within(nav()).getByText('ATHENA'));
+
+    expect(screen.queryByText('This chat is open in another tab too')).not.toBeInTheDocument();
+    expect(screen.queryByText(/other-tab-cleared chat/i)).not.toBeInTheDocument();
     expect(screen.getByText(/How's your energy today/i)).toBeInTheDocument();
   });
 });

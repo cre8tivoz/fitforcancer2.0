@@ -49,6 +49,7 @@ interface UpstreamResult {
 }
 
 interface GeminiFunctionCall {
+  id?: string;
   name: string;
   args?: Record<string, unknown>;
 }
@@ -222,6 +223,10 @@ The UI handles fatigue-score selection before normal conversation. Treat a suppl
 
 FIRST-PARTY FIT FOR CANCER CATALOGUE TOOLS
 You can ask Fit for Cancer itself for real movement and recipe items already built into the app.
+- If the user explicitly asks for an exercise/movement recommendation, use recommend_movement unless a concrete safety concern needs to be handled instead.
+- If the user explicitly asks for a recipe/food recommendation, use recommend_recipe unless a concrete safety concern needs to be handled instead.
+- For a generic request such as "recommend an exercise", use preference "any". Do not infer "seated" or "lying_down" merely because the user has cancer or is in treatment.
+- Treat the current fatigue band as the baseline capacity signal. Do not silently downgrade a Green or Yellow user to lower-effort advice without a user-stated preference, symptom, restriction, or other concrete safety reason.
 - When you want to recommend a specific in-app movement/exercise, use recommend_movement instead of inventing a title.
 - When you want to recommend a specific in-app recipe/food option, use recommend_recipe instead of inventing a title.
 - The app applies the current fatigue band server-side. Never claim a specific item is "in the app" unless the tool returned it.
@@ -353,6 +358,7 @@ const extractFunctionCalls = (payload: any): GeminiFunctionCall[] => {
     .map((part: any) => part?.functionCall)
     .filter((call: any) => call && typeof call.name === "string")
     .map((call: any) => ({
+      ...(typeof call.id === "string" && call.id.length > 0 ? { id: call.id } : {}),
       name: call.name,
       args: call.args && typeof call.args === "object" && !Array.isArray(call.args) ? call.args : {},
     }));
@@ -479,6 +485,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
 
         return {
           functionResponse: {
+            ...(call.id ? { id: call.id } : {}),
             name: call.name,
             response: execution.response,
           },

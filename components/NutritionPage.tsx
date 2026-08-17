@@ -33,10 +33,40 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
   onCategoryFilterChange,
   onSearchChange,
 }) => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const athenaTargetId = searchParams.get('athena');
   const athenaTarget = athenaTargetId ? RECIPES.find((recipe) => recipe.id === athenaTargetId) : undefined;
   const currentRecipeZone = recipeZoneFilter === 'All' ? null : (recipeZoneFilter || fatigueZone);
+
+  const clearAthenaTarget = () => {
+    if (!searchParams.has('athena')) return;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('athena');
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const changeRecipeZoneFilter = (zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All') => {
+    clearAthenaTarget();
+    onRecipeZoneFilterChange(zone);
+  };
+
+  const changeCategoryFilter = (category: Recipe['category'] | 'All') => {
+    clearAthenaTarget();
+    onCategoryFilterChange(category);
+  };
+
+  const changeSearch = (query: string) => {
+    clearAthenaTarget();
+    onSearchChange(query);
+  };
+
+  const clearAllFilters = () => {
+    clearAthenaTarget();
+    onSearchChange('');
+    onCategoryFilterChange('All');
+    onRecipeZoneFilterChange('All');
+  };
+
   const filteredRecipes = RECIPES.filter((recipe) => {
     if (recipe.id === athenaTarget?.id) return true;
 
@@ -62,7 +92,10 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
   useEffect(() => {
     if (!athenaTarget) return;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`recipe-${athenaTarget.id}`)?.scrollIntoView({
+      const target = document.getElementById(`recipe-${athenaTarget.id}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
@@ -85,9 +118,9 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
             <label htmlFor="nutrition-search" className="mb-1.5 ml-1 block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Search recipes</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input id="nutrition-search" type="text" placeholder="Search ingredients or recipes..." value={recipeSearchQuery} onChange={(event) => onSearchChange(event.target.value)} className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm transition-shadow transition-transform transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-neon-blue" />
+              <input id="nutrition-search" type="text" placeholder="Search ingredients or recipes..." value={recipeSearchQuery} onChange={(event) => changeSearch(event.target.value)} className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm transition-shadow transition-transform transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-neon-blue" />
               {recipeSearchQuery && (
-                <button type="button" onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2" aria-label="Clear recipe search">
+                <button type="button" onClick={() => changeSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2" aria-label="Clear recipe search">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -107,13 +140,13 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
               <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Energy Zone</span>
                 <div role="radiogroup" aria-label="Nutrition energy zone filter" className="flex bg-white p-1 rounded-full border border-slate-200 shadow-sm">
-                  <button type="button" role="radio" aria-checked={recipeZoneFilter === 'All'} onClick={() => onRecipeZoneFilterChange('All')} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors ${recipeZoneFilter === 'All' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+                  <button type="button" role="radio" aria-checked={recipeZoneFilter === 'All'} onClick={() => changeRecipeZoneFilter('All')} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors ${recipeZoneFilter === 'All' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                     All
                   </button>
                   {(['🟢 Green', '🟡 Yellow', '🔴 Red'] as const).map((zone) => {
                     const isActive = recipeZoneFilter === zone || (recipeZoneFilter === null && fatigueZone === zone);
                     return (
-                      <button key={zone} type="button" role="radio" aria-checked={isActive} onClick={() => onRecipeZoneFilterChange(recipeZoneFilter === zone ? 'All' : zone)} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors flex items-center gap-1.5 ${isActive ? 'bg-white shadow-md text-slate-900 border border-slate-100' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+                      <button key={zone} type="button" role="radio" aria-checked={isActive} onClick={() => changeRecipeZoneFilter(recipeZoneFilter === zone ? 'All' : zone)} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors flex items-center gap-1.5 ${isActive ? 'bg-white shadow-md text-slate-900 border border-slate-100' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                         {zone}
                       </button>
                     );
@@ -124,7 +157,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
                 <div role="radiogroup" aria-label="Recipe category filter" className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible scroll-fade-right">
                   {categories.map((category) => (
-                    <button key={category} type="button" role="radio" aria-checked={recipeCategoryFilter === category} onClick={() => onCategoryFilterChange(recipeCategoryFilter === category ? 'All' : category)} className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-shadow transition-transform transition-colors border ${recipeCategoryFilter === category ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
+                    <button key={category} type="button" role="radio" aria-checked={recipeCategoryFilter === category} onClick={() => changeCategoryFilter(recipeCategoryFilter === category ? 'All' : category)} className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-shadow transition-transform transition-colors border ${recipeCategoryFilter === category ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                       {category}
                     </button>
                   ))}
@@ -132,7 +165,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
               </div>
             </div>
             {isFiltering && (
-              <button type="button" onClick={() => { onSearchChange(''); onCategoryFilterChange('All'); onRecipeZoneFilterChange('All'); }} className="text-[10px] font-black text-neon-pink hover:underline uppercase tracking-[0.2em] flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2">
+              <button type="button" onClick={clearAllFilters} className="text-[10px] font-black text-neon-pink hover:underline uppercase tracking-[0.2em] flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2">
                 <X className="w-3 h-3" />
                 Clear All Filters
               </button>
@@ -156,7 +189,9 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
               <div
                 key={recipe.id}
                 id={`recipe-${recipe.id}`}
-                className={`scroll-mt-24 rounded-2xl ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
+                tabIndex={isAthenaTarget ? -1 : undefined}
+                aria-label={isAthenaTarget ? `ATHENA recommendation: ${recipe.title}` : undefined}
+                className={`scroll-mt-24 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-4 ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
               >
                 {isAthenaTarget && (
                   <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-neon-blue">ATHENA recommendation</div>
@@ -173,7 +208,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
           </div>
           <h3 className="text-lg font-bold text-slate-800">No recipes found</h3>
           <p className="text-slate-500 max-w-xs mx-auto mt-1">Try adjusting your search or filters.</p>
-          <button onClick={() => { onSearchChange(''); onCategoryFilterChange('All'); onRecipeZoneFilterChange('All'); }} className="mt-4 text-neon-blue font-semibold hover:underline">Clear all filters</button>
+          <button onClick={clearAllFilters} className="mt-4 text-neon-blue font-semibold hover:underline">Clear all filters</button>
         </div>
       )}
     </div>

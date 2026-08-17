@@ -39,9 +39,17 @@ export interface Movement {
   sourceUrl?: string;
 }
 
+export type AthenaRecommendationKind = 'movement' | 'recipe';
+
+export interface AthenaRecommendationRef {
+  kind: AthenaRecommendationKind;
+  id: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
+  recommendations?: AthenaRecommendationRef[];
 }
 
 export type CancerTypeOption =

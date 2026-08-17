@@ -2,9 +2,6 @@ import { RECIPES } from '../constants';
 import { MOVEMENTS } from '../movements';
 import { AthenaRecommendationRef, ChatMessage } from '../types';
 
-const pad = (mm: number) => Math.max(0.3, mm);
-void pad;
-
 const formatDate = () =>
   new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date());
 

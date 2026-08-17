@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
 
@@ -16,12 +17,27 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   isMyelomaPatient,
   onExerciseZoneFilterChange,
 }) => {
+  const [searchParams] = useSearchParams();
+  const athenaTargetId = searchParams.get('athena');
+  const athenaTarget = athenaTargetId ? MOVEMENTS.find((movement) => movement.id === athenaTargetId) : undefined;
   const currentExerciseZone = exerciseZoneFilter === 'All' ? null : (exerciseZoneFilter || fatigueZone);
   const filteredMovements = MOVEMENTS.filter((movement) => {
+    if (movement.id === athenaTarget?.id) return true;
     if (exerciseZoneFilter === 'All' || !currentExerciseZone) return true;
     const zoneKey = currentExerciseZone.split(' ')[1] as 'Green' | 'Yellow' | 'Red';
     return movement.intensity === zoneKey;
   });
+
+  useEffect(() => {
+    if (!athenaTarget) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`movement-${athenaTarget.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [athenaTarget]);
 
   return (
     <div className="space-y-6">
@@ -31,6 +47,12 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
           Evidence-informed movement ideas matched to how much energy you have today. The zones are an effort guide, not a medical severity rating.
         </p>
       </div>
+
+      {athenaTarget && (
+        <div className="rounded-xl border border-neon-blue/30 bg-neon-blue/5 px-4 py-3 text-sm text-slate-700">
+          <span className="font-bold text-slate-900">From ATHENA:</span> {athenaTarget.title} is highlighted below. It stays visible here even if an older manual filter would otherwise hide it.
+        </div>
+      )}
 
       {currentExerciseZone && (
         <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
@@ -115,7 +137,21 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
 
       {filteredMovements.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredMovements.map((movement) => <MovementCard key={movement.id} movement={movement} />)}
+          {filteredMovements.map((movement) => {
+            const isAthenaTarget = movement.id === athenaTarget?.id;
+            return (
+              <div
+                key={movement.id}
+                id={`movement-${movement.id}`}
+                className={`scroll-mt-24 rounded-2xl ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
+              >
+                {isAthenaTarget && (
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-neon-blue">ATHENA recommendation</div>
+                )}
+                <MovementCard movement={movement} />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">

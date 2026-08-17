@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Filter, Search, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { RECIPES } from '../constants';
 import { Recipe } from '../types';
 import NutritionCard from './NutritionCard';
@@ -32,8 +33,13 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
   onCategoryFilterChange,
   onSearchChange,
 }) => {
+  const [searchParams] = useSearchParams();
+  const athenaTargetId = searchParams.get('athena');
+  const athenaTarget = athenaTargetId ? RECIPES.find((recipe) => recipe.id === athenaTargetId) : undefined;
   const currentRecipeZone = recipeZoneFilter === 'All' ? null : (recipeZoneFilter || fatigueZone);
   const filteredRecipes = RECIPES.filter((recipe) => {
+    if (recipe.id === athenaTarget?.id) return true;
+
     const matchesCategory = recipeCategoryFilter === 'All' || recipe.category === recipeCategoryFilter;
     const matchesSearch = recipe.title.toLowerCase().includes(recipeSearchQuery.toLowerCase()) ||
       recipe.ingredients.some((ingredient) => ingredient.toLowerCase().includes(recipeSearchQuery.toLowerCase()));
@@ -52,6 +58,17 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
         return aOrder - bOrder;
       })
     : filteredRecipes;
+
+  useEffect(() => {
+    if (!athenaTarget) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`recipe-${athenaTarget.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [athenaTarget]);
 
   const categories: (Recipe['category'] | 'All')[] = ['All', 'High Protein', 'Anti-Nausea', 'Easy to Digest', 'Hydrating', 'Zero-Prep', 'Quick Assembly'];
   const isFiltering = recipeCategoryFilter !== 'All' || recipeSearchQuery !== '' || recipeZoneFilter !== null;
@@ -77,6 +94,12 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
             </div>
           </div>
         </div>
+
+        {athenaTarget && (
+          <div className="rounded-xl border border-neon-blue/30 bg-neon-blue/5 px-4 py-3 text-sm text-slate-700">
+            <span className="font-bold text-slate-900">From ATHENA:</span> {athenaTarget.title} is highlighted below. It stays visible here even if an older search or filter would otherwise hide it.
+          </div>
+        )}
 
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -127,7 +150,21 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
 
       {orderedRecipes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {orderedRecipes.map((recipe) => <NutritionCard key={recipe.id} recipe={recipe} />)}
+          {orderedRecipes.map((recipe) => {
+            const isAthenaTarget = recipe.id === athenaTarget?.id;
+            return (
+              <div
+                key={recipe.id}
+                id={`recipe-${recipe.id}`}
+                className={`scroll-mt-24 rounded-2xl ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
+              >
+                {isAthenaTarget && (
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-neon-blue">ATHENA recommendation</div>
+                )}
+                <NutritionCard recipe={recipe} />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">

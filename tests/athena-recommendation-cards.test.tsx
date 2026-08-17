@@ -1,15 +1,24 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import React, { useState } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import AthenaRecommendationCard from '../components/AthenaRecommendationCard';
 import ExercisePage from '../components/ExercisePage';
 import NutritionPage from '../components/NutritionPage';
+import type { Recipe } from '../types';
 
 const LocationProbe = () => {
   const location = useLocation();
   return <div data-testid="location">{location.pathname}{location.search}</div>;
 };
+
+beforeEach(() => {
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
 
 afterEach(() => {
   cleanup();
@@ -65,40 +74,80 @@ describe('ATHENA recommendation cards', () => {
 });
 
 describe('ATHENA recommendation destinations', () => {
-  it('keeps a linked movement visible even when an older manual zone filter conflicts', () => {
+  it('keeps a linked movement visible against an older filter, focuses it, then restores normal filtering after user input', async () => {
+    const user = userEvent.setup();
+
+    const Harness = () => {
+      const [zone, setZone] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>('🔴 Red');
+      return (
+        <>
+          <LocationProbe />
+          <ExercisePage
+            fatigueZone="🔴 Red"
+            exerciseZoneFilter={zone}
+            isMyelomaPatient={false}
+            onExerciseZoneFilterChange={setZone}
+          />
+        </>
+      );
+    };
+
     render(
       <MemoryRouter initialEntries={['/exercise?athena=1']}>
-        <ExercisePage
-          fatigueZone="🔴 Red"
-          exerciseZoneFilter="🔴 Red"
-          isMyelomaPatient={false}
-          onExerciseZoneFilterChange={vi.fn()}
-        />
+        <Harness />
       </MemoryRouter>,
     );
 
     expect(screen.getByText(/From ATHENA:/i)).toHaveTextContent('Brisk Walking');
     expect(screen.getByText('Brisk Walking')).toBeInTheDocument();
-    expect(screen.getByText('ATHENA recommendation')).toBeInTheDocument();
+    const target = screen.getByLabelText('ATHENA recommendation: Brisk Walking');
+    await waitFor(() => expect(document.activeElement).toBe(target));
+
+    await user.click(screen.getByRole('radio', { name: '🟡 Yellow' }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/exercise');
+    expect(screen.queryByText(/From ATHENA:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Brisk Walking')).not.toBeInTheDocument();
   });
 
-  it('keeps a linked recipe visible even when older search/category/zone filters conflict', () => {
+  it('keeps a linked recipe visible against older filters, focuses it, then restores normal filtering after search input', async () => {
+    const user = userEvent.setup();
+
+    const Harness = () => {
+      const [zone, setZone] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>('🔴 Red');
+      const [category, setCategory] = useState<Recipe['category'] | 'All'>('Zero-Prep');
+      const [search, setSearch] = useState('custard');
+      return (
+        <>
+          <LocationProbe />
+          <NutritionPage
+            fatigueZone="🔴 Red"
+            recipeZoneFilter={zone}
+            recipeCategoryFilter={category}
+            recipeSearchQuery={search}
+            onRecipeZoneFilterChange={setZone}
+            onCategoryFilterChange={setCategory}
+            onSearchChange={setSearch}
+          />
+        </>
+      );
+    };
+
     render(
       <MemoryRouter initialEntries={['/nutrition?athena=5']}>
-        <NutritionPage
-          fatigueZone="🔴 Red"
-          recipeZoneFilter="🔴 Red"
-          recipeCategoryFilter="Zero-Prep"
-          recipeSearchQuery="custard"
-          onRecipeZoneFilterChange={vi.fn()}
-          onCategoryFilterChange={vi.fn()}
-          onSearchChange={vi.fn()}
-        />
+        <Harness />
       </MemoryRouter>,
     );
 
     expect(screen.getByText(/From ATHENA:/i)).toHaveTextContent('Poached Chicken & Steamed Greens');
     expect(screen.getByText('Poached Chicken & Steamed Greens')).toBeInTheDocument();
-    expect(screen.getByText('ATHENA recommendation')).toBeInTheDocument();
+    const target = screen.getByLabelText('ATHENA recommendation: Poached Chicken & Steamed Greens');
+    await waitFor(() => expect(document.activeElement).toBe(target));
+
+    await user.type(screen.getByRole('textbox', { name: /search recipes/i }), 'x');
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/nutrition');
+    expect(screen.queryByText(/From ATHENA:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Poached Chicken & Steamed Greens')).not.toBeInTheDocument();
   });
 });

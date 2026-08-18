@@ -161,6 +161,7 @@ export const getGeminiStreamingResponsePayload = async (
     let accumulatedText = "";
     let recommendations: AthenaRecommendationRef[] = [];
     let streamError: string | null = null;
+    let receivedDone = false;
 
     const handleBlock = (block: string) => {
       const parsed = parseStreamBlock(block);
@@ -172,7 +173,15 @@ export const getGeminiStreamingResponsePayload = async (
         return;
       }
 
+      if (parsed.event === "reset") {
+        accumulatedText = "";
+        recommendations = [];
+        onText("");
+        return;
+      }
+
       if (parsed.event === "done") {
+        receivedDone = true;
         recommendations = normaliseRecommendations(parsed.data.recommendations);
         return;
       }
@@ -184,7 +193,7 @@ export const getGeminiStreamingResponsePayload = async (
 
     while (true) {
       const { value, done } = await reader.read();
-      buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+      buffer = (buffer + decoder.decode(value, { stream: !done })).replace(/\r\n/g, "\n");
 
       let boundary = buffer.indexOf("\n\n");
       while (boundary >= 0) {
@@ -202,6 +211,10 @@ export const getGeminiStreamingResponsePayload = async (
 
     if (streamError) {
       throw new Error(streamError);
+    }
+
+    if (!receivedDone) {
+      throw new Error("ATHENA stream ended before completion. Please try again.");
     }
 
     if (!accumulatedText.trim()) {

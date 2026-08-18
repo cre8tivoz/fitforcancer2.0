@@ -210,7 +210,8 @@ export const getGeminiStreamingResponsePayload = async (
     if (tail) handleBlock(tail);
 
     if (streamError) {
-      throw new Error(streamError);
+      onText(streamError);
+      return { text: streamError, recommendations: [] };
     }
 
     if (!receivedDone) {

@@ -40,10 +40,11 @@ There is no Next.js migration and no AI SDK transport migration in this integrat
 
 ### Conversation
 
-The conversation surface is an accessible `role="log"` region with live-edge tracking.
+The conversation surface is an accessible `role="log"` region with a definite responsive viewport height and its own vertical scrolling.
 
 - A newly submitted user turn moves the conversation to the live edge.
-- If the user remains at the bottom, new ATHENA content follows naturally.
+- ATHENA's response is rendered incrementally as streamed text arrives.
+- If the user remains at the bottom, new streamed content follows naturally.
 - If the user scrolls back while ATHENA is responding, the app does not forcibly yank them to the newest message.
 - `ConversationScrollButton` appears when the user is away from the live edge.
 
@@ -53,7 +54,11 @@ The jump control is deliberately rendered through a portal into the non-scrollin
 
 ATHENA replies use `Message` / `MessageContent` composition while continuing to render existing Markdown through `MarkdownMessage`.
 
-First-party `AthenaRecommendationCard` components remain attached to the assistant message that produced their structured recommendation refs.
+The pending assistant message is created when the user sends. Before the first text chunk arrives the UI can show the thinking state; once streaming starts, the same message is updated progressively rather than appending a sequence of partial messages.
+
+First-party `AthenaRecommendationCard` components remain attached to the assistant message that produced their structured recommendation refs. Recommendation refs are attached when the streamed response completes.
+
+Per-message PDF controls are intentionally not rendered inside ATHENA replies. Conversation-level export/PDF controls remain the single download surface so the transcript does not accumulate repeated actions beneath every response.
 
 ### Prompt input
 
@@ -77,10 +82,14 @@ The AI Elements layer does **not** own chat state, persistence, model selection 
 Those remain Fit For Cancer responsibilities:
 
 - `useAthenaSession` owns transcript, draft, loading state and stale-request invalidation.
-- `services/geminiService.ts` owns the browser request contract.
-- `/api/gemini` owns Gemini orchestration and first-party tool execution.
+- `services/geminiService.ts` owns the browser request contract and consumes the app-level SSE response.
+- `/api/gemini` owns Gemini orchestration, server-side streaming and first-party tool execution.
 - Movement/Nutrition recommendation refs/cards remain Fit For Cancer data/UI.
 - privacy clear/reset and cross-tab invalidation remain app-owned behaviour.
+
+ATHENA requests `text/event-stream` from `/api/gemini`. The server streams Gemini text as `delta` events and finishes with a `done` event containing any structured recommendation refs. If Gemini first requests a Movement/Nutrition tool, Fit For Cancer executes the deterministic tool before the second Gemini synthesis response is streamed. Function calling remains disabled on that second synthesis pass.
+
+The browser transport retains a JSON fallback for non-streaming responses and test/backwards-compatible callers.
 
 For the complete flow see [ATHENA architecture](athena-architecture.md).
 
@@ -94,6 +103,6 @@ When reviewing a future AI Elements update:
 2. identify useful interaction/accessibility improvements;
 3. preserve Fit For Cancer's Vite/Gemini/session boundaries;
 4. avoid introducing AI SDK, Next.js or new runtime dependencies unless there is a separately approved architectural reason;
-5. run the ATHENA UI/session regression suite after any behavioural change.
+5. run the ATHENA UI/session/streaming regression suite after any behavioural change.
 
 The local files are intentionally source-owned components, not frozen forks and not unrelated custom widgets.

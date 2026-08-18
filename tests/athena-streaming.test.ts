@@ -86,6 +86,70 @@ describe('ATHENA streaming client', () => {
     expect(partials).toEqual(['Hello', 'Hello there']);
     expect(result).toEqual({ text: 'Hello there', recommendations: [] });
   });
+
+  it('parses SSE when CRLF pairs are split across network chunks', async () => {
+    const chunks = [
+      'event: delta\r',
+      '\ndata: {"text":"Hello"}\r',
+      '\n\r',
+      '\nevent: done\r',
+      '\ndata: {"recommendations":[]}\r',
+      '\n\r',
+      '\n',
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(chunks)));
+
+    const partials: string[] = [];
+    const result = await getGeminiStreamingResponsePayload(
+      [{ role: 'user', content: 'Hi' }],
+      { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+      (text) => partials.push(text),
+    );
+
+    expect(partials).toEqual(['Hello']);
+    expect(result.text).toBe('Hello');
+  });
+
+  it('rejects a truncated stream that closes without a done event', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(responseStream(['event: delta\ndata: {"text":"Partial answer"}\n\n'])),
+    );
+
+    const partials: string[] = [];
+    await expect(
+      getGeminiStreamingResponsePayload(
+        [{ role: 'user', content: 'Hi' }],
+        { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        (text) => partials.push(text),
+      ),
+    ).rejects.toThrow(/ended before completion/i);
+
+    expect(partials).toEqual(['Partial answer']);
+  });
+
+  it('rolls back provisional first-pass text before accepting tool synthesis', async () => {
+    const serverEvents = [
+      'event: delta\ndata: {"text":"Provisional"}\n\n',
+      'event: reset\ndata: {}\n\n',
+      'event: delta\ndata: {"text":"Final recommendation"}\n\n',
+      'event: done\ndata: {"recommendations":[{"kind":"movement","id":"1"}]}\n\n',
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(serverEvents)));
+
+    const partials: string[] = [];
+    const result = await getGeminiStreamingResponsePayload(
+      [{ role: 'user', content: 'Recommend a movement' }],
+      { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+      (text) => partials.push(text),
+    );
+
+    expect(partials).toEqual(['Provisional', '', 'Final recommendation']);
+    expect(result).toEqual({
+      text: 'Final recommendation',
+      recommendations: [{ kind: 'movement', id: '1' }],
+    });
+  });
 });
 
 describe('/api/gemini SSE transport', () => {
@@ -181,5 +245,109 @@ describe('/api/gemini SSE transport', () => {
     expect(output).toContain('"kind":"movement","id":"1"');
     expect(output).toContain('"kind":"movement","id":"2"');
     expect(output).toContain('"kind":"movement","id":"3"');
+  });
+
+  it('resets streamed first-pass prose if a later chunk switches to a catalogue tool', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const first = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [{ text: 'Let me pick something. ' }] } }] },
+      {
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'late-call-1',
+                    name: 'recommend_movement',
+                    args: { preference: 'any' },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+    const second = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Here are the actual Green options.' }] } }] },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([first]))
+      .mockResolvedValueOnce(responseStream([second]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.3' },
+        body: {
+          history: [{ role: 'user', content: 'Recommend an exercise' }],
+          context: { fatigueScore: 1, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    const output = out.chunks.join('');
+    expect(output.indexOf('Let me pick something.')).toBeGreaterThanOrEqual(0);
+    expect(output.indexOf('event: reset')).toBeGreaterThan(output.indexOf('Let me pick something.'));
+    expect(output.indexOf('Here are the actual Green options.')).toBeGreaterThan(output.indexOf('event: reset'));
+
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const modelParts = synthesisBody.contents.at(-2).parts;
+    expect(modelParts.some((part: any) => part.text === 'Let me pick something. ')).toBe(true);
+    expect(modelParts.some((part: any) => part.functionCall?.id === 'late-call-1')).toBe(true);
+  });
+
+  it('preserves distinct same-function calls when Gemini omits optional call IDs', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const first = encodeSse([
+      {
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                { functionCall: { name: 'recommend_movement', args: { preference: 'any' } } },
+                { functionCall: { name: 'recommend_movement', args: { preference: 'any' } } },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+    const second = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Two calls were handled.' }] } }] },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([first]))
+      .mockResolvedValueOnce(responseStream([second]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.4' },
+        body: {
+          history: [{ role: 'user', content: 'Give me two movement requests' }],
+          context: { fatigueScore: 1, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const modelCallParts = synthesisBody.contents.at(-2).parts.filter((part: any) => part.functionCall);
+    const responseParts = synthesisBody.contents.at(-1).parts;
+
+    expect(modelCallParts).toHaveLength(2);
+    expect(responseParts).toHaveLength(2);
+    expect(responseParts.every((part: any) => part.functionResponse.name === 'recommend_movement')).toBe(true);
   });
 });

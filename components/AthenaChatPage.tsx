@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Download, MessageCircle, Mic, Utensils } from 'lucide-react';
+import { Activity, Download, MessageCircle, Mic, Sparkles, Utensils } from 'lucide-react';
 import { CancerTypeOption, ChatContext } from '../types';
 import { getFatigueZone } from '../utils/fatigueScore';
 import { getGeminiResponsePayload } from '../services/geminiService';
@@ -14,6 +14,23 @@ import { UseSpeech } from '../hooks/useSpeech';
 import CaregiverExportButton from './CaregiverExportButton';
 import AthenaRecommendationCard from './AthenaRecommendationCard';
 import { exportConversationAsText } from '../utils/chatExport';
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+  useConversation,
+} from './ai-elements/conversation';
+import { Message, MessageContent, MessageResponse } from './ai-elements/message';
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputButton,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from './ai-elements/prompt-input';
+import { Suggestion, Suggestions } from './ai-elements/suggestion';
 
 const MarkdownMessage = React.lazy(() => import('./MarkdownMessage'));
 
@@ -54,6 +71,19 @@ const ATHENA_STARTERS = [
     prompt: "I'd just like to chat about my treatment or day.",
   },
 ];
+
+const ConversationFollower: React.FC<{
+  messageCount: number;
+  latestRole: 'user' | 'model' | undefined;
+}> = ({ messageCount, latestRole }) => {
+  const { scrollToBottom } = useConversation();
+
+  useEffect(() => {
+    if (latestRole === 'user') scrollToBottom('smooth');
+  }, [latestRole, messageCount, scrollToBottom]);
+
+  return null;
+};
 
 const detectCancerTypeFromText = (text: string): CancerTypeOption | undefined => {
   const normalizedText = text.toLowerCase();
@@ -264,6 +294,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
   const showStarterChoices = fatigueState.score !== null && !hasStartedConversation;
   const showEnergyPicker = fatigueState.score === null || isEditingEnergy;
+  const latestRole = messages[messages.length - 1]?.role;
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overscroll-contain">
@@ -412,100 +443,126 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       )}
 
       {showStarterChoices && (
-        <div className="relative z-10 mb-4 shrink-0">
-          <span className="mb-2 block text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">What would help first?</span>
-          <div className="flex gap-2 overflow-x-auto px-1 pb-2 no-scrollbar">
+        <div className="relative z-10 mb-3 shrink-0">
+          <span className="mb-2 ml-1 block text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">What would help first?</span>
+          <Suggestions aria-label="ATHENA conversation starters">
             {ATHENA_STARTERS.map(({ label, icon: Icon, prompt }) => (
-              <button
+              <Suggestion
                 key={label}
-                type="button"
-                onClick={() => onSendMessage(prompt)}
+                suggestion={prompt}
+                onClick={onSendMessage}
                 disabled={isLoading}
-                className="flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm transition-shadow transition-transform transition-colors hover:border-neon-blue whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Icon className="w-4 h-4 text-neon-blue" />
-                <span className="text-xs font-bold text-slate-700">{label}</span>
-              </button>
+                <Icon className="h-4 w-4 text-neon-blue" aria-hidden="true" />
+                <span>{label}</span>
+              </Suggestion>
             ))}
-          </div>
+          </Suggestions>
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-4">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-neon-blue text-neon-dark rounded-tr-none shadow-md' : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'}`}>
-              {msg.role === 'model' ? (
-                <div className="space-y-3">
-                  <React.Suspense fallback={<div className="animate-pulse space-y-2"><div className="h-3 bg-slate-200 rounded w-3/4" /><div className="h-3 bg-slate-200 rounded w-1/2" /></div>}>
-                    <MarkdownMessage content={msg.content} />
-                  </React.Suspense>
-                  {msg.recommendations && msg.recommendations.length > 0 && (
-                    <div className="space-y-2" aria-label="ATHENA recommendations from Fit for Cancer">
-                      {msg.recommendations.map((recommendation) => (
-                        <AthenaRecommendationCard
-                          key={`${recommendation.kind}:${recommendation.id}`}
-                          recommendation={recommendation}
-                        />
-                      ))}
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <Conversation className="h-full min-h-[24rem] max-h-[62vh] bg-white">
+          <ConversationFollower messageCount={messages.length} latestRole={latestRole} />
+          <ConversationContent className="gap-5">
+            {messages.map((msg, index) => {
+              const from = msg.role === 'user' ? 'user' : 'assistant';
+
+              return (
+                <Message from={from} key={`${msg.role}-${index}`}>
+                  {from === 'assistant' && (
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-neon-blue" aria-hidden="true">
+                        <Sparkles className="h-3.5 w-3.5" />
+                      </span>
+                      ATHENA
                     </div>
                   )}
+                  <MessageContent from={from}>
+                    {msg.role === 'model' ? (
+                      <MessageResponse className="space-y-3">
+                        <React.Suspense fallback={<div className="animate-pulse space-y-2"><div className="h-3 bg-slate-200 rounded w-3/4" /><div className="h-3 bg-slate-200 rounded w-1/2" /></div>}>
+                          <MarkdownMessage content={msg.content} />
+                        </React.Suspense>
+                        {msg.recommendations && msg.recommendations.length > 0 && (
+                          <div className="space-y-2 border-t border-slate-200 pt-3" aria-label="ATHENA recommendations from Fit for Cancer">
+                            {msg.recommendations.map((recommendation) => (
+                              <AthenaRecommendationCard
+                                key={`${recommendation.kind}:${recommendation.id}`}
+                                recommendation={recommendation}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </MessageResponse>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
+                  </MessageContent>
+                </Message>
+              );
+            })}
+
+            {isLoading && (
+              <Message from="assistant" aria-label="ATHENA is thinking">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-neon-blue" aria-hidden="true">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </span>
+                  ATHENA
                 </div>
-              ) : (
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
-              )}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-slate-100 p-4 rounded-2xl rounded-tl-none border border-slate-200">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-75" />
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150" />
-              </div>
-            </div>
-          </div>
-        )}
+                <MessageContent from="assistant">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-neon-blue" aria-hidden="true" />
+                    Thinking…
+                  </div>
+                </MessageContent>
+              </Message>
+            )}
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
       </div>
 
       {fatigueState.score !== null && (
-        <form onSubmit={(e) => { e.preventDefault(); onSendMessage(); }} className="mt-4 space-y-2">
-          <label htmlFor="athena-message" className="ml-1 block text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-            Message ATHENA
-          </label>
-          <div className="flex gap-2">
-            <input
-              id="athena-message"
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask for help, or just tell ATHENA how the day is going..."
-              className="flex-1 p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-neon-blue shadow-sm transition-shadow transition-transform transition-colors"
-            />
-            {speech.isSupported && (
-              <button
-                type="button"
-                onClick={speech.toggleListening}
+        <div className="mt-3 shrink-0">
+          <label htmlFor="athena-message" className="sr-only">Message ATHENA</label>
+          <PromptInput
+            aria-label="Message ATHENA"
+            onSubmit={({ text }) => onSendMessage(text)}
+          >
+            <PromptInputBody>
+              <PromptInputTextarea
+                id="athena-message"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
                 disabled={isLoading}
-                aria-label={speech.isListening ? 'Stop voice dictation' : 'Start voice dictation for ATHENA message'}
-                aria-pressed={speech.isListening}
-                className={`p-4 rounded-xl border shadow-sm transition-shadow transition-transform transition-colors ${speech.isListening ? 'bg-rose-500 text-white border-rose-500 animate-pulse' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}
-              >
-                <Mic className="w-5 h-5" />
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              aria-label="Send message to ATHENA"
-              className="p-4 bg-neon-blue text-neon-dark rounded-xl shadow-md hover:bg-neon-blue/90 disabled:opacity-50 transition-shadow transition-transform transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-            </button>
-          </div>
-        </form>
+                aria-label="Message ATHENA"
+                placeholder="Ask for help, or just tell ATHENA how the day is going..."
+              />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <PromptInputTools>
+                {speech.isSupported && (
+                  <PromptInputButton
+                    onClick={speech.toggleListening}
+                    disabled={isLoading}
+                    aria-label={speech.isListening ? 'Stop voice dictation' : 'Start voice dictation for ATHENA message'}
+                    aria-pressed={speech.isListening}
+                    className={speech.isListening ? 'border-rose-500 bg-rose-500 text-white hover:bg-rose-500 hover:text-white' : ''}
+                  >
+                    <Mic className="h-5 w-5" aria-hidden="true" />
+                  </PromptInputButton>
+                )}
+                <span className="hidden text-[10px] text-slate-400 sm:inline">Enter to send · Shift+Enter for a new line</span>
+              </PromptInputTools>
+              <PromptInputSubmit
+                status={isLoading ? 'submitted' : 'ready'}
+                disabled={!input.trim()}
+              />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
       )}
 
       <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">

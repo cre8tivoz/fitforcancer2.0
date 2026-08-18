@@ -15,6 +15,8 @@ import { ArrowDown } from 'lucide-react';
 
 type ConversationContextValue = {
   isAtBottom: boolean;
+  viewportRef: React.RefObject<HTMLDivElement | null>;
+  updateBottomState: () => void;
   scrollToBottom: (behavior?: ScrollBehavior) => void;
 };
 
@@ -30,7 +32,6 @@ export const Conversation: React.FC<ConversationProps> = ({
   ...props
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const contentObserverRef = useRef<ResizeObserver | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const isAtBottomRef = useRef(true);
 
@@ -53,39 +54,59 @@ export const Conversation: React.FC<ConversationProps> = ({
     setIsAtBottom(true);
   }, []);
 
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport || typeof ResizeObserver === 'undefined') return;
-
-    contentObserverRef.current?.disconnect();
-    const content = viewport.firstElementChild;
-    if (!content) return;
-
-    const observer = new ResizeObserver(() => {
-      if (isAtBottomRef.current) scrollToBottom('smooth');
-      else updateBottomState();
-    });
-    observer.observe(content);
-    contentObserverRef.current = observer;
-
-    return () => observer.disconnect();
-  }, [scrollToBottom, updateBottomState]);
-
   return (
-    <ConversationContext.Provider value={{ isAtBottom, scrollToBottom }}>
+    <ConversationContext.Provider
+      value={{ isAtBottom, viewportRef, updateBottomState, scrollToBottom }}
+    >
       <div
-        ref={viewportRef}
-        onScroll={updateBottomState}
-        role="log"
-        aria-label="ATHENA conversation"
-        aria-live="polite"
-        aria-relevant="additions text"
-        className={`relative min-h-0 flex-1 overflow-y-auto overscroll-contain ${className}`}
+        className={`relative min-h-0 flex-1 overflow-hidden ${className}`}
         {...props}
       >
         {children}
       </div>
     </ConversationContext.Provider>
+  );
+};
+
+export type ConversationViewportProps = React.HTMLAttributes<HTMLDivElement>;
+
+export const ConversationViewport: React.FC<ConversationViewportProps> = ({
+  className = '',
+  ...props
+}) => {
+  const context = useContext(ConversationContext);
+  if (!context) throw new Error('ConversationViewport must be used inside Conversation');
+
+  const { viewportRef, updateBottomState, scrollToBottom } = context;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || typeof ResizeObserver === 'undefined') return;
+
+    const content = viewport.firstElementChild;
+    if (!content) return;
+
+    const observer = new ResizeObserver(() => {
+      const distance = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      if (distance <= BOTTOM_THRESHOLD_PX) scrollToBottom('smooth');
+      else updateBottomState();
+    });
+    observer.observe(content);
+
+    return () => observer.disconnect();
+  }, [scrollToBottom, updateBottomState, viewportRef]);
+
+  return (
+    <div
+      ref={viewportRef}
+      onScroll={updateBottomState}
+      role="log"
+      aria-label="ATHENA conversation"
+      aria-live="polite"
+      aria-relevant="additions text"
+      className={`h-full min-h-0 overflow-y-auto overscroll-contain ${className}`}
+      {...props}
+    />
   );
 };
 

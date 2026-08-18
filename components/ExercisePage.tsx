@@ -42,6 +42,14 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   });
 
   useEffect(() => {
+    if (athenaTargetId) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    // This is intentionally mount-only. Query-param changes on the page should
+    // not keep snapping the document back to the top after the user interacts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (!athenaTarget) return;
     const frame = window.requestAnimationFrame(() => {
       const target = document.getElementById(`movement-${athenaTarget.id}`);

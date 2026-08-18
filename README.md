@@ -34,9 +34,11 @@ For concrete Movement or Nutrition recommendations, Gemini can call two first-pa
 
 Those functions deterministically filter the app-owned catalogue to the user's current Green, Yellow or Red fatigue band. Gemini interprets intent and explains the result; Fit For Cancer owns the actual item selection, IDs and safety metadata.
 
-Structured recommendation references are returned with ATHENA's reply and rendered as real in-chat cards. Users can open the exact Movement or Nutrition item in the main app, where the linked item is highlighted and focused.
+ATHENA responses stream through the server-side `/api/gemini` endpoint. Normal conversational text appears progressively; when Gemini requests a first-party Movement/Nutrition tool, Fit For Cancer executes the deterministic selection first and then streams the synthesis response. Structured recommendation references arrive at completion and render as real in-chat cards.
 
-See [ATHENA architecture](docs/athena-architecture.md) for the full request/session/tool flow and [ATHENA + AI Elements](docs/athena-ai-elements.md) for the chat UI boundary.
+Users can open the exact Movement or Nutrition item in the main app, where the linked item is highlighted and focused. Normal Movement/Nutrition navigation starts at the top of the page; explicit ATHENA recommendation links are the exception because they intentionally navigate to the target card.
+
+See [ATHENA architecture](docs/athena-architecture.md) for the full request/session/tool/streaming flow and [ATHENA + AI Elements](docs/athena-ai-elements.md) for the chat UI boundary.
 
 ## Session and Privacy Model
 
@@ -64,7 +66,11 @@ ATHENA's chat surface uses source-owned components adapted from the official Ver
 
 This keeps the official AI-chat composition model while preserving the existing Vite/Gemini architecture. There is no Next.js migration and no AI SDK transport migration.
 
-The current composer supports multiline drafts (`Enter` sends; `Shift+Enter` adds a new line), voice dictation where supported, live-edge conversation behaviour and a jump-to-latest control. The composer remains editable while ATHENA is responding so the next thought can be drafted without starting a concurrent request.
+The transcript has its own responsive scroll viewport and follows streamed replies while the user remains at the live edge. If the user scrolls back, ATHENA does not force the transcript to the newest content; a jump-to-latest control is available instead.
+
+The current composer supports multiline drafts (`Enter` sends; `Shift+Enter` adds a new line) and voice dictation where supported. It remains editable while ATHENA is responding so the next thought can be drafted without starting a concurrent request.
+
+Per-message PDF buttons are intentionally omitted. Conversation-level export/PDF controls remain outside the transcript so download actions do not repeat beneath every ATHENA response.
 
 ## Tech Stack
 
@@ -85,12 +91,12 @@ The current composer supports multiline drafts (`Enter` sends; `Shift+Enter` add
 ## Key Architecture Files
 
 - [`App.tsx`](App.tsx) — routes, shared fatigue state and app-level ATHENA session ownership.
-- [`components/AthenaChatPage.tsx`](components/AthenaChatPage.tsx) — ATHENA conversation surface and user interactions.
+- [`components/AthenaChatPage.tsx`](components/AthenaChatPage.tsx) — ATHENA conversation surface, streaming message updates and user interactions.
 - [`components/ai-elements/`](components/ai-elements/) — local source-owned AI Elements adaptations.
 - [`hooks/useAthenaSession.ts`](hooks/useAthenaSession.ts) — memory-only transcript/draft/loading state and request-generation invalidation.
 - [`hooks/useFatigueState.ts`](hooks/useFatigueState.ts) — fatigue/cancer context hydration, persistence and cross-tab clearing.
-- [`services/geminiService.ts`](services/geminiService.ts) — browser client for `/api/gemini` and structured recommendation refs.
-- [`api/gemini.ts`](api/gemini.ts) — server-side Gemini orchestration, prompt/safety framework, request validation and tool round.
+- [`services/geminiService.ts`](services/geminiService.ts) — browser SSE/JSON client for `/api/gemini` and structured recommendation refs.
+- [`api/gemini.ts`](api/gemini.ts) — server-side Gemini orchestration, prompt/safety framework, SSE streaming, request validation and tool round.
 - [`utils/treatmentInformation.ts`](utils/treatmentInformation.ts) — graduated general treatment-information layer and Australian source routing.
 - [`utils/athenaRecommendations.ts`](utils/athenaRecommendations.ts) — deterministic Movement/Nutrition recommendation projections and function declarations.
 - [`movements.ts`](movements.ts) — canonical frontend `MOVEMENTS` catalogue.
@@ -148,19 +154,19 @@ pnpm build
 
 `pnpm test` runs the Vitest regression suite. `pnpm lint` is the TypeScript no-emit check. `pnpm build` validates the production Vite bundle.
 
-The regression suite now covers core app smoke paths plus fatigue-zone logic, Energy Bank behaviour, Gemini request validation, treatment/blood-cancer routing, deterministic recommendation tools, structured recommendation cards/deep links, chat exports, route-level ATHENA session continuity/privacy invalidation, and the AI Elements chat surface.
+The regression suite covers core app smoke paths plus fatigue-zone logic, Energy Bank behaviour, Gemini request validation, treatment/blood-cancer routing, deterministic recommendation tools, streamed direct/tool responses, structured recommendation cards/deep links, page-entry scroll behaviour, chat exports, route-level ATHENA session continuity/privacy invalidation, and the AI Elements chat surface.
 
 ## Deployment
 
 The production architecture is Vercel-oriented:
 
 - Vite builds the static frontend into `dist`.
-- `/api/gemini` runs as a serverless function.
+- `/api/gemini` runs as a serverless function and supports ATHENA's SSE response stream.
 - the Gemini API key remains server-side.
 - security headers and SPA rewrites are configured in `vercel.json`.
 - optional Upstash-backed rate limiting can persist across serverless instances.
 
-If deployed elsewhere, the host needs an equivalent server-side Gemini endpoint and equivalent security controls; do not move the Gemini key into browser code.
+If deployed elsewhere, the host needs an equivalent server-side Gemini endpoint and streaming/security controls; do not move the Gemini key into browser code.
 
 ## Documentation
 

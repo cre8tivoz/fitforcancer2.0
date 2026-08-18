@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
@@ -18,12 +18,14 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   onExerciseZoneFilterChange,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const suppressNextNormalEntryScrollRef = useRef(false);
   const athenaTargetId = searchParams.get('athena');
   const athenaTarget = athenaTargetId ? MOVEMENTS.find((movement) => movement.id === athenaTargetId) : undefined;
   const currentExerciseZone = exerciseZoneFilter === 'All' ? null : (exerciseZoneFilter || fatigueZone);
 
   const clearAthenaTarget = () => {
     if (!searchParams.has('athena')) return;
+    suppressNextNormalEntryScrollRef.current = true;
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('athena');
     setSearchParams(nextParams, { replace: true });
@@ -42,12 +44,13 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   });
 
   useEffect(() => {
-    if (athenaTargetId) return;
+    if (athenaTarget) return;
+    if (suppressNextNormalEntryScrollRef.current) {
+      suppressNextNormalEntryScrollRef.current = false;
+      return;
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    // This is intentionally mount-only. Query-param changes on the page should
-    // not keep snapping the document back to the top after the user interacts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [athenaTarget]);
 
   useEffect(() => {
     if (!athenaTarget) return;

@@ -50,4 +50,31 @@ describe('ATHENA malformed SSE handling', () => {
 
     expect(partials).toEqual(['Provisional', 'ProvisionalFinal recommendation']);
   });
+
+  it.each([
+    ['delta without text', 'event: delta\ndata: {}\n\n'],
+    ['reset with a non-object payload', 'event: reset\ndata: null\n\n'],
+    ['error without a message', 'event: error\ndata: {}\n\n'],
+    ['done without recommendation refs', 'event: done\ndata: {}\n\n'],
+    [
+      'done with an invalid recommendation ref',
+      'event: done\ndata: {"recommendations":[{"kind":"movement","id":""}]}\n\n',
+    ],
+  ])('poisons the stream for protocol-invalid %s', async (_label, invalidEvent) => {
+    const serverEvents = [
+      invalidEvent,
+      'event: delta\ndata: {"text":"Later valid text"}\n\n',
+      'event: done\ndata: {"recommendations":[]}\n\n',
+    ];
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(serverEvents)));
+
+    await expect(
+      getGeminiStreamingResponsePayload(
+        [{ role: 'user', content: 'Hi' }],
+        { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        () => undefined,
+      ),
+    ).rejects.toThrow(/malformed data/i);
+  });
 });

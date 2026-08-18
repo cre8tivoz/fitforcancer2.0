@@ -63,7 +63,7 @@ ATHENA uses the `PromptInput` composition pattern with a multiline textarea.
 - `Shift+Enter` inserts a newline.
 - IME composition is respected before Enter is treated as submit.
 - voice dictation remains available where browser support exists.
-- while ATHENA is responding, the textarea stays enabled and focused so the user can draft the next thought.
+- while ATHENA is responding, the textarea stays enabled so the next thought can be drafted without enabling a concurrent send. Keyboard submission can retain textarea focus; clicking the send button moves focus to that control and the current UI does not automatically refocus the textarea.
 - submit and voice controls remain blocked during the active request, and the page-level send handler also rejects concurrent requests.
 
 ### Suggestions

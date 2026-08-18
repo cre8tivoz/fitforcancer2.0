@@ -105,6 +105,7 @@ describe('/api/gemini upstream SSE integrity', () => {
     ['empty object', '{}'],
     ['JSON string', '"corrupt"'],
     ['candidate with no consumable content or terminal state', '{"candidates":[{}]}'],
+    ['candidate with only an empty text part', '{"candidates":[{"content":{"parts":[{"text":""}]}}]}'],
   ])('rejects semantically invalid Gemini payload: %s', async (_label, invalidPayload) => {
     const out = await runStreamingRequest([
       'data: {"candidates":[{"content":{"parts":[{"text":"First part. "}]}}]}\n\n',

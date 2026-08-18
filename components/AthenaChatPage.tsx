@@ -536,7 +536,6 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 id="athena-message"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                disabled={isLoading}
                 aria-label="Message ATHENA"
                 placeholder="Ask for help, or just tell ATHENA how the day is going..."
               />

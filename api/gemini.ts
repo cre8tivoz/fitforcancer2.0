@@ -460,7 +460,7 @@ const isConsumableGeminiStreamPayload = (payload: unknown): boolean => {
     Array.isArray(content.parts) &&
     content.parts.some((part) => {
       if (!isRecordValue(part)) return false;
-      if (typeof part.text === "string") return true;
+      if (typeof part.text === "string" && part.text.length > 0) return true;
       const functionCall = part.functionCall;
       return (
         isRecordValue(functionCall) &&

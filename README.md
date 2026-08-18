@@ -4,17 +4,67 @@
 
 # Fit For Cancer
 
-Fit For Cancer is a Vite + React + TypeScript web app that provides evidence-based oncology exercise and nutrition support, plus a Gemini-powered assistant for fatigue-aware guidance.
+Fit For Cancer is a free, evidence-informed treatment-day support app for people living through cancer treatment and cancer-related fatigue. It combines fatigue-aware movement, practical nutrition, recent energy check-ins, verified Australian resources, and **ATHENA** — the app's conversational treatment-day companion.
 
-## App Overview
+ATHENA is now the main connective layer across the product. She can talk naturally about treatment days, fatigue, food, movement and general treatment information, and can recommend real Movement and Nutrition items already built into Fit For Cancer. The app — not the language model — decides which catalogue items are eligible for the user's current fatigue band.
 
-The app is organized into five main sections:
+## Product Surfaces
 
-- `Home` for orientation and fatigue-zone context
-- `Exercise` for movement cards matched to energy level
-- `Nutrition` for recovery recipe cards
-- `AI Chat` for Gemini-powered fatigue and symptom guidance
-- `Resources` for evidence, support organizations, and safety information
+- **Home** — orientation and today's fatigue context.
+- **Movement** — 21 fatigue-banded movement options with practical safety notes.
+- **Nutrition** — 17 fatigue-banded recipes covering high-protein, easy-to-digest, hydrating, anti-nausea, zero-prep and quick-assembly needs.
+- **Energy Bank** — recent browser-local check-ins for spotting treatment-day patterns.
+- **ATHENA** — conversational support, general treatment information, and first-party Movement/Nutrition recommendations.
+- **Resources** — evidence sources, Australian support organisations, privacy information and saved-data controls.
+
+## ATHENA in the Current Architecture
+
+ATHENA is deliberately useful without pretending to be a clinician.
+
+- She may **explain** general cancer-treatment categories and terminology.
+- She may **compare** treatment approaches in general terms when the supplied evidence supports it.
+- She does **not decide** which treatment a person should start, stop, switch, skip or alter.
+- She does not diagnose symptoms or recommend replacing evidence-based treatment with an unproven cure.
+- Sources stay underneath ordinary conversation and are surfaced when the user asks for evidence or when attribution materially improves an answer.
+
+For concrete Movement or Nutrition recommendations, Gemini can call two first-party Fit For Cancer tools:
+
+- `recommend_movement`
+- `recommend_recipe`
+
+Those functions deterministically filter the app-owned catalogue to the user's current Green, Yellow or Red fatigue band. Gemini interprets intent and explains the result; Fit For Cancer owns the actual item selection, IDs and safety metadata.
+
+Structured recommendation references are returned with ATHENA's reply and rendered as real in-chat cards. Users can open the exact Movement or Nutrition item in the main app, where the linked item is highlighted and focused.
+
+See [ATHENA architecture](docs/athena-architecture.md) for the full request/session/tool flow and [ATHENA + AI Elements](docs/athena-ai-elements.md) for the chat UI boundary.
+
+## Session and Privacy Model
+
+Fit For Cancer currently has **no account system and no app-owned server database for chat history**.
+
+- ATHENA transcript and draft state live in memory and survive normal route navigation within the current app session.
+- Refreshing/reloading the app does not intentionally restore ATHENA chat history.
+- Resetting or clearing saved browser data invalidates any in-flight ATHENA response so an old request cannot repopulate a cleared conversation.
+- A same-origin clear in another tab also resets ATHENA's in-memory session and local fatigue context.
+- Cancer type is stored browser-side with a 14-day expiry.
+- Energy history is stored browser-side and capped at the most recent 30 entries.
+- Fatigue score/zone and daily-check-in state use browser storage for continuity.
+- Chat requests are sent through the server-side `/api/gemini` endpoint to Gemini to generate responses; the Gemini API key is never exposed to browser code.
+
+Cloud chat history, accounts and durable transcript storage are **not part of the current product** and require a separate privacy/product design before implementation.
+
+## Chat UI
+
+ATHENA's chat surface uses source-owned components adapted from the official Vercel AI Elements project:
+
+- `Conversation`
+- `Message`
+- `PromptInput`
+- `Suggestion`
+
+This keeps the official AI-chat composition model while preserving the existing Vite/Gemini architecture. There is no Next.js migration and no AI SDK transport migration.
+
+The current composer supports multiline drafts (`Enter` sends; `Shift+Enter` adds a new line), voice dictation where supported, live-edge conversation behaviour and a jump-to-latest control. The composer remains editable while ATHENA is responding so the next thought can be drafted without starting a concurrent request.
 
 ## Tech Stack
 
@@ -22,189 +72,103 @@ The app is organized into five main sections:
 - TypeScript
 - Vite 6
 - Tailwind CSS 4
-- Framer Motion / Motion
-- `@google/genai`
-- `vite-plugin-pwa`
+- React Router
 - Vercel Serverless Functions
+- Gemini 2.5 Flash via Google Generative Language API
+- `@google/genai` elsewhere in the project tooling/dependencies
+- Vitest + Testing Library
+- `vite-plugin-pwa`
+- Recharts
+- jsPDF
+- Upstash rate limiting when configured, with an in-memory fallback
 
-## Current Project State
+## Key Architecture Files
 
-The project has already been updated with:
-
-- Local exercise imagery mapped into the movement cards
-- Local nutrition imagery mapped into 13 recipe cards
-- Web-friendly compressed image derivatives stored alongside source PNGs in `media/`
-- PWA-compatible asset sizes verified with a successful production build
-- Gemini API access moved to a secure backend function in `api/gemini.ts`
-- Vercel deployment config and security headers in `vercel.json`
-
-## Media Structure
-
-Source media lives under:
-
-- [media/exercises](C:/fitforcancer/media/exercises)
-- [media/nutrition](C:/fitforcancer/media/nutrition)
-
-Working convention used in this repo:
-
-- Original source images can remain as `.png`
-- Compressed app-ready images are stored as `.jpg`
-- The app imports the compressed `.jpg` versions into [constants.ts](C:/fitforcancer/constants.ts)
-
-Important note:
-
-- Future images added under `media/` should be compressed before being wired into the app
-
-## Nutrition Coverage
-
-Local nutrition images are currently mapped for 13 recipe cards.
-
-The only recipe still using a placeholder image is:
-
-- `Fortified Milky Drink`
-
-Add a matching image to [media/nutrition](C:/fitforcancer/media/nutrition) if you want that final card localized as well.
+- [`App.tsx`](App.tsx) — routes, shared fatigue state and app-level ATHENA session ownership.
+- [`components/AthenaChatPage.tsx`](components/AthenaChatPage.tsx) — ATHENA conversation surface and user interactions.
+- [`components/ai-elements/`](components/ai-elements/) — local source-owned AI Elements adaptations.
+- [`hooks/useAthenaSession.ts`](hooks/useAthenaSession.ts) — memory-only transcript/draft/loading state and request-generation invalidation.
+- [`hooks/useFatigueState.ts`](hooks/useFatigueState.ts) — fatigue/cancer context hydration, persistence and cross-tab clearing.
+- [`services/geminiService.ts`](services/geminiService.ts) — browser client for `/api/gemini` and structured recommendation refs.
+- [`api/gemini.ts`](api/gemini.ts) — server-side Gemini orchestration, prompt/safety framework, request validation and tool round.
+- [`utils/treatmentInformation.ts`](utils/treatmentInformation.ts) — graduated general treatment-information layer and Australian source routing.
+- [`utils/athenaRecommendations.ts`](utils/athenaRecommendations.ts) — deterministic Movement/Nutrition recommendation catalogues and function declarations.
+- [`constants.ts`](constants.ts) — canonical frontend Movement and Nutrition content.
+- [`utils/patientContextStorage.ts`](utils/patientContextStorage.ts) — browser-local cancer context and Energy Bank persistence.
+- [`components/AthenaRecommendationCard.tsx`](components/AthenaRecommendationCard.tsx) — canonical recommendation cards/deep links.
 
 ## Environment Setup
 
-Create a local env file:
+The project uses pnpm and Node 24.x as declared in `package.json`.
+
+Create a local environment file from `.env.example`:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
+CHAT_ACCESS_PASSWORD=
 ```
 
-Important:
+`GEMINI_API_KEY` is server-side only. `CHAT_ACCESS_PASSWORD` is optional; when set, `/api/gemini` requires the matching `x-chat-access-password` header and the browser keeps the entered password in `sessionStorage` for that tab/session.
 
-- The frontend does **not** read the Gemini key directly
-- `GEMINI_API_KEY` is only used server-side by [api/gemini.ts](C:/fitforcancer/api/gemini.ts)
-- For local development with the API route, use Vercel local dev instead of plain `vite`
+Optional durable rate limiting can be configured with:
 
-Security note:
+```env
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
 
-- `.env` is now ignored by git
-- Do not commit real API keys to GitHub
+Without Upstash, the API falls back to best-effort in-memory limiting.
 
 ## Local Development
-
-Prerequisites:
-
-- Node.js 20+ recommended
 
 Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
-Start the development server:
+Run the Vite frontend:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
-If you want to test the full app including the Gemini backend locally, use:
+To exercise the Vercel serverless API locally, run the project through Vercel dev rather than relying on Vite alone.
+
+## Verification
+
+Run the complete local verification set when changing behaviour:
 
 ```bash
-npx vercel dev
+pnpm test
+pnpm lint
+pnpm build
 ```
 
-Default local URL for the Vite-only frontend:
+`pnpm test` runs the Vitest regression suite. `pnpm lint` is the TypeScript no-emit check. `pnpm build` validates the production Vite bundle.
 
-```text
-http://127.0.0.1:3000
-```
+The regression suite now covers core app smoke paths plus fatigue-zone logic, Energy Bank behaviour, Gemini request validation, treatment/blood-cancer routing, deterministic recommendation tools, structured recommendation cards/deep links, chat exports, route-level ATHENA session continuity/privacy invalidation, and the AI Elements chat surface.
 
-## Build and Verification
+## Deployment
 
-Run a production build:
+The production architecture is Vercel-oriented:
 
-```bash
-npm run build
-```
+- Vite builds the static frontend into `dist`.
+- `/api/gemini` runs as a serverless function.
+- the Gemini API key remains server-side.
+- security headers and SPA rewrites are configured in `vercel.json`.
+- optional Upstash-backed rate limiting can persist across serverless instances.
 
-Optional type check:
+If deployed elsewhere, the host needs an equivalent server-side Gemini endpoint and equivalent security controls; do not move the Gemini key into browser code.
 
-```bash
-npm run lint
-```
+## Documentation
 
-The project has been verified to build successfully after the image and media updates.
-
-## Vercel Deployment
-
-This project is set up for Vercel with:
-
-- static frontend output from Vite
-- a root serverless function at [api/gemini.ts](C:/fitforcancer/api/gemini.ts)
-- SPA rewrite handling in [vercel.json](C:/fitforcancer/vercel.json)
-- production security headers configured in [vercel.json](C:/fitforcancer/vercel.json)
-
-Recommended Vercel settings:
-
-- Framework Preset: `Vite`
-- Build Command: `npm run build`
-- Output Directory: `dist`
-- Install Command: `npm install`
-- Node.js: `20.x` or newer
-
-Required Vercel environment variable:
-
-```text
-GEMINI_API_KEY
-CHAT_ACCESS_PASSWORD
-```
-
-Deploy flow:
-
-1. Push this project to a new GitHub repository.
-2. Import the repository into Vercel.
-3. Add `GEMINI_API_KEY` in Vercel Project Settings -> Environment Variables.
-4. Deploy.
-
-After deployment:
-
-- the React app is served from the Vite build output
-- client requests to `/api/gemini` are handled securely on the server
-- the Gemini key is never bundled into browser assets
-- the AI chat stays locked until the user enters the shared access password
-
-## Key Files
-
-- [App.tsx](C:/fitforcancer/App.tsx) - main app shell and tabbed experience
-- [constants.ts](C:/fitforcancer/constants.ts) - recipe and movement library, including local media imports
-- [components/MovementCard.tsx](C:/fitforcancer/components/MovementCard.tsx) - exercise card UI
-- [components/NutritionCard.tsx](C:/fitforcancer/components/NutritionCard.tsx) - recipe card and recipe modal UI
-- [components/Resources.tsx](C:/fitforcancer/components/Resources.tsx) - evidence and support resources
-- [services/geminiService.ts](C:/fitforcancer/services/geminiService.ts) - frontend API client for Gemini
-- [api/gemini.ts](C:/fitforcancer/api/gemini.ts) - secure Gemini proxy for Vercel
-- [vite.config.ts](C:/fitforcancer/vite.config.ts) - Vite and PWA configuration
-- [vercel.json](C:/fitforcancer/vercel.json) - Vercel routing, functions, and security headers
-
-## Ready For a New GitHub Repo
-
-Recommended steps before pushing to a new repository:
-
-1. Remove any real secrets from local files before publishing.
-2. Confirm `.env` is not tracked.
-3. Add an `.env.example` file if you want to document required variables for collaborators.
-4. Commit the compressed `.jpg` assets in `media/` if those are the intended production images.
-5. Push the project to the new GitHub repository.
-
-Example:
-
-```bash
-git init
-git add .
-git commit -m "Initial Fit For Cancer app"
-git branch -M main
-git remote add origin <your-new-github-repo-url>
-git push -u origin main
-```
+- [Current product roadmap](docs/product-roadmap.md)
+- [ATHENA architecture](docs/athena-architecture.md)
+- [ATHENA + AI Elements](docs/athena-ai-elements.md)
+- [Security notes](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE). See the [contributing guidelines](CONTRIBUTING.md) for how you can help.
-
-## Deployment Notes
-
-The project is ready for Vercel deployment as-is. If you deploy elsewhere, you will need an equivalent server-side endpoint for Gemini and equivalent security headers to avoid reintroducing client-side key exposure.
+Fit For Cancer is licensed under the [Apache License 2.0](LICENSE).

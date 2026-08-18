@@ -449,6 +449,7 @@ const consumeGeminiSse = async (
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let finishReason: string | null = null;
 
   const handleBlock = (block: string) => {
     const data = block
@@ -458,7 +459,13 @@ const consumeGeminiSse = async (
       .join("\n");
     if (!data) return;
     const parsed = parseGeminiJson(data);
-    if (parsed) onPayload(parsed);
+    if (!parsed) return;
+
+    const candidateFinishReason = parsed?.candidates?.[0]?.finishReason;
+    if (typeof candidateFinishReason === "string" && candidateFinishReason.length > 0) {
+      finishReason = candidateFinishReason;
+    }
+    onPayload(parsed);
   };
 
   while (true) {
@@ -478,6 +485,14 @@ const consumeGeminiSse = async (
 
   const tail = buffer.trim();
   if (tail) handleBlock(tail);
+
+  if (finishReason !== "STOP") {
+    throw new Error(
+      finishReason
+        ? `Gemini streaming response ended with finish reason ${finishReason}`
+        : "Gemini streaming response ended without a finish reason",
+    );
+  }
 };
 
 const handleStreamingRequest = async (

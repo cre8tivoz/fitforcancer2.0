@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Filter, Search, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { RECIPES } from '../constants';
@@ -34,12 +34,14 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
   onSearchChange,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const suppressNextNormalEntryScrollRef = useRef(false);
   const athenaTargetId = searchParams.get('athena');
   const athenaTarget = athenaTargetId ? RECIPES.find((recipe) => recipe.id === athenaTargetId) : undefined;
   const currentRecipeZone = recipeZoneFilter === 'All' ? null : (recipeZoneFilter || fatigueZone);
 
   const clearAthenaTarget = () => {
     if (!searchParams.has('athena')) return;
+    suppressNextNormalEntryScrollRef.current = true;
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('athena');
     setSearchParams(nextParams, { replace: true });
@@ -90,12 +92,13 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
     : filteredRecipes;
 
   useEffect(() => {
-    if (athenaTargetId) return;
+    if (athenaTarget) return;
+    if (suppressNextNormalEntryScrollRef.current) {
+      suppressNextNormalEntryScrollRef.current = false;
+      return;
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    // Mount-only by design: changing filters/search must not unexpectedly
-    // return a user to the top of a long Nutrition page.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [athenaTarget]);
 
   useEffect(() => {
     if (!athenaTarget) return;

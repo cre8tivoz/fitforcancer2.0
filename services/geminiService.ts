@@ -198,6 +198,11 @@ export const getGeminiStreamingResponsePayload = async (
     let receivedDone = false;
 
     const handleBlock = (block: string) => {
+      if (receivedDone) {
+        streamParseFailed = true;
+        return;
+      }
+
       const parsed = parseStreamBlock(block);
       if (!parsed || !isValidStreamEvent(parsed)) {
         streamParseFailed = true;

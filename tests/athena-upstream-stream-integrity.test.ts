@@ -55,6 +55,29 @@ const makeStreamRes = () => {
   };
 };
 
+const runStreamingRequest = async (upstreamEvents: string[]) => {
+  process.env.GEMINI_API_KEY = 'test-key';
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(upstreamEvents)));
+
+  const { out, res } = makeStreamRes();
+  await handler(
+    {
+      method: 'POST',
+      headers: {
+        accept: 'text/event-stream',
+        'x-forwarded-for': '10.0.1.99',
+      },
+      body: {
+        history: [{ role: 'user', content: 'Tell me something' }],
+        context: { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+      },
+    } as any,
+    res as any,
+  );
+
+  return out;
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -65,31 +88,29 @@ afterEach(() => {
 
 describe('/api/gemini upstream SSE integrity', () => {
   it('rejects malformed Gemini JSON even when a later candidate reports STOP', async () => {
-    process.env.GEMINI_API_KEY = 'test-key';
-
-    const upstreamEvents = [
+    const out = await runStreamingRequest([
       'data: {"candidates":[{"content":{"parts":[{"text":"First part. "}]}}]}\n\n',
       'data: {"candidates":[\n\n',
       'data: {"candidates":[{"content":{"parts":[{"text":"Second part."}]},"finishReason":"STOP"}]}\n\n',
-    ];
+    ]);
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(upstreamEvents)));
+    const output = out.chunks.join('');
+    expect(output).toContain('event: delta');
+    expect(output).toContain('event: error');
+    expect(output).not.toContain('event: done');
+    expect(out.ended).toBe(true);
+  });
 
-    const { out, res } = makeStreamRes();
-    await handler(
-      {
-        method: 'POST',
-        headers: {
-          accept: 'text/event-stream',
-          'x-forwarded-for': '10.0.1.99',
-        },
-        body: {
-          history: [{ role: 'user', content: 'Tell me something' }],
-          context: { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
-        },
-      } as any,
-      res as any,
-    );
+  it.each([
+    ['empty object', '{}'],
+    ['JSON string', '"corrupt"'],
+    ['candidate with no consumable content or terminal state', '{"candidates":[{}]}'],
+  ])('rejects semantically invalid Gemini payload: %s', async (_label, invalidPayload) => {
+    const out = await runStreamingRequest([
+      'data: {"candidates":[{"content":{"parts":[{"text":"First part. "}]}}]}\n\n',
+      `data: ${invalidPayload}\n\n`,
+      'data: {"candidates":[{"content":{"parts":[{"text":"Second part."}]},"finishReason":"STOP"}]}\n\n',
+    ]);
 
     const output = out.chunks.join('');
     expect(output).toContain('event: delta');

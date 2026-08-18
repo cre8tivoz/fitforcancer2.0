@@ -450,6 +450,7 @@ const consumeGeminiSse = async (
   const decoder = new TextDecoder();
   let buffer = "";
   let finishReason: string | null = null;
+  let streamParseFailed = false;
 
   const handleBlock = (block: string) => {
     const data = block
@@ -457,9 +458,16 @@ const consumeGeminiSse = async (
       .filter((line) => line.startsWith("data:"))
       .map((line) => line.slice(5).trimStart())
       .join("\n");
-    if (!data) return;
+    if (!data) {
+      streamParseFailed = true;
+      return;
+    }
+
     const parsed = parseGeminiJson(data);
-    if (!parsed) return;
+    if (!parsed) {
+      streamParseFailed = true;
+      return;
+    }
 
     const candidateFinishReason = parsed?.candidates?.[0]?.finishReason;
     if (typeof candidateFinishReason === "string" && candidateFinishReason.length > 0) {
@@ -485,6 +493,10 @@ const consumeGeminiSse = async (
 
   const tail = buffer.trim();
   if (tail) handleBlock(tail);
+
+  if (streamParseFailed) {
+    throw new Error("Gemini streaming response contained malformed data");
+  }
 
   if (finishReason !== "STOP") {
     throw new Error(

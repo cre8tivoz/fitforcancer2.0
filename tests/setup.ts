@@ -26,7 +26,8 @@ if (typeof window !== "undefined") {
 
 // ─── Browser API mocks for component tests ─────────────────
 if (typeof window !== "undefined") {
-  // scrollIntoView / scrollTo
+  // document/element scrolling
+  window.scrollTo = vi.fn();
   window.HTMLElement.prototype.scrollIntoView = () => undefined;
   window.HTMLElement.prototype.scrollTo = () => undefined;
 

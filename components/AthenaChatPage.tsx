@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Activity, Download, MessageCircle, Mic, Sparkles, Utensils } from 'lucide-react';
 import { CancerTypeOption, ChatContext } from '../types';
 import { getFatigueZone } from '../utils/fatigueScore';
-import { getGeminiResponsePayload } from '../services/geminiService';
+import { getGeminiStreamingResponsePayload } from '../services/geminiService';
 import { saveDailyCheckIn } from '../utils/patientContextStorage';
 import { DAILY_CHECKIN_STORAGE_KEY, FatigueState } from '../hooks/useFatigueState';
 import {
@@ -242,7 +242,13 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
     const userMessage = { role: 'user' as const, content: textToSend };
     const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages([
+      ...newMessages,
+      {
+        role: 'model',
+        content: '',
+      },
+    ]);
     setInput('');
     setIsLoading(true);
 
@@ -264,27 +270,45 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       cancerType: updatedCancerType,
     };
 
-    try {
-      const aiResponse = await getGeminiResponsePayload(newMessages, context);
+    const replaceStreamingMessage = (content: string) => {
       if (!isCurrentGeneration(requestGeneration)) return;
-      setMessages((current) => [
-        ...current,
-        {
-          role: 'model',
+      setMessages((current) => {
+        const last = current[current.length - 1];
+        const nextMessage = { role: 'model' as const, content };
+        if (last?.role !== 'model') return [...current, nextMessage];
+        return [...current.slice(0, -1), { ...last, content }];
+      });
+    };
+
+    try {
+      const aiResponse = await getGeminiStreamingResponsePayload(
+        newMessages,
+        context,
+        replaceStreamingMessage,
+      );
+      if (!isCurrentGeneration(requestGeneration)) return;
+      setMessages((current) => {
+        const last = current[current.length - 1];
+        const completedMessage = {
+          role: 'model' as const,
           content: aiResponse.text,
           ...(aiResponse.recommendations.length > 0 ? { recommendations: aiResponse.recommendations } : {}),
-        },
-      ]);
+        };
+        if (last?.role !== 'model') return [...current, completedMessage];
+        return [...current.slice(0, -1), completedMessage];
+      });
     } catch (error) {
       if (!isCurrentGeneration(requestGeneration)) return;
       console.error('ATHENA chat error:', error);
-      setMessages((current) => [
-        ...current,
-        {
-          role: 'model',
+      setMessages((current) => {
+        const errorMessage = {
+          role: 'model' as const,
           content: 'There was an error connecting to ATHENA. Please check your connection.',
-        },
-      ]);
+        };
+        const last = current[current.length - 1];
+        if (last?.role !== 'model') return [...current, errorMessage];
+        return [...current.slice(0, -1), errorMessage];
+      });
     } finally {
       if (isCurrentGeneration(requestGeneration)) {
         setIsLoading(false);
@@ -294,7 +318,10 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
   const showStarterChoices = fatigueState.score !== null && !hasStartedConversation;
   const showEnergyPicker = fatigueState.score === null || isEditingEnergy;
-  const latestRole = messages[messages.length - 1]?.role;
+  const latestMessage = messages[messages.length - 1];
+  const latestRole = latestMessage?.role;
+  const followerRole = isLoading && latestRole === 'model' && !latestMessage?.content ? 'user' : latestRole;
+  const showThinking = isLoading && latestRole === 'model' && !latestMessage?.content;
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overscroll-contain">
@@ -461,11 +488,15 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         </div>
       )}
 
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <Conversation className="h-full min-h-[24rem] max-h-[62vh] bg-white">
-          <ConversationFollower messageCount={messages.length} latestRole={latestRole} />
+      <div className="relative min-h-0 flex-1 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <Conversation className="h-[clamp(24rem,62dvh,48rem)] bg-white">
+          <ConversationFollower messageCount={messages.length} latestRole={followerRole} />
           <ConversationContent className="gap-5">
             {messages.map((msg, index) => {
+              if (msg.role === 'model' && !msg.content.trim() && (!msg.recommendations || msg.recommendations.length === 0)) {
+                return null;
+              }
+
               const from = msg.role === 'user' ? 'user' : 'assistant';
 
               return (
@@ -503,7 +534,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               );
             })}
 
-            {isLoading && (
+            {showThinking && (
               <Message from="assistant" aria-label="ATHENA is thinking">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-neon-blue" aria-hidden="true">

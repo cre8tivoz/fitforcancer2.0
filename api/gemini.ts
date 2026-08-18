@@ -39,6 +39,10 @@ interface VercelLikeResponse {
   status: (code: number) => {
     json: (body: JsonResponse) => void;
   };
+  setHeader?: (name: string, value: string) => void;
+  write?: (chunk: string) => unknown;
+  end?: (chunk?: string) => void;
+  flushHeaders?: () => void;
 }
 
 interface UpstreamResult {
@@ -56,6 +60,7 @@ interface GeminiFunctionCall {
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_STREAM_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 const GEMINI_TIMEOUT_MS = 25000;
 
 const isProduction = () => process.env.NODE_ENV === "production";
@@ -102,6 +107,21 @@ const callGemini = async (
     rawText,
   };
 };
+
+const openGeminiStream = (
+  payload: Record<string, unknown>,
+  apiKey: string,
+  signal: AbortSignal,
+) =>
+  fetch(GEMINI_STREAM_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
 
 const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?: boolean): string => {
   if (cancerType === "bowel") return "Bowel";
@@ -225,6 +245,7 @@ FIRST-PARTY FIT FOR CANCER CATALOGUE TOOLS
 You can ask Fit for Cancer itself for real movement and recipe items already built into the app.
 - If the user explicitly asks for an exercise/movement recommendation, use recommend_movement unless a concrete safety concern needs to be handled instead.
 - If the user explicitly asks for a recipe/food recommendation, use recommend_recipe unless a concrete safety concern needs to be handled instead.
+- If you intend to use either recommendation tool, emit the function call as the first-pass output. Do not emit prose before or alongside the function call.
 - For a generic request such as "recommend an exercise", use preference "any". Do not infer "seated" or "lying_down" merely because the user has cancer or is in treatment.
 - Treat the current fatigue band as the baseline capacity signal. Do not silently downgrade a Green or Yellow user to lower-effort advice without a user-stated preference, symptom, restriction, or other concrete safety reason.
 - When you want to recommend a specific in-app movement/exercise, use recommend_movement instead of inventing a title.
@@ -350,6 +371,12 @@ const extractText = (payload: any): string | null => {
   return null;
 };
 
+const extractTextChunk = (payload: any): string => {
+  const parts = payload?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts.map((part: any) => (typeof part?.text === "string" ? part.text : "")).join("");
+};
+
 const extractFunctionCalls = (payload: any): GeminiFunctionCall[] => {
   const parts = payload?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return [];
@@ -395,6 +422,301 @@ const makeToolBlock = () => [
   },
 ];
 
+const isStreamingRequest = (req: VercelLikeRequest, res: VercelLikeResponse) =>
+  (getHeaderValue(req.headers, "accept") || "").includes("text/event-stream") &&
+  typeof res.setHeader === "function" &&
+  typeof res.write === "function" &&
+  typeof res.end === "function";
+
+const startSse = (res: VercelLikeResponse) => {
+  res.setHeader!("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader!("Cache-Control", "no-cache, no-transform");
+  res.setHeader!("Connection", "keep-alive");
+  res.setHeader!("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+};
+
+const writeSse = (res: VercelLikeResponse, event: string, data: Record<string, unknown>) => {
+  res.write!(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+};
+
+const isRecordValue = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isConsumableGeminiStreamPayload = (payload: unknown): boolean => {
+  if (!isRecordValue(payload) || !Array.isArray(payload.candidates) || payload.candidates.length === 0) {
+    return false;
+  }
+
+  const candidate = payload.candidates[0];
+  if (!isRecordValue(candidate)) return false;
+
+  const hasTerminalState =
+    typeof candidate.finishReason === "string" && candidate.finishReason.length > 0;
+
+  const content = candidate.content;
+  const hasConsumablePart =
+    isRecordValue(content) &&
+    Array.isArray(content.parts) &&
+    content.parts.some((part) => {
+      if (!isRecordValue(part)) return false;
+      if (typeof part.text === "string" && part.text.length > 0) return true;
+      const functionCall = part.functionCall;
+      return (
+        isRecordValue(functionCall) &&
+        typeof functionCall.name === "string" &&
+        functionCall.name.length > 0
+      );
+    });
+
+  return hasConsumablePart || hasTerminalState;
+};
+
+const consumeGeminiSse = async (
+  response: Response,
+  onPayload: (payload: any) => void,
+): Promise<void> => {
+  if (!response.body) throw new Error("Gemini streaming response had no body");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finishReason: string | null = null;
+  let streamParseFailed = false;
+
+  const handleBlock = (block: string) => {
+    const data = block
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+    if (!data) {
+      streamParseFailed = true;
+      return;
+    }
+
+    const parsed = parseGeminiJson(data);
+    if (!isConsumableGeminiStreamPayload(parsed)) {
+      streamParseFailed = true;
+      return;
+    }
+
+    const candidateFinishReason = parsed.candidates[0].finishReason;
+    if (typeof candidateFinishReason === "string" && candidateFinishReason.length > 0) {
+      finishReason = candidateFinishReason;
+    }
+    onPayload(parsed);
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer = (buffer + decoder.decode(value, { stream: !done })).replace(/\r\n/g, "\n");
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary >= 0) {
+      const block = buffer.slice(0, boundary).trim();
+      buffer = buffer.slice(boundary + 2);
+      if (block) handleBlock(block);
+      boundary = buffer.indexOf("\n\n");
+    }
+
+    if (done) break;
+  }
+
+  const tail = buffer.trim();
+  if (tail) handleBlock(tail);
+
+  if (streamParseFailed) {
+    throw new Error("Gemini streaming response contained malformed data");
+  }
+
+  if (finishReason !== "STOP") {
+    throw new Error(
+      finishReason
+        ? `Gemini streaming response ended with finish reason ${finishReason}`
+        : "Gemini streaming response ended without a finish reason",
+    );
+  }
+};
+
+const handleStreamingRequest = async (
+  body: GeminiRequestBody,
+  apiKey: string,
+  signal: AbortSignal,
+  res: VercelLikeResponse,
+): Promise<void> => {
+  let streamStarted = false;
+
+  try {
+    const systemInstruction = makeSystemInstruction(body);
+    const baseContents = makeBaseContents(body.history!);
+    const tools = makeToolBlock();
+    const firstResponse = await openGeminiStream(
+      {
+        systemInstruction,
+        contents: baseContents,
+        tools,
+        generationConfig: { temperature: 0.7 },
+      },
+      apiKey,
+      signal,
+    );
+
+    if (!firstResponse.ok) {
+      const rawText = await firstResponse.text();
+      logGeminiError(`[gemini] streaming upstream error status=${firstResponse.status}`, parseGeminiJson(rawText) ?? rawText);
+      res.status(firstResponse.status).json({ error: "There was an error connecting to ATHENA. Please try again." });
+      return;
+    }
+
+    startSse(res);
+    streamStarted = true;
+
+    let responseMode: "unknown" | "text" | "tool" = "unknown";
+    let directText = "";
+    const functionCalls: GeminiFunctionCall[] = [];
+    const functionCallIds = new Set<string>();
+    const modelParts: any[] = [];
+
+    await consumeGeminiSse(firstResponse, (payload) => {
+      const calls = extractFunctionCalls(payload);
+      const parts = payload?.candidates?.[0]?.content?.parts;
+
+      if (Array.isArray(parts)) {
+        let callIndex = 0;
+        parts.forEach((part: any) => {
+          if (!part?.functionCall) {
+            modelParts.push(part);
+            return;
+          }
+
+          const call = calls[callIndex++];
+          if (!call) return;
+          if (call.id && functionCallIds.has(call.id)) return;
+          if (call.id) functionCallIds.add(call.id);
+          functionCalls.push(call);
+          modelParts.push(part);
+        });
+      }
+
+      if (calls.length > 0) {
+        if (responseMode !== "tool" && directText) {
+          directText = "";
+          writeSse(res, "reset", {});
+        }
+        responseMode = "tool";
+        return;
+      }
+
+      const textChunk = extractTextChunk(payload);
+      if (!textChunk) return;
+      if (responseMode === "tool") return;
+
+      responseMode = "text";
+      directText += textChunk;
+      writeSse(res, "delta", { text: textChunk });
+    });
+
+    if (responseMode === "text") {
+      if (!directText.trim()) {
+        writeSse(res, "error", { error: "ATHENA returned an empty response. Please try again." });
+      } else {
+        writeSse(res, "done", { recommendations: [] });
+      }
+      res.end!();
+      return;
+    }
+
+    if (responseMode !== "tool" || functionCalls.length === 0 || modelParts.length === 0) {
+      writeSse(res, "error", { error: "ATHENA returned an invalid streaming response. Please try again." });
+      res.end!();
+      return;
+    }
+
+    let recommendationRefs: RecommendationRef[] = [];
+    const functionResponseParts = functionCalls.map((call) => {
+      const execution = executeAthenaRecommendationTool(
+        call.name,
+        call.args,
+        body.context?.fatigueZone ?? null,
+      );
+      recommendationRefs.push(...execution.refs);
+
+      return {
+        functionResponse: {
+          ...(call.id ? { id: call.id } : {}),
+          name: call.name,
+          response: execution.response,
+        },
+      };
+    });
+    recommendationRefs = dedupeRecommendationRefs(recommendationRefs);
+
+    const finalResponse = await openGeminiStream(
+      {
+        systemInstruction,
+        contents: [
+          ...baseContents,
+          { role: "model", parts: modelParts },
+          { role: "user", parts: functionResponseParts },
+        ],
+        tools,
+        toolConfig: {
+          functionCallingConfig: {
+            mode: "NONE",
+          },
+        },
+        generationConfig: { temperature: 0.7 },
+      },
+      apiKey,
+      signal,
+    );
+
+    if (!finalResponse.ok) {
+      const rawText = await finalResponse.text();
+      logGeminiError(`[gemini] streaming tool synthesis error status=${finalResponse.status}`, parseGeminiJson(rawText) ?? rawText);
+      writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
+      res.end!();
+      return;
+    }
+
+    let finalText = "";
+    await consumeGeminiSse(finalResponse, (payload) => {
+      const textChunk = extractTextChunk(payload);
+      if (!textChunk) return;
+      finalText += textChunk;
+      writeSse(res, "delta", { text: textChunk });
+    });
+
+    if (!finalText.trim()) {
+      writeSse(res, "error", { error: "ATHENA returned an empty response. Please try again." });
+    } else {
+      writeSse(res, "done", { recommendations: recommendationRefs });
+    }
+    res.end!();
+  } catch (error) {
+    const timedOut = (error as Error).name === "AbortError";
+    if (streamStarted) {
+      writeSse(res, "error", {
+        error: timedOut
+          ? "ATHENA took too long to respond. Please try again."
+          : "There was an error connecting to ATHENA. Please try again.",
+      });
+      res.end!();
+      return;
+    }
+
+    if (timedOut) {
+      console.error("[gemini] streaming upstream request timed out");
+      res.status(504).json({ error: "ATHENA took too long to respond. Please try again." });
+      return;
+    }
+
+    logGeminiError("[gemini] streaming proxy error", error);
+    res.status(502).json({ error: "There was an error connecting to ATHENA. Please try again." });
+  }
+};
+
 export default async function handler(req: VercelLikeRequest, res: VercelLikeResponse): Promise<void> {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -438,6 +760,11 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
+    if (isStreamingRequest(req, res)) {
+      await handleStreamingRequest(body, apiKey, controller.signal, res);
+      return;
+    }
+
     const systemInstruction = makeSystemInstruction(body);
     const baseContents = makeBaseContents(body.history!);
     const tools = makeToolBlock();

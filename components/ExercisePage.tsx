@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
@@ -18,12 +18,14 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   onExerciseZoneFilterChange,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const suppressNextNormalEntryScrollRef = useRef(false);
   const athenaTargetId = searchParams.get('athena');
   const athenaTarget = athenaTargetId ? MOVEMENTS.find((movement) => movement.id === athenaTargetId) : undefined;
   const currentExerciseZone = exerciseZoneFilter === 'All' ? null : (exerciseZoneFilter || fatigueZone);
 
   const clearAthenaTarget = () => {
     if (!searchParams.has('athena')) return;
+    suppressNextNormalEntryScrollRef.current = true;
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('athena');
     setSearchParams(nextParams, { replace: true });
@@ -40,6 +42,15 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
     const zoneKey = currentExerciseZone.split(' ')[1] as 'Green' | 'Yellow' | 'Red';
     return movement.intensity === zoneKey;
   });
+
+  useEffect(() => {
+    if (athenaTarget) return;
+    if (suppressNextNormalEntryScrollRef.current) {
+      suppressNextNormalEntryScrollRef.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [athenaTarget]);
 
   useEffect(() => {
     if (!athenaTarget) return;

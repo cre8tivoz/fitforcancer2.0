@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
 
@@ -16,12 +17,43 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   isMyelomaPatient,
   onExerciseZoneFilterChange,
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const athenaTargetId = searchParams.get('athena');
+  const athenaTarget = athenaTargetId ? MOVEMENTS.find((movement) => movement.id === athenaTargetId) : undefined;
   const currentExerciseZone = exerciseZoneFilter === 'All' ? null : (exerciseZoneFilter || fatigueZone);
+
+  const clearAthenaTarget = () => {
+    if (!searchParams.has('athena')) return;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('athena');
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const changeExerciseZoneFilter = (zone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All') => {
+    clearAthenaTarget();
+    onExerciseZoneFilterChange(zone);
+  };
+
   const filteredMovements = MOVEMENTS.filter((movement) => {
+    if (movement.id === athenaTarget?.id) return true;
     if (exerciseZoneFilter === 'All' || !currentExerciseZone) return true;
     const zoneKey = currentExerciseZone.split(' ')[1] as 'Green' | 'Yellow' | 'Red';
     return movement.intensity === zoneKey;
   });
+
+  useEffect(() => {
+    if (!athenaTarget) return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(`movement-${athenaTarget.id}`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [athenaTarget]);
 
   return (
     <div className="space-y-6">
@@ -31,6 +63,12 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
           Evidence-informed movement ideas matched to how much energy you have today. The zones are an effort guide, not a medical severity rating.
         </p>
       </div>
+
+      {athenaTarget && (
+        <div className="rounded-xl border border-neon-blue/30 bg-neon-blue/5 px-4 py-3 text-sm text-slate-700">
+          <span className="font-bold text-slate-900">From ATHENA:</span> {athenaTarget.title} is highlighted below. It stays visible here even if an older manual filter would otherwise hide it.
+        </div>
+      )}
 
       {currentExerciseZone && (
         <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
@@ -61,7 +99,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
             type="button"
             role="radio"
             aria-checked={exerciseZoneFilter === 'All'}
-            onClick={() => onExerciseZoneFilterChange('All')}
+            onClick={() => changeExerciseZoneFilter('All')}
             className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-colors ${exerciseZoneFilter === 'All' ? 'bg-white shadow-sm text-slate-900 border border-slate-200' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}
           >
             All
@@ -74,7 +112,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
                 type="button"
                 role="radio"
                 aria-checked={isActive}
-                onClick={() => onExerciseZoneFilterChange(exerciseZoneFilter === zone ? 'All' : zone)}
+                onClick={() => changeExerciseZoneFilter(exerciseZoneFilter === zone ? 'All' : zone)}
                 className={`min-h-[44px] px-3 py-1 rounded-full text-xs font-bold transition-colors flex items-center gap-1.5 ${isActive ? 'bg-white shadow-sm text-slate-900 border border-slate-200' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}
               >
                 {zone}
@@ -115,12 +153,28 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
 
       {filteredMovements.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredMovements.map((movement) => <MovementCard key={movement.id} movement={movement} />)}
+          {filteredMovements.map((movement) => {
+            const isAthenaTarget = movement.id === athenaTarget?.id;
+            return (
+              <div
+                key={movement.id}
+                id={`movement-${movement.id}`}
+                tabIndex={isAthenaTarget ? -1 : undefined}
+                aria-label={isAthenaTarget ? `ATHENA recommendation: ${movement.title}` : undefined}
+                className={`scroll-mt-24 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-4 ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
+              >
+                {isAthenaTarget && (
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-neon-blue">ATHENA recommendation</div>
+                )}
+                <MovementCard movement={movement} />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
           <h3 className="text-lg font-bold text-slate-800">No movements found for this zone</h3>
-          <button onClick={() => onExerciseZoneFilterChange('All')} className="mt-2 text-neon-blue font-semibold hover:underline">View all movements</button>
+          <button onClick={() => changeExerciseZoneFilter('All')} className="mt-2 text-neon-blue font-semibold hover:underline">View all movements</button>
         </div>
       )}
 

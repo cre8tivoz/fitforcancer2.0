@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Activity, Download, MessageCircle, Mic, Utensils } from 'lucide-react';
 import { CancerTypeOption, ChatContext } from '../types';
 import { getFatigueZone } from '../utils/fatigueScore';
-import { getGeminiResponse } from '../services/geminiService';
+import { getGeminiResponsePayload } from '../services/geminiService';
 import { saveDailyCheckIn } from '../utils/patientContextStorage';
 import { DAILY_CHECKIN_STORAGE_KEY, FatigueState } from '../hooks/useFatigueState';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../hooks/useAthenaSession';
 import { UseSpeech } from '../hooks/useSpeech';
 import CaregiverExportButton from './CaregiverExportButton';
+import AthenaRecommendationCard from './AthenaRecommendationCard';
 import { exportConversationAsText } from '../utils/chatExport';
 
 const MarkdownMessage = React.lazy(() => import('./MarkdownMessage'));
@@ -234,9 +235,16 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
     };
 
     try {
-      const aiResponse = await getGeminiResponse(newMessages, context);
+      const aiResponse = await getGeminiResponsePayload(newMessages, context);
       if (!isCurrentGeneration(requestGeneration)) return;
-      setMessages((current) => [...current, { role: 'model', content: aiResponse }]);
+      setMessages((current) => [
+        ...current,
+        {
+          role: 'model',
+          content: aiResponse.text,
+          ...(aiResponse.recommendations.length > 0 ? { recommendations: aiResponse.recommendations } : {}),
+        },
+      ]);
     } catch (error) {
       if (!isCurrentGeneration(requestGeneration)) return;
       console.error('ATHENA chat error:', error);
@@ -428,9 +436,21 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-neon-blue text-neon-dark rounded-tr-none shadow-md' : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'}`}>
               {msg.role === 'model' ? (
-                <React.Suspense fallback={<div className="animate-pulse space-y-2"><div className="h-3 bg-slate-200 rounded w-3/4" /><div className="h-3 bg-slate-200 rounded w-1/2" /></div>}>
-                  <MarkdownMessage content={msg.content} />
-                </React.Suspense>
+                <div className="space-y-3">
+                  <React.Suspense fallback={<div className="animate-pulse space-y-2"><div className="h-3 bg-slate-200 rounded w-3/4" /><div className="h-3 bg-slate-200 rounded w-1/2" /></div>}>
+                    <MarkdownMessage content={msg.content} />
+                  </React.Suspense>
+                  {msg.recommendations && msg.recommendations.length > 0 && (
+                    <div className="space-y-2" aria-label="ATHENA recommendations from Fit for Cancer">
+                      {msg.recommendations.map((recommendation) => (
+                        <AthenaRecommendationCard
+                          key={`${recommendation.kind}:${recommendation.id}`}
+                          recommendation={recommendation}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
               )}

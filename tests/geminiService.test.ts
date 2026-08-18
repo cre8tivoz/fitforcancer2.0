@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getGeminiResponse } from "../services/geminiService";
+import { getGeminiResponse, getGeminiResponsePayload } from "../services/geminiService";
 
 beforeEach(() => {
   window.sessionStorage.clear();
@@ -39,6 +39,30 @@ describe("getGeminiResponse (client)", () => {
     expect(result).toBe("ok");
     const callHeaders = fetchMock.mock.calls[0][1].headers;
     expect(callHeaders["x-chat-access-password"]).toBe("secret");
+  });
+
+  it("preserves valid recommendation refs while filtering malformed or duplicate refs", async () => {
+    const fetchMock = makeFetchResponse(200, {
+      text: "Try these from the app.",
+      recommendations: [
+        { kind: "movement", id: "1" },
+        { kind: "recipe", id: "10" },
+        { kind: "movement", id: "1" },
+        { kind: "other", id: "9" },
+        { kind: "recipe", id: "" },
+      ],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getGeminiResponsePayload([{ role: "user", content: "What should I try?" }]);
+
+    expect(result).toEqual({
+      text: "Try these from the app.",
+      recommendations: [
+        { kind: "movement", id: "1" },
+        { kind: "recipe", id: "10" },
+      ],
+    });
   });
 
   it("prompts on 401, retries with password, and returns 200 result", async () => {

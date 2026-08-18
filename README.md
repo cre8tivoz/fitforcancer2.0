@@ -92,8 +92,9 @@ The current composer supports multiline drafts (`Enter` sends; `Shift+Enter` add
 - [`services/geminiService.ts`](services/geminiService.ts) — browser client for `/api/gemini` and structured recommendation refs.
 - [`api/gemini.ts`](api/gemini.ts) — server-side Gemini orchestration, prompt/safety framework, request validation and tool round.
 - [`utils/treatmentInformation.ts`](utils/treatmentInformation.ts) — graduated general treatment-information layer and Australian source routing.
-- [`utils/athenaRecommendations.ts`](utils/athenaRecommendations.ts) — deterministic Movement/Nutrition recommendation catalogues and function declarations.
-- [`constants.ts`](constants.ts) — canonical frontend Movement and Nutrition content.
+- [`utils/athenaRecommendations.ts`](utils/athenaRecommendations.ts) — deterministic Movement/Nutrition recommendation projections and function declarations.
+- [`movements.ts`](movements.ts) — canonical frontend `MOVEMENTS` catalogue.
+- [`constants.ts`](constants.ts) — canonical frontend `RECIPES` catalogue; also re-exports `MOVEMENTS` from `movements.ts`.
 - [`utils/patientContextStorage.ts`](utils/patientContextStorage.ts) — browser-local cancer context and Energy Bank persistence.
 - [`components/AthenaRecommendationCard.tsx`](components/AthenaRecommendationCard.tsx) — canonical recommendation cards/deep links.
 

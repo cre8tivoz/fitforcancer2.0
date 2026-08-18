@@ -90,6 +90,14 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
     : filteredRecipes;
 
   useEffect(() => {
+    if (athenaTargetId) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    // Mount-only by design: changing filters/search must not unexpectedly
+    // return a user to the top of a long Nutrition page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (!athenaTarget) return;
     const frame = window.requestAnimationFrame(() => {
       const target = document.getElementById(`recipe-${athenaTarget.id}`);

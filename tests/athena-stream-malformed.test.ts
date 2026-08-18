@@ -77,4 +77,25 @@ describe('ATHENA malformed SSE handling', () => {
       ),
     ).rejects.toThrow(/malformed data/i);
   });
+
+  it('rejects any non-empty event after terminal done', async () => {
+    const serverEvents = [
+      'event: delta\ndata: {"text":"Complete answer"}\n\n',
+      'event: done\ndata: {"recommendations":[]}\n\n',
+      'event: delta\ndata: {"text":"Unexpected trailing text"}\n\n',
+    ];
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(serverEvents)));
+
+    const partials: string[] = [];
+    await expect(
+      getGeminiStreamingResponsePayload(
+        [{ role: 'user', content: 'Hi' }],
+        { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        (text) => partials.push(text),
+      ),
+    ).rejects.toThrow(/malformed data/i);
+
+    expect(partials).toEqual(['Complete answer']);
+  });
 });

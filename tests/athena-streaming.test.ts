@@ -2,8 +2,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import handler from '../api/gemini';
 import { getGeminiStreamingResponsePayload } from '../services/geminiService';
 
-const encodeSse = (payloads: unknown[]) =>
-  payloads.map((payload) => `data: ${JSON.stringify(payload)}\n\n`).join('');
+const encodeSse = (payloads: unknown[], includeTerminalStop = true) =>
+  payloads.map((payload, index) => {
+    let eventPayload = payload as any;
+    if (includeTerminalStop && index === payloads.length - 1) {
+      const candidates = eventPayload?.candidates;
+      const firstCandidate = Array.isArray(candidates) ? candidates[0] : undefined;
+      if (firstCandidate && !firstCandidate.finishReason) {
+        eventPayload = {
+          ...eventPayload,
+          candidates: [
+            { ...firstCandidate, finishReason: 'STOP' },
+            ...candidates.slice(1),
+          ],
+        };
+      }
+    }
+    return `data: ${JSON.stringify(eventPayload)}\n\n`;
+  }).join('');
 
 const responseStream = (chunks: string[]) => {
   const encoder = new TextEncoder();
@@ -150,6 +166,25 @@ describe('ATHENA streaming client', () => {
       recommendations: [{ kind: 'movement', id: '1' }],
     });
   });
+
+  it('preserves a diagnosed safe stream error instead of converting it to a connection failure', async () => {
+    const safeError = 'ATHENA took too long to respond. Please try again.';
+    const serverEvents = [
+      'event: delta\ndata: {"text":"Partial"}\n\n',
+      `event: error\ndata: ${JSON.stringify({ error: safeError })}\n\n`,
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream(serverEvents)));
+
+    const partials: string[] = [];
+    const result = await getGeminiStreamingResponsePayload(
+      [{ role: 'user', content: 'Hi' }],
+      { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+      (text) => partials.push(text),
+    );
+
+    expect(result).toEqual({ text: safeError, recommendations: [] });
+    expect(partials).toEqual(['Partial', safeError]);
+  });
 });
 
 describe('/api/gemini SSE transport', () => {
@@ -184,6 +219,32 @@ describe('/api/gemini SSE transport', () => {
     expect(out.chunks.join('')).toContain('event: delta\ndata: {"text":"second."}');
     expect(out.chunks.join('')).toContain('event: done');
     expect(out.ended).toBe(true);
+  });
+
+  it('does not emit app-level done when the upstream direct stream ends without STOP', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const truncated = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Partial upstream answer' }] } }] },
+    ], false);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseStream([truncated])));
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.10' },
+        body: {
+          history: [{ role: 'user', content: 'Tell me something' }],
+          context: { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    const output = out.chunks.join('');
+    expect(output).toContain('Partial upstream answer');
+    expect(output).toContain('event: error');
+    expect(output).not.toContain('event: done');
   });
 
   it('executes a streamed catalogue tool call and streams the synthesis with recommendation refs', async () => {
@@ -245,6 +306,57 @@ describe('/api/gemini SSE transport', () => {
     expect(output).toContain('"kind":"movement","id":"1"');
     expect(output).toContain('"kind":"movement","id":"2"');
     expect(output).toContain('"kind":"movement","id":"3"');
+  });
+
+  it('does not emit app-level done or recommendation refs when tool synthesis ends without STOP', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const first = encodeSse([
+      {
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'movement-call-truncated',
+                    name: 'recommend_movement',
+                    args: { preference: 'any' },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+    const truncatedSynthesis = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Partial tool synthesis' }] } }] },
+    ], false);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([first]))
+      .mockResolvedValueOnce(responseStream([truncatedSynthesis]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.11' },
+        body: {
+          history: [{ role: 'user', content: 'Recommend an exercise' }],
+          context: { fatigueScore: 1, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    const output = out.chunks.join('');
+    expect(output).toContain('Partial tool synthesis');
+    expect(output).toContain('event: error');
+    expect(output).not.toContain('event: done');
+    expect(output).not.toContain('"kind":"movement"');
   });
 
   it('resets streamed first-pass prose if a later chunk switches to a catalogue tool', async () => {

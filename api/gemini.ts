@@ -245,6 +245,7 @@ FIRST-PARTY FIT FOR CANCER CATALOGUE TOOLS
 You can ask Fit for Cancer itself for real movement and recipe items already built into the app.
 - If the user explicitly asks for an exercise/movement recommendation, use recommend_movement unless a concrete safety concern needs to be handled instead.
 - If the user explicitly asks for a recipe/food recommendation, use recommend_recipe unless a concrete safety concern needs to be handled instead.
+- If you intend to use either recommendation tool, emit the function call as the first-pass output. Do not emit prose before or alongside the function call.
 - For a generic request such as "recommend an exercise", use preference "any". Do not infer "seated" or "lying_down" merely because the user has cancer or is in treatment.
 - Treat the current fatigue band as the baseline capacity signal. Do not silently downgrade a Green or Yellow user to lower-effort advice without a user-stated preference, symptom, restriction, or other concrete safety reason.
 - When you want to recommend a specific in-app movement/exercise, use recommend_movement instead of inventing a title.
@@ -515,32 +516,42 @@ const handleStreamingRequest = async (
     let responseMode: "unknown" | "text" | "tool" = "unknown";
     let directText = "";
     const functionCalls: GeminiFunctionCall[] = [];
-    const functionCallKeys = new Set<string>();
+    const functionCallIds = new Set<string>();
     const modelParts: any[] = [];
 
     await consumeGeminiSse(firstResponse, (payload) => {
       const calls = extractFunctionCalls(payload);
       const parts = payload?.candidates?.[0]?.content?.parts;
 
-      if (calls.length > 0) {
-        responseMode = "tool";
-        if (Array.isArray(parts)) modelParts.push(...parts);
-        calls.forEach((call) => {
-          const key = call.id || `${call.name}:${JSON.stringify(call.args ?? {})}`;
-          if (functionCallKeys.has(key)) return;
-          functionCallKeys.add(key);
+      if (Array.isArray(parts)) {
+        let callIndex = 0;
+        parts.forEach((part: any) => {
+          if (!part?.functionCall) {
+            modelParts.push(part);
+            return;
+          }
+
+          const call = calls[callIndex++];
+          if (!call) return;
+          if (call.id && functionCallIds.has(call.id)) return;
+          if (call.id) functionCallIds.add(call.id);
           functionCalls.push(call);
+          modelParts.push(part);
         });
+      }
+
+      if (calls.length > 0) {
+        if (responseMode !== "tool" && directText) {
+          directText = "";
+          writeSse(res, "reset", {});
+        }
+        responseMode = "tool";
         return;
       }
 
       const textChunk = extractTextChunk(payload);
       if (!textChunk) return;
-
-      if (responseMode === "tool") {
-        if (Array.isArray(parts)) modelParts.push(...parts);
-        return;
-      }
+      if (responseMode === "tool") return;
 
       responseMode = "text";
       directText += textChunk;

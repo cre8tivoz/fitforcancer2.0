@@ -440,6 +440,38 @@ const writeSse = (res: VercelLikeResponse, event: string, data: Record<string, u
   res.write!(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 };
 
+const isRecordValue = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isConsumableGeminiStreamPayload = (payload: unknown): boolean => {
+  if (!isRecordValue(payload) || !Array.isArray(payload.candidates) || payload.candidates.length === 0) {
+    return false;
+  }
+
+  const candidate = payload.candidates[0];
+  if (!isRecordValue(candidate)) return false;
+
+  const hasTerminalState =
+    typeof candidate.finishReason === "string" && candidate.finishReason.length > 0;
+
+  const content = candidate.content;
+  const hasConsumablePart =
+    isRecordValue(content) &&
+    Array.isArray(content.parts) &&
+    content.parts.some((part) => {
+      if (!isRecordValue(part)) return false;
+      if (typeof part.text === "string") return true;
+      const functionCall = part.functionCall;
+      return (
+        isRecordValue(functionCall) &&
+        typeof functionCall.name === "string" &&
+        functionCall.name.length > 0
+      );
+    });
+
+  return hasConsumablePart || hasTerminalState;
+};
+
 const consumeGeminiSse = async (
   response: Response,
   onPayload: (payload: any) => void,
@@ -464,12 +496,12 @@ const consumeGeminiSse = async (
     }
 
     const parsed = parseGeminiJson(data);
-    if (!parsed) {
+    if (!isConsumableGeminiStreamPayload(parsed)) {
       streamParseFailed = true;
       return;
     }
 
-    const candidateFinishReason = parsed?.candidates?.[0]?.finishReason;
+    const candidateFinishReason = parsed.candidates[0].finishReason;
     if (typeof candidateFinishReason === "string" && candidateFinishReason.length > 0) {
       finishReason = candidateFinishReason;
     }

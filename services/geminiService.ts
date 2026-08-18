@@ -161,11 +161,15 @@ export const getGeminiStreamingResponsePayload = async (
     let accumulatedText = "";
     let recommendations: AthenaRecommendationRef[] = [];
     let streamError: string | null = null;
+    let streamParseFailed = false;
     let receivedDone = false;
 
     const handleBlock = (block: string) => {
       const parsed = parseStreamBlock(block);
-      if (!parsed) return;
+      if (!parsed) {
+        streamParseFailed = true;
+        return;
+      }
 
       if (parsed.event === "delta" && typeof parsed.data.text === "string") {
         accumulatedText += parsed.data.text;
@@ -208,6 +212,10 @@ export const getGeminiStreamingResponsePayload = async (
 
     const tail = buffer.trim();
     if (tail) handleBlock(tail);
+
+    if (streamParseFailed) {
+      throw new Error("ATHENA stream contained malformed data. Please try again.");
+    }
 
     if (streamError) {
       onText(streamError);

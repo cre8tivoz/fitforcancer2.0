@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDown } from 'lucide-react';
 
 // Adapted from Vercel AI Elements' official Conversation component for this
@@ -15,8 +16,7 @@ import { ArrowDown } from 'lucide-react';
 
 type ConversationContextValue = {
   isAtBottom: boolean;
-  viewportRef: React.RefObject<HTMLDivElement | null>;
-  updateBottomState: () => void;
+  overlayHost: HTMLDivElement | null;
   scrollToBottom: (behavior?: ScrollBehavior) => void;
 };
 
@@ -32,6 +32,7 @@ export const Conversation: React.FC<ConversationProps> = ({
   ...props
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [overlayHost, setOverlayHost] = useState<HTMLDivElement | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const isAtBottomRef = useRef(true);
 
@@ -54,31 +55,6 @@ export const Conversation: React.FC<ConversationProps> = ({
     setIsAtBottom(true);
   }, []);
 
-  return (
-    <ConversationContext.Provider
-      value={{ isAtBottom, viewportRef, updateBottomState, scrollToBottom }}
-    >
-      <div
-        className={`relative min-h-0 flex-1 overflow-hidden ${className}`}
-        {...props}
-      >
-        {children}
-      </div>
-    </ConversationContext.Provider>
-  );
-};
-
-export type ConversationViewportProps = React.HTMLAttributes<HTMLDivElement>;
-
-export const ConversationViewport: React.FC<ConversationViewportProps> = ({
-  className = '',
-  ...props
-}) => {
-  const context = useContext(ConversationContext);
-  if (!context) throw new Error('ConversationViewport must be used inside Conversation');
-
-  const { viewportRef, updateBottomState, scrollToBottom } = context;
-
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || typeof ResizeObserver === 'undefined') return;
@@ -87,26 +63,34 @@ export const ConversationViewport: React.FC<ConversationViewportProps> = ({
     if (!content) return;
 
     const observer = new ResizeObserver(() => {
-      const distance = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      if (distance <= BOTTOM_THRESHOLD_PX) scrollToBottom('smooth');
+      if (isAtBottomRef.current) scrollToBottom('smooth');
       else updateBottomState();
     });
     observer.observe(content);
 
     return () => observer.disconnect();
-  }, [scrollToBottom, updateBottomState, viewportRef]);
+  }, [scrollToBottom, updateBottomState]);
 
   return (
-    <div
-      ref={viewportRef}
-      onScroll={updateBottomState}
-      role="log"
-      aria-label="ATHENA conversation"
-      aria-live="polite"
-      aria-relevant="additions text"
-      className={`h-full min-h-0 overflow-y-auto overscroll-contain ${className}`}
-      {...props}
-    />
+    <ConversationContext.Provider value={{ isAtBottom, overlayHost, scrollToBottom }}>
+      <div
+        ref={setOverlayHost}
+        className={`relative min-h-0 flex-1 overflow-hidden ${className}`}
+        {...props}
+      >
+        <div
+          ref={viewportRef}
+          onScroll={updateBottomState}
+          role="log"
+          aria-label="ATHENA conversation"
+          aria-live="polite"
+          aria-relevant="additions text"
+          className="h-full min-h-0 overflow-y-auto overscroll-contain"
+        >
+          {children}
+        </div>
+      </div>
+    </ConversationContext.Provider>
   );
 };
 
@@ -127,9 +111,9 @@ export const ConversationScrollButton: React.FC<ConversationScrollButtonProps> =
   ...props
 }) => {
   const context = useContext(ConversationContext);
-  if (!context || context.isAtBottom) return null;
+  if (!context || context.isAtBottom || !context.overlayHost) return null;
 
-  return (
+  return createPortal(
     <button
       type="button"
       onClick={() => context.scrollToBottom('smooth')}
@@ -143,7 +127,8 @@ export const ConversationScrollButton: React.FC<ConversationScrollButtonProps> =
           Latest
         </>
       )}
-    </button>
+    </button>,
+    context.overlayHost,
   );
 };
 

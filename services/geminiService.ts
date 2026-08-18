@@ -17,7 +17,7 @@ export interface GeminiClientResponse {
 
 interface AthenaStreamEvent {
   event: string;
-  data: Record<string, unknown>;
+  data: unknown;
 }
 
 const requestHeaders = (password: string | null, accept?: string): Record<string, string> => {
@@ -62,21 +62,54 @@ const fetchStreamWithPassword = (
     body: requestBody(history, context),
   });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isRecommendationRefValue = (value: unknown): value is AthenaRecommendationRef => {
+  if (!isRecord(value)) return false;
+  return (
+    (value.kind === "movement" || value.kind === "recipe") &&
+    typeof value.id === "string" &&
+    value.id.length > 0
+  );
+};
+
 const normaliseRecommendations = (value: unknown): AthenaRecommendationRef[] => {
   if (!Array.isArray(value)) return [];
 
   const seen = new Set<string>();
   return value.filter((item): item is AthenaRecommendationRef => {
-    if (!item || typeof item !== "object") return false;
-    const candidate = item as Record<string, unknown>;
-    if ((candidate.kind !== "movement" && candidate.kind !== "recipe") || typeof candidate.id !== "string" || !candidate.id) {
-      return false;
-    }
-    const key = `${candidate.kind}:${candidate.id}`;
+    if (!isRecommendationRefValue(item)) return false;
+    const key = `${item.kind}:${item.id}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+};
+
+const isValidStreamEvent = (parsed: AthenaStreamEvent): boolean => {
+  if (!isRecord(parsed.data)) return false;
+
+  if (parsed.event === "delta") {
+    return typeof parsed.data.text === "string";
+  }
+
+  if (parsed.event === "reset") {
+    return true;
+  }
+
+  if (parsed.event === "error") {
+    return typeof parsed.data.error === "string" && parsed.data.error.trim().length > 0;
+  }
+
+  if (parsed.event === "done") {
+    return (
+      Array.isArray(parsed.data.recommendations) &&
+      parsed.data.recommendations.every(isRecommendationRefValue)
+    );
+  }
+
+  return false;
 };
 
 const toClientResponse = (data: GeminiClientData | null, fallback: string): GeminiClientResponse => ({
@@ -126,7 +159,7 @@ const parseStreamBlock = (block: string): AthenaStreamEvent | null => {
   try {
     return {
       event,
-      data: JSON.parse(dataLines.join("\n")) as Record<string, unknown>,
+      data: JSON.parse(dataLines.join("\n")) as unknown,
     };
   } catch {
     return null;
@@ -166,13 +199,15 @@ export const getGeminiStreamingResponsePayload = async (
 
     const handleBlock = (block: string) => {
       const parsed = parseStreamBlock(block);
-      if (!parsed) {
+      if (!parsed || !isValidStreamEvent(parsed)) {
         streamParseFailed = true;
         return;
       }
 
-      if (parsed.event === "delta" && typeof parsed.data.text === "string") {
-        accumulatedText += parsed.data.text;
+      const data = parsed.data as Record<string, unknown>;
+
+      if (parsed.event === "delta") {
+        accumulatedText += data.text as string;
         onText(accumulatedText);
         return;
       }
@@ -186,12 +221,12 @@ export const getGeminiStreamingResponsePayload = async (
 
       if (parsed.event === "done") {
         receivedDone = true;
-        recommendations = normaliseRecommendations(parsed.data.recommendations);
+        recommendations = normaliseRecommendations(data.recommendations);
         return;
       }
 
       if (parsed.event === "error") {
-        streamError = typeof parsed.data.error === "string" ? parsed.data.error : fallback;
+        streamError = data.error as string;
       }
     };
 

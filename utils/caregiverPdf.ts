@@ -47,6 +47,9 @@ const lineHeightMm = (fontSizePt: number, factor = 1.25) => fontSizePt * PT_TO_M
  */
 export const sanitisePdfText = (value: string): string =>
   value
+    .replace(/\u2260/g, ' not equal to ')
+    .replace(/\u226e/g, ' not less than ')
+    .replace(/\u226f/g, ' not greater than ')
     .normalize('NFKD')
     .replace(/\u00a0/g, ' ')
     .replace(/\u2044/g, '/')

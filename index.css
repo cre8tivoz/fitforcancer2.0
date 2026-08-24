@@ -79,3 +79,19 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/*
+ * Mobile form-control focus zoom guard — intentionally unlayered.
+ *
+ * iOS Safari zooms the visual viewport when a focused form control renders
+ * below 16px. Tailwind text utilities live in a cascade layer, so this
+ * unlayered author rule has precedence over text-sm while remaining mobile
+ * only. Pinch zoom stays available because the viewport itself is unchanged.
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

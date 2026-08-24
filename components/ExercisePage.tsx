@@ -67,7 +67,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   }, [athenaTarget]);
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Movement</h1>
         <p className="mt-2 text-slate-600">
@@ -103,9 +103,9 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 w-full flex-wrap items-center gap-3">
         <span id="exercise-zone-filter-label" className="text-xs font-bold text-slate-500 uppercase tracking-wider">Energy filter:</span>
-        <div role="radiogroup" aria-labelledby="exercise-zone-filter-label" className="flex bg-slate-100 p-1 rounded-full border border-slate-200">
+        <div role="radiogroup" aria-labelledby="exercise-zone-filter-label" className="flex max-w-full overflow-x-auto bg-slate-100 p-1 rounded-full border border-slate-200">
           <button
             type="button"
             role="radio"
@@ -163,7 +163,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
       )}
 
       {filteredMovements.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2">
           {filteredMovements.map((movement) => {
             const isAthenaTarget = movement.id === athenaTarget?.id;
             return (

@@ -118,14 +118,14 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
   const isFiltering = recipeCategoryFilter !== 'All' || recipeSearchQuery !== '' || recipeZoneFilter !== null;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
+    <div className="min-w-0 space-y-6 animate-fade-in">
+      <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold">Recovery Nutrition</h1>
             <p className="text-slate-600 mt-1">Low-effort, treatment-aware food ideas for different energy levels and common side effects.</p>
           </div>
-          <div className="w-full md:w-72">
+          <div className="w-full min-w-0 md:w-72">
             <label htmlFor="nutrition-search" className="mb-1.5 ml-1 block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Search recipes</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -145,12 +145,12 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
           </div>
         )}
 
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex flex-col gap-1.5">
+        <div className="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 w-full flex-wrap items-center gap-4">
+              <div className="flex max-w-full shrink-0 flex-col gap-1.5">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Energy Zone</span>
-                <div role="radiogroup" aria-label="Nutrition energy zone filter" className="flex bg-white p-1 rounded-full border border-slate-200 shadow-sm">
+                <div role="radiogroup" aria-label="Nutrition energy zone filter" className="flex max-w-full overflow-x-auto bg-white p-1 rounded-full border border-slate-200 shadow-sm">
                   <button type="button" role="radio" aria-checked={recipeZoneFilter === 'All'} onClick={() => changeRecipeZoneFilter('All')} className={`min-h-[44px] px-4 py-1.5 rounded-full text-xs font-bold transition-shadow transition-transform transition-colors ${recipeZoneFilter === 'All' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                     All
                   </button>
@@ -164,9 +164,9 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
                   })}
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 w-full flex-col gap-1.5 md:w-auto md:flex-1">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Category</span>
-                <div role="radiogroup" aria-label="Recipe category filter" className="flex gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible scroll-fade-right">
+                <div role="radiogroup" aria-label="Recipe category filter" className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto pb-2 pt-1 pr-1 md:flex-wrap md:overflow-visible scroll-fade-right">
                   {categories.map((category) => (
                     <button key={category} type="button" role="radio" aria-checked={recipeCategoryFilter === category} onClick={() => changeCategoryFilter(recipeCategoryFilter === category ? 'All' : category)} className={`min-h-11 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-shadow transition-transform transition-colors border ${recipeCategoryFilter === category ? 'bg-neon-blue text-neon-dark border-neon-blue shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-neon-blue hover:text-neon-blue'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2`}>
                       {category}
@@ -193,7 +193,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
       </div>
 
       {orderedRecipes.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {orderedRecipes.map((recipe) => {
             const isAthenaTarget = recipe.id === athenaTarget?.id;
             return (

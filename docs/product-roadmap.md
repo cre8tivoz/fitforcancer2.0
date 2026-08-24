@@ -1,10 +1,10 @@
 # Fit For Cancer Product Roadmap
 
-_Last reconciled: August 2026_
+_Last reconciled: 25 August 2026_
 
 Fit For Cancer has moved beyond its original “exercise + nutrition + chatbot” shape. The current product direction makes **ATHENA the hero and main driver**: a treatment-day companion that can converse naturally, explain general treatment information, and connect people to real first-party Movement and Nutrition content without turning the language model into the source of truth for app recommendations.
 
-This roadmap separates the foundation that is already built from the next product decisions.
+The current architecture is now stable enough that the next phase is primarily **human validation across cancer types and public-beta readiness**, not another large rebuild.
 
 ## Current product foundation — shipped
 
@@ -19,7 +19,7 @@ This roadmap separates the foundation that is already built from the next produc
 
 ### ATHENA conversational layer
 
-- Gemini-backed treatment-day conversation through a server-side API route.
+- Gemini 2.5 Flash treatment-day conversation through a server-side API route.
 - concise, plain-language Australian tone calibrated for treatment fatigue/cognitive load.
 - general chat is a valid first-class mode; ATHENA does not force every conversation into an intervention.
 - graduated treatment-information framework: explain and compare generally, but do not make personal treatment decisions or dose/schedule changes.
@@ -35,6 +35,16 @@ This roadmap separates the foundation that is already built from the next produc
 - reset/privacy clear invalidates in-flight replies so stale network completions cannot restore cleared chat.
 - same-origin cross-tab saved-data clears also reset ATHENA.
 - storage hydration is guarded so opening another tab cannot accidentally masquerade as a privacy clear.
+
+### Streaming integrity
+
+- real Gemini SSE streaming for normal and tool-backed responses.
+- app-level `delta`, `reset`, `error` and terminal `done` contract.
+- provisional first-pass prose is cleared if a later function call requires a tool-backed synthesis response.
+- strict malformed/truncated/post-terminal stream rejection on the browser side.
+- strict malformed/semantically invalid upstream Gemini stream handling on the server side.
+- CRLF/network-boundary regressions covered.
+- a completed app response requires a valid terminal upstream completion rather than merely receiving some text.
 
 ### First-party recommendation tools
 
@@ -66,6 +76,33 @@ This roadmap separates the foundation that is already built from the next produc
 - composer remains editable while ATHENA responds so users can draft the next message.
 - live-edge behaviour that does not pull the user down if they scroll back.
 - jump-to-latest control stays overlaid outside the scrolling viewport.
+- mobile ATHENA header actions wrap safely rather than causing horizontal document overflow.
+
+### Exports
+
+- plain-text ATHENA transcript download sits below the composer as a single low-noise action.
+- transcript export includes canonical Movement/Nutrition recommendation metadata.
+- caregiver PDF remains a separate header action with a different purpose from the raw transcript.
+- caregiver PDF layout rebuilt for readable typography, header/footer boundaries and multi-page flow.
+- long check-in notes split safely across pages with repeated table headings.
+- PDF text sanitisation preserves clinically meaningful symbols/relationships when transliterating for jsPDF's built-in Helvetica limitations.
+
+### Mobile hardening
+
+- iOS form-control font sizing prevents unwanted Safari input zoom without disabling user pinch zoom.
+- Nutrition and Movement filters are constrained against horizontal document overflow.
+- ATHENA mobile header actions wrap without shifting the page horizontally.
+- Movement/Nutrition route entry and ATHENA-target scrolling have explicit regression coverage.
+
+### Public information architecture
+
+- six primary app destinations remain Home, Movement, Nutrition, Energy Bank, ATHENA and Resources.
+- refreshed `/about` page explains the lived-experience origin and current product.
+- dedicated `/support` page keeps optional contributions separate from core app use.
+- Ko-fi is the external support surface; no in-app payment flow or fake fundraising meter.
+- About and Support are secondary hamburger/footer destinations rather than new primary product tabs.
+- legacy `/why-free` redirects to canonical `/about`.
+- user-facing privacy disclosure now distinguishes browser-local data from paid Gemini API processing and provider logs.
 
 ### Security / deployment foundation
 
@@ -74,42 +111,73 @@ This roadmap separates the foundation that is already built from the next produc
 - optional password gate for restricted chat deployments.
 - rate limiting with optional Upstash Redis and in-memory fallback.
 - production Gemini error logging avoids request-history/full-payload logging.
+- paid Gemini API project with 14-day project-log retention configured outside the repository.
 - Vercel + Vite deployment model with PWA support.
+- Node 24.x aligned across package metadata, `.node-version` and Vercel runtime configuration.
 
-## Current priority — make ATHENA the main product experience
+## Current priority — cross-cancer human validation
 
-The next phase should consolidate what has just been built rather than immediately adding a second large architecture.
+The technical architecture is now ahead of the validation sample. Human testing should deliberately broaden before ATHENA's core prompt is tuned again.
 
-### 1. ATHENA-first product flow
+### 1. Cross-cancer conversation matrix
 
-**Goal:** Make ATHENA feel like the natural starting point and connective tissue of Fit For Cancer, while keeping Movement, Nutrition, Energy Bank and Resources useful as independent destinations.
+**Goal:** Confirm that ATHENA's current behavioural standard holds outside the blood-cancer/myeloma scenarios that have received the most attention so far.
 
-Likely work includes:
+Test realistic conversations across at least:
 
-- review onboarding/home hierarchy now that ATHENA has materially more capability;
-- make the transition between conversation and first-party app content feel deliberate and low-friction;
-- identify which existing Fit For Cancer capabilities should become additional deterministic ATHENA tools rather than being duplicated in prompts;
-- keep tool outputs app-owned and structured rather than asking Gemini to invent internal state/content.
+- breast cancer;
+- prostate cancer;
+- lung cancer;
+- bowel/colorectal cancer;
+- melanoma;
+- other/unspecified cancer contexts;
+- blood cancers beyond explicit myeloma where routing differs.
 
-Any new tool should preserve the rule established by the recommendation system:
+For each cancer context, test several conversation shapes rather than a single treatment question:
 
-> ATHENA interprets intent and explains; Fit For Cancer owns deterministic app state, canonical content and safety-critical selection.
+- “what happens if this treatment stops working?”;
+- “what other treatments are there?”;
+- treatment terminology and appointment preparation;
+- side-effect/fatigue conversation;
+- nutrition and movement requests;
+- ordinary treatment-day chitchat;
+- ambiguous questions where stage, biomarkers, treatment line or other context materially changes the answer.
 
-### 2. Beta-readiness pass
+**Success criteria:** ATHENA should ask a small, useful clarifying question when necessary, stay specific enough to be useful, and avoid either guessing personalised treatment decisions or collapsing into generic chemotherapy/radiotherapy/immunotherapy lists when established context supports a more relevant answer.
 
-**Goal:** Harden the current experience before widening use.
+### 2. Resist premature prompt tuning
 
-Focus areas:
+**Goal:** Preserve the current “happy medium” while collecting enough evidence to distinguish a recurring behaviour from a one-off answer.
 
-- end-to-end mobile interaction review;
-- accessibility and keyboard/screen-reader pass across ATHENA and deep-linked cards;
-- regression coverage for high-risk session/privacy/tool boundaries;
-- failure-state and slow-network review;
-- current evidence/resource-link audit as sources evolve;
-- user-facing privacy language checked against the actual browser/Gemini data flow;
-- remove stale copy that still describes ATHENA as a secondary “AI chat” feature.
+Current tuning rule:
 
-### 3. Recommendation quality tuning
+- log quality observations during human testing;
+- avoid changing the core prompt for isolated wording preferences;
+- prioritise repeated failure patterns across multiple conversations/cancer contexts;
+- prefer targeted routing/evidence/prompt corrections over broad tone rewrites;
+- protect the existing **Explain → Compare → Don't decide** treatment boundary.
+
+Known observations worth watching, but not yet sufficient on their own to justify broad prompt changes:
+
+- occasional over-confident interpretation of a user's reported test results;
+- occasional validation-heavy phrasing;
+- answers that fall back to generic cancer-treatment categories after a more specific cancer/treatment context has already been established.
+
+### 3. Public-beta readiness
+
+**Goal:** Make the current build comfortable to promote beyond the existing test group.
+
+Remaining focus areas:
+
+- real-device mobile review across iOS/Android and common viewport sizes;
+- accessibility/screen-reader pass across ATHENA, navigation and recommendation hand-off;
+- slow-network and failure-state review using the hardened stream contract;
+- confirm the 14-day Gemini provider-log setting remains aligned with the public privacy disclosure;
+- verify About/Support/Ko-fi routes and privacy links after deployment changes;
+- watch production AI usage/cost rather than adding artificial conversation limits prematurely;
+- evidence/resource-link maintenance as external sources evolve.
+
+### 4. Recommendation quality tuning
 
 **Goal:** Make real catalogue recommendations feel appropriate rather than merely technically correct.
 
@@ -145,7 +213,8 @@ The current memory-only transcript model should remain the baseline until that w
 - allowing the model to choose arbitrary exercises/recipes outside the canonical catalogue;
 - turning ATHENA into an autonomous open-ended agent loop;
 - cloud transcript storage by accident or as a side effect of unrelated UI work;
-- treatment-prescribing or diagnostic functionality.
+- treatment-prescribing or diagnostic functionality;
+- in-app payment/donation identity as an incidental extension of the current external Ko-fi support link.
 
 ## Maintenance rule
 

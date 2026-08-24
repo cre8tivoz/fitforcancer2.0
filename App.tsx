@@ -16,11 +16,12 @@ import {
 } from './hooks/useFatigueState';
 import { useAthenaSession } from './hooks/useAthenaSession';
 import { clearEnergyHistory, clearPatientContext } from './utils/patientContextStorage';
-import { BookOpen, ChartColumnIncreasing, Dumbbell, House, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
+import { BookOpen, ChartColumnIncreasing, Dumbbell, Heart, House, Info, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
 
 const EnergyBank = React.lazy(() => import('./components/EnergyBank'));
 const Resources = React.lazy(() => import('./components/Resources'));
-const WhyThisIsFree = React.lazy(() => import('./components/WhyThisIsFree'));
+const AboutPage = React.lazy(() => import('./components/AboutPage'));
+const SupportPage = React.lazy(() => import('./components/SupportPage'));
 
 const TAB_PATHS: Record<AppTab, string> = {
   [AppTab.HOME]: '/',
@@ -49,6 +50,11 @@ const mobileNavItems = [
   { to: '/resources', label: 'Resources', description: 'Evidence, support and privacy', icon: BookOpen },
 ];
 
+const mobileSecondaryNavItems = [
+  { to: '/about', label: 'About', description: 'Why Fit For Cancer exists', icon: Info },
+  { to: '/support', label: 'Support Fit For Cancer', description: 'Help keep the app free', icon: Heart },
+];
+
 const CONTROL_FOCUS_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]';
 
@@ -59,6 +65,27 @@ const Layout: React.FC = () => {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  const renderMobileNavItem = ({ to, label, description, icon: Icon }: (typeof mobileNavItems)[number] | (typeof mobileSecondaryNavItems)[number]) => {
+    const isCurrent = location.pathname === to;
+    return (
+      <Link
+        key={to}
+        to={to}
+        onClick={() => setIsMobileMenuOpen(false)}
+        aria-current={isCurrent ? 'page' : undefined}
+        className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue ${isCurrent ? 'bg-neon-blue text-neon-dark' : 'text-white hover:bg-white/10'}`}
+      >
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isCurrent ? 'bg-neon-dark/10' : 'bg-white/10'}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 text-left">
+          <span className="block text-sm font-bold">{label}</span>
+          <span className={`block text-xs ${isCurrent ? 'text-neon-dark/70' : 'text-white/55'}`}>{description}</span>
+        </span>
+      </Link>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col max-w-4xl mx-auto px-4 sm:px-6 pb-6">
@@ -100,26 +127,9 @@ const Layout: React.FC = () => {
         {isMobileMenuOpen && (
           <div id="mobile-navigation-menu" className="sm:hidden border-t border-white/10 px-3 pb-3 pt-2">
             <div className="grid grid-cols-1 gap-1 rounded-2xl bg-white/5 p-2">
-              {mobileNavItems.map(({ to, label, description, icon: Icon }) => {
-                const isCurrent = location.pathname === to;
-                return (
-                  <Link
-                    key={to}
-                    to={to}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    aria-current={isCurrent ? 'page' : undefined}
-                    className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue ${isCurrent ? 'bg-neon-blue text-neon-dark' : 'text-white hover:bg-white/10'}`}
-                  >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isCurrent ? 'bg-neon-dark/10' : 'bg-white/10'}`}>
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 text-left">
-                      <span className="block text-sm font-bold">{label}</span>
-                      <span className={`block text-xs ${isCurrent ? 'text-neon-dark/70' : 'text-white/55'}`}>{description}</span>
-                    </span>
-                  </Link>
-                );
-              })}
+              {mobileNavItems.map(renderMobileNavItem)}
+              <div className="my-1 border-t border-white/10" aria-hidden="true" />
+              {mobileSecondaryNavItems.map(renderMobileNavItem)}
             </div>
           </div>
         )}
@@ -132,7 +142,11 @@ const Layout: React.FC = () => {
       <footer className="mt-12 mb-8 p-8 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col items-center gap-6">
           <BrandLockup variant="light" className="w-64 max-w-full h-auto" />
-          <Link to="/resources" className={CONTROL_FOCUS_CLASS}>View Evidence Base & Resources</Link>
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm font-semibold">
+            <Link to="/resources" className={CONTROL_FOCUS_CLASS}>Evidence & Resources</Link>
+            <Link to="/about" className={CONTROL_FOCUS_CLASS}>About</Link>
+            <Link to="/support" className={CONTROL_FOCUS_CLASS}>Support Fit For Cancer</Link>
+          </div>
         </div>
       </footer>
     </div>
@@ -236,7 +250,9 @@ const App: React.FC = () => {
             }
           />
           <Route path="/resources" element={<React.Suspense fallback={<div>Loading...</div>}><Resources onClearSavedData={clearSavedData} /></React.Suspense>} />
-          <Route path="/why-free" element={<React.Suspense fallback={<div>Loading...</div>}><WhyThisIsFree /></React.Suspense>} />
+          <Route path="/about" element={<React.Suspense fallback={<div>Loading...</div>}><AboutPage /></React.Suspense>} />
+          <Route path="/support" element={<React.Suspense fallback={<div>Loading...</div>}><SupportPage /></React.Suspense>} />
+          <Route path="/why-free" element={<Navigate to="/about" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

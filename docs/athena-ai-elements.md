@@ -56,9 +56,11 @@ ATHENA replies use `Message` / `MessageContent` composition while continuing to 
 
 The pending assistant message is created when the user sends. Before the first text chunk arrives the UI can show the thinking state; once streaming starts, the same message is updated progressively rather than appending a sequence of partial messages.
 
+If the server emits an app-level `reset` event because a first-pass Gemini stream later requests a first-party tool, the accumulated provisional text is cleared and the same pending message is reused for the streamed synthesis response.
+
 First-party `AthenaRecommendationCard` components remain attached to the assistant message that produced their structured recommendation refs. Recommendation refs are attached when the streamed response completes.
 
-Per-message PDF controls are intentionally not rendered inside ATHENA replies. Conversation-level export/PDF controls remain the single download surface so the transcript does not accumulate repeated actions beneath every response.
+Per-message download controls are intentionally not rendered inside ATHENA replies.
 
 ### Prompt input
 
@@ -70,6 +72,17 @@ ATHENA uses the `PromptInput` composition pattern with a multiline textarea.
 - voice dictation remains available where browser support exists.
 - while ATHENA is responding, the textarea stays enabled so the next thought can be drafted without enabling a concurrent send. Keyboard submission can retain textarea focus; clicking the send button moves focus to that control and the current UI does not automatically refocus the textarea.
 - submit and voice controls remain blocked during the active request, and the page-level send handler also rejects concurrent requests.
+
+The plain-text transcript download is intentionally rendered **outside and immediately below** the complete `PromptInput` form. It is a single unobtrusive line rather than another header pill.
+
+### Export controls
+
+ATHENA currently has two different export actions; they are not interchangeable:
+
+- **Download chat transcript (.txt)** — below the composer; exports the current conversation and canonical recommendation metadata through `utils/chatExport.ts`.
+- **Caregiver PDF** — in the ATHENA header; generates a structured fatigue/Energy Bank summary through `utils/caregiverPdf.ts` and does not contain the ATHENA transcript.
+
+Keeping both outside individual `Message` components prevents repeated download actions from accumulating inside the conversation log.
 
 ### Suggestions
 
@@ -86,8 +99,9 @@ Those remain Fit For Cancer responsibilities:
 - `/api/gemini` owns Gemini orchestration, server-side streaming and first-party tool execution.
 - Movement/Nutrition recommendation refs/cards remain Fit For Cancer data/UI.
 - privacy clear/reset and cross-tab invalidation remain app-owned behaviour.
+- chat transcript and caregiver PDF generation remain Fit For Cancer-owned client utilities, not AI Elements features.
 
-ATHENA requests `text/event-stream` from `/api/gemini`. The server streams Gemini text as `delta` events and finishes with a `done` event containing any structured recommendation refs. If Gemini first requests a Movement/Nutrition tool, Fit For Cancer executes the deterministic tool before the second Gemini synthesis response is streamed. Function calling remains disabled on that second synthesis pass.
+ATHENA requests `text/event-stream` from `/api/gemini`. The server can emit `delta`, `reset`, `error` and terminal `done` app-level events. If Gemini first requests a Movement/Nutrition tool, Fit For Cancer executes the deterministic tool before the second Gemini synthesis response is streamed. Function calling remains disabled on that second synthesis pass.
 
 The browser transport retains a JSON fallback for non-streaming responses and test/backwards-compatible callers.
 
@@ -102,7 +116,8 @@ When reviewing a future AI Elements update:
 1. compare the relevant official component source against the local file;
 2. identify useful interaction/accessibility improvements;
 3. preserve Fit For Cancer's Vite/Gemini/session boundaries;
-4. avoid introducing AI SDK, Next.js or new runtime dependencies unless there is a separately approved architectural reason;
-5. run the ATHENA UI/session/streaming regression suite after any behavioural change.
+4. preserve the current transcript-download placement outside/below the composer unless there is an explicit product decision to change it;
+5. avoid introducing AI SDK, Next.js or new runtime dependencies unless there is a separately approved architectural reason;
+6. run the ATHENA UI/session/streaming regression suite after any behavioural change.
 
 The local files are intentionally source-owned components, not frozen forks and not unrelated custom widgets.

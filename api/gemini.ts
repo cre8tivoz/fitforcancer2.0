@@ -617,7 +617,10 @@ const handleStreamingRequest = async (
       writeSse(res, "delta", { text: textChunk });
     });
 
-    if (responseMode === "text") {
+    const completedResponseMode: "unknown" | "text" | "tool" =
+      functionCalls.length > 0 ? "tool" : directText ? "text" : "unknown";
+
+    if (completedResponseMode === "text") {
       if (!directText.trim()) {
         writeSse(res, "error", { error: "ATHENA returned an empty response. Please try again." });
       } else {
@@ -627,7 +630,7 @@ const handleStreamingRequest = async (
       return;
     }
 
-    if (responseMode !== "tool" || functionCalls.length === 0 || modelParts.length === 0) {
+    if (completedResponseMode !== "tool" || functionCalls.length === 0 || modelParts.length === 0) {
       writeSse(res, "error", { error: "ATHENA returned an invalid streaming response. Please try again." });
       res.end!();
       return;

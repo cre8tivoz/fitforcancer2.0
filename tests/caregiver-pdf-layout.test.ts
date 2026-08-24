@@ -31,6 +31,7 @@ describe('caregiver PDF layout', () => {
     expect(sanitisePdfText('37.5 °C, €20, £15, 5 µg')).toBe(
       '37.5 deg C, EUR 20, GBP 15, 5 microg',
     );
+    expect(sanitisePdfText('Take ½ tablet and ⅓ cup')).toBe('Take 1/2 tablet and 1/3 cup');
   });
 
   it('keeps a representative caregiver summary on one readable page', () => {
@@ -52,7 +53,7 @@ describe('caregiver PDF layout', () => {
     expect(commands).not.toContain('‑');
   });
 
-  it('splits an oversized check-in note across pages and repeats table context on every note page', () => {
+  it('splits an oversized check-in note across pages, makes forward progress, and repeats table context', () => {
     const longHistory: EnergyHistoryEntry[] = [
       {
         id: 99,
@@ -67,7 +68,9 @@ describe('caregiver PDF layout', () => {
     const notePages = pages.filter((page) => page.includes('detail'));
 
     expect(doc.getNumberOfPages()).toBeGreaterThan(1);
+    expect(doc.getNumberOfPages()).toBeLessThan(30);
     expect(notePages.length).toBeGreaterThan(1);
+    expect(pages.some((page) => page.includes('detail2199'))).toBe(true);
     notePages.forEach((page) => {
       expect(page).toContain('Recent Check-ins');
       expect(page).toContain('Date');

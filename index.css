@@ -42,6 +42,20 @@
     overflow-x: hidden;
   }
 
+  /*
+   * iOS Safari zooms the visual viewport when a focused form control renders
+   * below 16px. Keep mobile form controls at 16px so opening/closing the
+   * keyboard does not leave ATHENA or search/filter pages visually zoomed.
+   * Desktop typography remains controlled by the component utility classes.
+   */
+  @media (max-width: 767px) {
+    input:not([type='checkbox']):not([type='radio']),
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
   /* Horizontal scroll fade affordance for category pills */
   .scroll-fade-right {
     -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);

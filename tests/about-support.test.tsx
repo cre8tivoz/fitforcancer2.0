@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 
 import App from '../App';
+
+const RouteLocationProbe = () => {
+  const location = useLocation();
+  return <output data-testid="router-location">{location.pathname}</output>;
+};
 
 const renderRoute = (initialRoute: string) =>
   render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <App />
+      <RouteLocationProbe />
     </MemoryRouter>,
   );
 
@@ -54,9 +60,11 @@ describe('About and Support information architecture', () => {
     expect(screen.queryByText(/\$50/i)).not.toBeInTheDocument();
   });
 
-  it('keeps the old why-free URL working by redirecting to About', async () => {
+  it('keeps the old why-free URL working by redirecting to canonical About', async () => {
     renderRoute('/why-free');
+
     expect(await screen.findByRole('heading', { name: 'About Fit For Cancer' })).toBeInTheDocument();
+    expect(screen.getByTestId('router-location')).toHaveTextContent('/about');
   });
 
   it('states the paid Gemini and 14-day ATHENA log policy in Resources', async () => {

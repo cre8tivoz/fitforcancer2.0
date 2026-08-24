@@ -10,12 +10,21 @@ ATHENA is now the main connective layer across the product. She can talk natural
 
 ## Product Surfaces
 
+The six primary app destinations remain focused on day-to-day use:
+
 - **Home** — orientation and today's fatigue context.
 - **Movement** — 21 fatigue-banded movement options with practical safety notes.
 - **Nutrition** — 17 fatigue-banded recipes covering high-protein, easy-to-digest, hydrating, anti-nausea, zero-prep and quick-assembly needs.
 - **Energy Bank** — recent browser-local check-ins for spotting treatment-day patterns.
 - **ATHENA** — conversational support, general treatment information, and first-party Movement/Nutrition recommendations.
 - **Resources** — evidence sources, Australian support organisations, privacy information and saved-data controls.
+
+Public/support information sits outside those six primary destinations:
+
+- **About** — the lived-experience story behind Fit For Cancer and the product's free/private-by-design intent.
+- **Support Fit For Cancer** — an optional Ko-fi contribution path. There are no paid app features or in-app payment flow; contributions help cover hosting and AI usage as use grows.
+
+`/why-free` is retained as a compatibility redirect to `/about`.
 
 ## ATHENA in the Current Architecture
 
@@ -52,10 +61,15 @@ Fit For Cancer currently has **no account system and no app-owned server databas
 - Energy history is stored browser-side and capped at the most recent 30 entries.
 - Fatigue score/zone and daily-check-in state use browser storage for continuity.
 - Chat requests are sent through the server-side `/api/gemini` endpoint to Gemini to generate responses; the Gemini API key is never exposed to browser code.
+- The production Gemini project uses a billing-enabled paid API service. Under Google's current paid-service data terms, prompts and responses are not used to improve Google products by default.
+- Gemini project logging is configured for a 14-day retention period. Those provider-side logs may be reviewed by the operator for quality/safety evaluation and troubleshooting and can be deleted from project storage.
+- Fit For Cancer does not attach a user account, name or email address to ATHENA requests because the app does not collect those fields. Users should still avoid unnecessary identifying details because health content remains sensitive and is processed by an external AI provider.
 
 Cloud chat history, accounts and durable transcript storage are **not part of the current product** and require a separate privacy/product design before implementation.
 
-## Chat UI
+See the in-app Resources privacy disclosure and [Security notes](SECURITY.md) for the current data-handling boundary.
+
+## Chat UI and Exports
 
 ATHENA's chat surface uses source-owned components adapted from the official Vercel AI Elements project:
 
@@ -70,7 +84,12 @@ The transcript has its own responsive scroll viewport and follows streamed repli
 
 The current composer supports multiline drafts (`Enter` sends; `Shift+Enter` adds a new line) and voice dictation where supported. It remains editable while ATHENA is responding so the next thought can be drafted without starting a concurrent request.
 
-Per-message PDF buttons are intentionally omitted. Conversation-level export/PDF controls remain outside the transcript so download actions do not repeat beneath every ATHENA response.
+Exports deliberately serve two different jobs:
+
+- **Download chat transcript (.txt)** sits below the composer and exports the current conversation plus canonical recommendation metadata. It is a raw conversation export, not a care summary.
+- **Caregiver PDF** sits in the ATHENA header and generates a structured summary from the current fatigue score and browser-local Energy Bank history, including recent check-ins and zone-appropriate general recommendations. It is not a transcript of the ATHENA conversation.
+
+Both exports are generated client-side. Per-message download controls are intentionally omitted so export actions do not repeat beneath every ATHENA response.
 
 ## Tech Stack
 
@@ -90,8 +109,8 @@ Per-message PDF buttons are intentionally omitted. Conversation-level export/PDF
 
 ## Key Architecture Files
 
-- [`App.tsx`](App.tsx) — routes, shared fatigue state and app-level ATHENA session ownership.
-- [`components/AthenaChatPage.tsx`](components/AthenaChatPage.tsx) — ATHENA conversation surface, streaming message updates and user interactions.
+- [`App.tsx`](App.tsx) — routes, primary/secondary navigation, shared fatigue state and app-level ATHENA session ownership.
+- [`components/AthenaChatPage.tsx`](components/AthenaChatPage.tsx) — ATHENA conversation surface, streaming message updates, export placement and user interactions.
 - [`components/ai-elements/`](components/ai-elements/) — local source-owned AI Elements adaptations.
 - [`hooks/useAthenaSession.ts`](hooks/useAthenaSession.ts) — memory-only transcript/draft/loading state and request-generation invalidation.
 - [`hooks/useFatigueState.ts`](hooks/useFatigueState.ts) — fatigue/cancer context hydration, persistence and cross-tab clearing.
@@ -103,6 +122,9 @@ Per-message PDF buttons are intentionally omitted. Conversation-level export/PDF
 - [`constants.ts`](constants.ts) — canonical frontend `RECIPES` catalogue; also re-exports `MOVEMENTS` from `movements.ts`.
 - [`utils/patientContextStorage.ts`](utils/patientContextStorage.ts) — browser-local cancer context and Energy Bank persistence.
 - [`components/AthenaRecommendationCard.tsx`](components/AthenaRecommendationCard.tsx) — canonical recommendation cards/deep links.
+- [`utils/chatExport.ts`](utils/chatExport.ts) — client-side plain-text conversation export with canonical recommendation details.
+- [`utils/caregiverPdf.ts`](utils/caregiverPdf.ts) — client-side caregiver-summary PDF generation, text sanitisation and page-flow logic.
+- [`components/AboutPage.tsx`](components/AboutPage.tsx) / [`components/SupportPage.tsx`](components/SupportPage.tsx) — public story/support surfaces introduced for public-readiness.
 
 ## Environment Setup
 
@@ -125,6 +147,8 @@ UPSTASH_REDIS_REST_TOKEN=...
 ```
 
 Without Upstash, the API falls back to best-effort in-memory limiting.
+
+Gemini project-log retention is configured in the Google AI project/AI Studio environment rather than through this repository's `.env` variables.
 
 ## Local Development
 
@@ -154,7 +178,9 @@ pnpm build
 
 `pnpm test` runs the Vitest regression suite. `pnpm lint` is the TypeScript no-emit check. `pnpm build` validates the production Vite bundle.
 
-The regression suite covers core app smoke paths plus fatigue-zone logic, Energy Bank behaviour, Gemini request validation, treatment/blood-cancer routing, deterministic recommendation tools, streamed direct/tool responses, structured recommendation cards/deep links, page-entry scroll behaviour, chat exports, route-level ATHENA session continuity/privacy invalidation, and the AI Elements chat surface.
+The regression suite covers core app smoke paths plus fatigue-zone logic, Energy Bank behaviour, Gemini request validation, treatment/blood-cancer routing, deterministic recommendation tools, streamed direct/tool responses and malformed/truncated stream handling, structured recommendation cards/deep links, page-entry scroll behaviour, chat transcript export, caregiver-PDF layout/pagination/text-sanitisation, route-level ATHENA session continuity/privacy invalidation, mobile layout/navigation regressions, About/Support routing and privacy disclosure, and the AI Elements chat surface.
+
+A successful Vercel deployment validates the production build/package path but does **not** mean Vitest ran; the test suite remains a separate check.
 
 ## Deployment
 

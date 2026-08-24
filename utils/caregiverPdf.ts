@@ -49,6 +49,7 @@ export const sanitisePdfText = (value: string): string =>
   value
     .normalize('NFKD')
     .replace(/\u00a0/g, ' ')
+    .replace(/\u2044/g, '/')
     .replace(/\u00b0/g, ' deg ')
     .replace(/\u20ac/g, 'EUR ')
     .replace(/\u00a3/g, 'GBP ')
@@ -452,6 +453,8 @@ export const buildCaregiverPdf = (
     const noteX = PAGE.margin + 71;
     const noteWidth = pageW - PAGE.margin - noteX - 2;
     const rowLine = lineHeightMm(8, 1.22);
+    const rowPadding = 2.2;
+    const rowBottomMargin = 1;
 
     const drawCheckInTableHeader = (continued = false) => {
       drawSectionHeading(doc, continued ? 'Recent Check-ins (continued)' : 'Recent Check-ins', y);
@@ -481,19 +484,19 @@ export const buildCaregiverPdf = (
       let lineOffset = 0;
 
       while (lineOffset < noteLines.length) {
-        const availableHeight = contentBottom - y - 1;
-        const maxLines = Math.floor((availableHeight - 2.2) / rowLine);
+        const availableHeight = contentBottom - y;
+        const maxLines = Math.floor((availableHeight - rowPadding - rowBottomMargin) / rowLine);
 
-        if (availableHeight < 6.5 || maxLines < 1) {
+        if (availableHeight < 6.5 + rowBottomMargin || maxLines < 1) {
           continueCheckInTable();
           continue;
         }
 
         const chunkSize = Math.min(noteLines.length - lineOffset, maxLines);
         const chunkLines = noteLines.slice(lineOffset, lineOffset + chunkSize);
-        const rowHeight = Math.max(6.5, chunkLines.length * rowLine + 2.2);
+        const rowHeight = Math.max(6.5, chunkLines.length * rowLine + rowPadding);
 
-        if (rowHeight + 1 > availableHeight) {
+        if (rowHeight + rowBottomMargin > availableHeight) {
           continueCheckInTable();
           continue;
         }

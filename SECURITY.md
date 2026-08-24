@@ -1,8 +1,8 @@
 # Fit For Cancer Security and Privacy Notes
 
-Fit For Cancer is intentionally lightweight: there are currently no user accounts, no app-owned server database for patient records or ATHENA chat history, and no payment flow inside the app.
+Fit For Cancer is intentionally lightweight: there are currently no user accounts, no app-owned server database for patient records or ATHENA chat history, and no payment flow inside the app. Optional financial support is handled externally through Ko-fi.
 
-That does **not** mean the app handles no health-related data. Some context is stored locally in the browser, and ATHENA conversation/context is transmitted through the server-side Gemini endpoint to generate replies. This document describes those boundaries as they exist in the code.
+That does **not** mean the app handles no health-related data. Some context is stored locally in the browser, and ATHENA conversation/context is transmitted through the server-side Gemini endpoint to generate replies. This document describes those boundaries as they exist in the code and current production configuration.
 
 ## Current data model
 
@@ -26,7 +26,27 @@ They survive normal route navigation because the session is owned by `App.tsx`, 
 
 To generate a reply, `services/geminiService.ts` sends the current chat history plus the applicable `ChatContext` to the server-side `/api/gemini` function. That function sends the request to Gemini.
 
-The Fit For Cancer repository does not implement durable server-side transcript storage, but provider-side processing/retention is a separate concern governed by the configured Gemini service/account. Do not describe the browser-local model as meaning chat content never leaves the device.
+The production project uses a billing-enabled paid Gemini API service. Under Google's current paid-service data terms, prompts and responses are not used to improve Google products by default.
+
+Fit For Cancer configures Gemini API project logging for a 14-day retention period. Provider-side logs may be reviewed by the operator for ATHENA quality/safety evaluation and troubleshooting and can be deleted from project storage. That provider-side retention is separate from the app's own memory-only transcript model.
+
+Fit For Cancer does not attach a user account, name or email address to ATHENA requests because those fields are not collected by the app. Health information is still sensitive and is processed by an external AI provider, so the public privacy guidance asks users to avoid unnecessary names, contact details or other identifying information.
+
+The Fit For Cancer repository does not implement durable server-side transcript storage. Do not describe the browser-local model as meaning chat content never leaves the device.
+
+Current public references:
+
+- [Gemini API terms](https://ai.google.dev/gemini-api/terms)
+- [Gemini logging and retention policy](https://ai.google.dev/gemini-api/docs/logs-policy)
+
+## Client-side exports
+
+ATHENA currently offers two distinct local export paths:
+
+- **Chat transcript (.txt)** — generated in the browser from the current in-memory conversation and canonical recommendation metadata.
+- **Caregiver PDF** — generated in the browser with jsPDF from the current fatigue score and browser-local Energy Bank history.
+
+Neither export is uploaded to a Fit For Cancer server as part of generation. Once downloaded, the resulting file is under the user's/device's control and may contain sensitive health information.
 
 ## Clear/reset behaviour
 
@@ -55,7 +75,8 @@ The handler currently provides:
 - a 25-second upstream timeout;
 - proportional error responses without returning upstream payloads directly;
 - production logging that avoids request-history/full-upstream-payload detail;
-- first-party recommendation tool execution server-side.
+- first-party recommendation tool execution server-side;
+- strict app/upstream stream-integrity checks so malformed, truncated or post-terminal data cannot be accepted as a valid completed reply.
 
 Do not move the Gemini key or tool selection logic into browser code.
 
@@ -103,6 +124,12 @@ The local files under `components/ai-elements/` are source-owned UI adaptations.
 
 Chat state/privacy remains owned by Fit For Cancer's existing hooks and API flow.
 
+## External support/payment boundary
+
+The `/support` page links to the external Ko-fi destination. Fit For Cancer does not collect card/payment details and does not maintain an in-app donation balance, fundraising meter or payment database.
+
+Do not introduce a payment flow, donation tracking or payment-linked identity into the app as an incidental change. Any future in-app payment design would require a separate privacy/security review.
+
 ## Secrets
 
 Never commit real `.env` files, API keys, Redis tokens or production access passwords.
@@ -124,6 +151,8 @@ UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
 ```
 
+Gemini log-retention duration is a provider/project setting, not a repository secret or `.env` value.
+
 ## Contribution rules for health/chat data
 
 Do not introduce new logging, analytics, persistence, cloud transcript storage or third-party transmission of health/chat content as an incidental implementation detail.
@@ -138,6 +167,8 @@ Any new account/cloud-history design should be scoped separately and document:
 - cross-device behaviour;
 - what is sent to the AI provider;
 - what remains browser-local.
+
+Changes to provider-side retention, logging or public privacy claims must be reconciled together so the app copy and this document continue to describe the real configuration.
 
 ## Verification
 

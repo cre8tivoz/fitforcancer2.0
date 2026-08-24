@@ -2,7 +2,7 @@
 
 ATHENA is Fit For Cancer's treatment-day companion and the main conversational layer over the app's existing Movement, Nutrition, fatigue and evidence content.
 
-This document describes the architecture after the August 2026 ATHENA work. It is intended to be the canonical technical boundary for session state, Gemini orchestration, streaming, treatment-information behaviour, first-party recommendation tools and in-app recommendation cards.
+This document describes the architecture after the August 2026 ATHENA work. It is intended to be the canonical technical boundary for session state, Gemini orchestration, streaming, treatment-information behaviour, first-party recommendation tools, in-app recommendation cards and conversation/caregiver exports.
 
 ## Product role
 
@@ -43,11 +43,13 @@ api/gemini.ts
   │    ├─ no tool needed → stream text deltas to ATHENA
   │    └─ tool call(s) requested
   │          ↓
+  │      reset any provisional first-pass text already surfaced
+  │          ↓
   │      Fit For Cancer executes deterministic catalogue functions
   │          ↓
   │      Gemini streaming synthesis pass with function calling disabled
   ↓
-SSE delta events + done {recommendations: [{kind, id}]}
+SSE delta/reset/error/done events
   ↓
 ATHENA message updates progressively + canonical recommendation cards
   ↓
@@ -75,6 +77,8 @@ Because the session is owned above route-level page mounting, navigating from AT
 ### Streaming message lifecycle
 
 When a user sends a message, ATHENA creates one pending model message in session state. Before the first text delta arrives the UI may show a thinking state. Each streamed delta replaces the content of that same pending message with the accumulated response.
+
+If a first-pass Gemini stream emits provisional prose before later requesting a first-party tool, the server emits an app-level `reset` event. The client clears the accumulated provisional text before accepting the synthesis stream. This prevents abandoned first-pass prose from leaking into the final tool-backed answer.
 
 When streaming completes, the final text and any structured recommendation refs replace that same message. Partial chunks are not stored as separate chat turns.
 
@@ -114,7 +118,7 @@ ATHENA chat history is memory-only, but some supporting app context is deliberat
 
 The Resources surface exposes the saved-data clear path, which clears browser-local context/history and resets ATHENA's in-memory session.
 
-## Gemini boundary
+## Gemini/provider boundary
 
 The browser never calls Gemini with an exposed API key.
 
@@ -133,19 +137,40 @@ The endpoint currently accepts at most 40 history messages, with per-message and
 
 The same 25-second request timeout covers the full turn, including a second synthesis stream when a first-party tool is used.
 
+The production project uses a billing-enabled paid Gemini API service. Under Google's current paid-service data terms, prompts and responses are not used to improve Google products by default. Fit For Cancer configures Gemini API project logging for 14 days; those provider-side logs may be reviewed by the operator for quality/safety evaluation and troubleshooting and can be deleted from project storage.
+
 The app itself does not operate a server-side transcript database. Requests are still transmitted to Gemini to generate a response, so provider-side data handling is distinct from Fit For Cancer's browser-storage model.
 
 ## Streaming contract
 
-ATHENA's app-level SSE response uses a deliberately small contract:
+ATHENA's app-level SSE response uses a deliberately small, strict contract:
 
 - `event: delta` — carries the next text fragment;
-- `event: done` — marks successful completion and carries any structured recommendation refs;
-- `event: error` — carries a user-safe error once a stream has already begun.
+- `event: reset` — clears any text/recommendations accumulated from a provisional first pass before a tool-backed synthesis response;
+- `event: error` — carries a user-safe error once a stream has already begun;
+- `event: done` — marks successful completion and carries structured recommendation refs.
 
 Authentication, request validation and rate limiting run before the SSE response starts. If those checks fail, `/api/gemini` can still return an ordinary HTTP/JSON error response.
 
-If Gemini returns normal conversational text on the first pass, those chunks are forwarded as they arrive. If Gemini requests a first-party tool, Fit For Cancer executes the tool first and streams the second synthesis response. The deterministic tool boundary is therefore preserved; streaming does not move catalogue selection into the model.
+If Gemini returns normal conversational text on the first pass, those chunks are forwarded as they arrive. If a later function call appears in that same upstream stream, Fit For Cancer resets the client-visible provisional text, executes the deterministic tool, and streams the second synthesis response. Function calling is disabled on the synthesis pass.
+
+### Stream-integrity rules
+
+The client/server stream parsers deliberately fail closed rather than accepting a superficially complete but malformed response.
+
+Current invariants include:
+
+- CRLF boundaries are normalised without losing a split trailing `\r`;
+- malformed JSON or invalid app-level event shapes poison the stream;
+- unknown app-level events are rejected;
+- `done` is terminal and later non-empty events invalidate the stream;
+- a stream that ends without a valid `done` is rejected;
+- upstream Gemini blocks must contain consumable text/function-call content or a valid terminal finish reason;
+- empty text does not count as consumable upstream content;
+- upstream completion is accepted only when the Gemini finish reason is valid for a completed response;
+- malformed/truncated upstream data cannot be rescued by a later apparently valid block.
+
+These checks are intentionally defensive because ATHENA updates user-visible health-related conversation incrementally.
 
 ## First-party recommendation tools
 
@@ -218,7 +243,7 @@ An explicit ATHENA recommendation deep link (`?athena=<id>`) is the intentional 
 
 Changing a filter or search control after arriving through ATHENA clears the deep-link exception and returns the page to normal filtering behaviour.
 
-## Chat surface
+## Chat surface and exports
 
 The visual conversation layer is source-owned and adapted from official Vercel AI Elements components. See `docs/athena-ai-elements.md` for details.
 
@@ -233,16 +258,31 @@ The current surface includes:
 - voice dictation where supported;
 - recommendation cards attached to the assistant message that produced them.
 
-Per-message PDF controls are intentionally omitted. Conversation-level export/PDF controls remain available outside the transcript.
+Per-message download controls are intentionally omitted. The two current export surfaces have different purposes:
+
+- **Download chat transcript (.txt)** is an unobtrusive line immediately below the complete composer. `utils/chatExport.ts` exports the current conversation plus canonical recommendation metadata.
+- **Caregiver PDF** is a header-level action. `utils/caregiverPdf.ts` generates a structured caregiver summary from the current fatigue score and browser-local Energy Bank history; it is not an ATHENA transcript.
+
+Both files are generated in the browser. The caregiver PDF includes defensive page-flow handling for long check-in notes and ASCII-safe transliteration because jsPDF's built-in Helvetica font is not fully Unicode-capable.
 
 The textarea remains editable while ATHENA is responding so the user can draft their next message. The submit and voice controls remain blocked during the active request, and `onSendMessage` also rejects concurrent sends.
+
+## Public information architecture
+
+The six primary app destinations remain Home, Movement, Nutrition, Energy Bank, ATHENA and Resources.
+
+`/about` and `/support` are secondary public/support routes surfaced in the mobile hamburger and site footer. `/why-free` redirects to canonical `/about` for compatibility.
+
+Support is external through Ko-fi; the app does not operate an in-app payment flow or live fundraising tracker.
 
 ## Testing expectations
 
 Changes to ATHENA should preserve regressions around:
 
 - server request validation and error handling;
-- SSE chunk parsing and incremental client rendering;
+- SSE chunk parsing, `reset` semantics and incremental client rendering;
+- malformed/truncated/post-terminal app stream handling;
+- malformed/semantically invalid upstream Gemini stream handling;
 - direct streamed replies and streamed tool synthesis;
 - treatment-information and blood-cancer routing;
 - deterministic same-band recommendation selection;
@@ -251,12 +291,14 @@ Changes to ATHENA should preserve regressions around:
 - structured recommendation refs and stale-ref handling;
 - cards/deep links/filter hand-off;
 - normal Movement/Nutrition page-entry scroll vs explicit ATHENA targeting;
-- conversation exports and absence of repeated per-message download actions;
+- chat transcript export and absence of repeated per-message download actions;
+- caregiver-PDF layout, pagination and text-sanitisation;
 - route-level transcript/draft continuity;
 - local and cross-tab privacy clears;
 - stale in-flight response invalidation;
 - storage hydration safety;
-- AI Elements keyboard, focus and scroll behaviour.
+- AI Elements keyboard, focus and scroll behaviour;
+- About/Support routing and canonical `/why-free` redirect behaviour when those public surfaces change.
 
 For behavioural changes run:
 
@@ -265,6 +307,8 @@ pnpm test
 pnpm lint
 pnpm build
 ```
+
+A green Vercel production/preview build validates the build/package path but does not mean the Vitest suite ran.
 
 ## Future boundary
 

@@ -32,6 +32,9 @@ describe('caregiver PDF layout', () => {
       '37.5 deg C, EUR 20, GBP 15, 5 microg',
     );
     expect(sanitisePdfText('Take ½ tablet and ⅓ cup')).toBe('Take 1/2 tablet and 1/3 cup');
+    expect(sanitisePdfText('dose ≠ 5 mg; value ≮ 3; value ≯ 7')).toBe(
+      'dose not equal to 5 mg; value not less than 3; value not greater than 7',
+    );
   });
 
   it('keeps a representative caregiver summary on one readable page', () => {

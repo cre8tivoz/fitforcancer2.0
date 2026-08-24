@@ -331,17 +331,6 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
           <p className="mt-1 text-sm text-slate-500">Your treatment-day companion</p>
         </div>
         <div className="flex items-center gap-3">
-          {messages.length > 1 && (
-            <button
-              type="button"
-              onClick={() => exportConversationAsText(messages)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
-              aria-label="Export full ATHENA conversation"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Export</span>
-            </button>
-          )}
           <CaregiverExportButton currentFatigueScore={fatigueState.score} />
           {(fatigueState.score !== null || cancerType) && (
             <button
@@ -592,6 +581,18 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               />
             </PromptInputFooter>
           </PromptInput>
+
+          {messages.length > 1 && (
+            <button
+              type="button"
+              onClick={() => exportConversationAsText(messages)}
+              className="mt-2 inline-flex min-h-11 max-w-full items-center gap-1.5 text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-900"
+              aria-label="Download ATHENA chat transcript as text"
+            >
+              <Download className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">Download chat transcript (.txt)</span>
+            </button>
+          )}
         </div>
       )}
 

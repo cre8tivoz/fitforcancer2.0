@@ -28,7 +28,7 @@ describe('ATHENA chat regressions', () => {
     expect(log.parentElement?.className).toContain('h-[clamp(24rem,62dvh,48rem)]');
   });
 
-  it('renders streamed response text incrementally and keeps per-message PDF actions out of replies', async () => {
+  it('renders streamed response text incrementally and keeps transcript export below the composer', async () => {
     const user = userEvent.setup();
     const encoder = new TextEncoder();
     let controller!: ReadableStreamDefaultController<Uint8Array>;
@@ -47,7 +47,8 @@ describe('ATHENA chat regressions', () => {
 
     renderAthena();
     await user.click(screen.getByRole('button', { name: /set energy score to 1/i }));
-    await user.type(screen.getByRole('textbox', { name: /message ATHENA/i }), 'How should I approach today?');
+    const composer = screen.getByRole('textbox', { name: /message ATHENA/i });
+    await user.type(composer, 'How should I approach today?');
     await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -61,6 +62,12 @@ describe('ATHENA chat regressions', () => {
 
     expect(await screen.findByText('Start gently and see how you feel.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /download health plan pdf/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /export full ATHENA conversation/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /export full ATHENA conversation/i })).not.toBeInTheDocument();
+
+    const transcriptDownload = screen.getByRole('button', { name: /download ATHENA chat transcript as text/i });
+    const composerForm = composer.closest('form');
+    expect(composerForm).not.toBeNull();
+    expect(transcriptDownload).toHaveTextContent('Download chat transcript (.txt)');
+    expect(composerForm?.nextElementSibling).toBe(transcriptDownload);
   });
 });

@@ -41,13 +41,24 @@ interface Recommendation {
 const lineHeightMm = (fontSizePt: number, factor = 1.25) => fontSizePt * PT_TO_MM * factor;
 
 /**
- * jsPDF's built-in Helvetica font is not a Unicode font. Keep generated copy
- * within the glyph range it can render reliably so emoji/non-breaking dashes
- * never turn into corrupted symbols in caregiver-facing PDFs.
+ * jsPDF's built-in Helvetica font is not a Unicode font. Transliterate
+ * punctuation and meaningful symbols before removing unsupported glyphs so
+ * patient-entered notes remain readable rather than silently changing meaning.
  */
 export const sanitisePdfText = (value: string): string =>
   value
     .normalize('NFKD')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\u00b0/g, ' deg ')
+    .replace(/\u20ac/g, 'EUR ')
+    .replace(/\u00a3/g, 'GBP ')
+    .replace(/\u00a5/g, 'JPY ')
+    .replace(/\u00a2/g, ' cents ')
+    .replace(/[\u00b5\u03bc]/g, 'micro')
+    .replace(/\u00d7/g, ' x ')
+    .replace(/\u00b1/g, ' +/- ')
+    .replace(/\u2264/g, ' <= ')
+    .replace(/\u2265/g, ' >= ')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-')
     .replace(/[\u2018\u2019]/g, "'")
@@ -55,6 +66,7 @@ export const sanitisePdfText = (value: string): string =>
     .replace(/\u2026/g, '...')
     .replace(/[^\x20-\x7E\n]/g, '')
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ *\n */g, '\n')
     .trim();
 
 const getZoneLabel = (score: number): string => {
@@ -424,11 +436,10 @@ export const buildCaregiverPdf = (
   }
 
   ensureSpace(32);
-  drawSectionHeading(doc, 'Recent Check-ins', y);
-  y += 5;
-
   const lastFive = history.slice(-5).reverse();
   if (lastFive.length === 0) {
+    drawSectionHeading(doc, 'Recent Check-ins', y);
+    y += 5;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(COLORS.textMuted);
@@ -440,43 +451,78 @@ export const buildCaregiverPdf = (
     const zoneX = PAGE.margin + 48;
     const noteX = PAGE.margin + 71;
     const noteWidth = pageW - PAGE.margin - noteX - 2;
+    const rowLine = lineHeightMm(8, 1.22);
 
-    doc.setFillColor(COLORS.primary);
-    doc.roundedRect(PAGE.margin, y, contentW, 6, 1, 1, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.8);
-    doc.setTextColor(COLORS.white);
-    doc.text('Date', dateX, y + 4);
-    doc.text('Score', scoreX, y + 4);
-    doc.text('Zone', zoneX, y + 4);
-    doc.text('Note', noteX, y + 4);
-    y += 7.5;
+    const drawCheckInTableHeader = (continued = false) => {
+      drawSectionHeading(doc, continued ? 'Recent Check-ins (continued)' : 'Recent Check-ins', y);
+      y += 5;
+
+      doc.setFillColor(COLORS.primary);
+      doc.roundedRect(PAGE.margin, y, contentW, 6, 1, 1, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.8);
+      doc.setTextColor(COLORS.white);
+      doc.text('Date', dateX, y + 4);
+      doc.text('Score', scoreX, y + 4);
+      doc.text('Zone', zoneX, y + 4);
+      doc.text('Note', noteX, y + 4);
+      y += 7.5;
+    };
+
+    const continueCheckInTable = () => {
+      addFreshPage();
+      drawCheckInTableHeader(true);
+    };
+
+    drawCheckInTableHeader(false);
 
     lastFive.forEach((entry, index) => {
       const noteLines = entry.note ? splitSafeText(doc, entry.note, noteWidth) : ['-'];
-      const rowLine = lineHeightMm(8, 1.22);
-      const rowHeight = Math.max(6.5, noteLines.length * rowLine + 2.2);
-      ensureSpace(rowHeight + 1);
+      let lineOffset = 0;
 
-      if (index % 2 === 0) {
-        doc.setFillColor('#f4f1ec');
-        doc.rect(PAGE.margin, y - 1.2, contentW, rowHeight, 'F');
+      while (lineOffset < noteLines.length) {
+        const availableHeight = contentBottom - y - 1;
+        const maxLines = Math.floor((availableHeight - 2.2) / rowLine);
+
+        if (availableHeight < 6.5 || maxLines < 1) {
+          continueCheckInTable();
+          continue;
+        }
+
+        const chunkSize = Math.min(noteLines.length - lineOffset, maxLines);
+        const chunkLines = noteLines.slice(lineOffset, lineOffset + chunkSize);
+        const rowHeight = Math.max(6.5, chunkLines.length * rowLine + 2.2);
+
+        if (rowHeight + 1 > availableHeight) {
+          continueCheckInTable();
+          continue;
+        }
+
+        if (index % 2 === 0) {
+          doc.setFillColor('#f4f1ec');
+          doc.rect(PAGE.margin, y - 1.2, contentW, rowHeight, 'F');
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(COLORS.text);
+        doc.text(formatDate(entry.date), dateX, y + 2.5);
+        doc.text(`${entry.score}/10`, scoreX, y + 2.5);
+
+        const zone = getZoneLabel(entry.score);
+        doc.setFillColor(ZONE_COLORS[zone]);
+        doc.circle(zoneX + 1, y + 1.7, 1.1, 'F');
+        doc.setTextColor(COLORS.text);
+        doc.text(zone, zoneX + 4.5, y + 2.5);
+        doc.text(chunkLines, noteX, y + 2.5, { lineHeightFactor: 1.22 });
+
+        lineOffset += chunkSize;
+        y += rowHeight + 0.8;
+
+        if (lineOffset < noteLines.length) {
+          continueCheckInTable();
+        }
       }
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(COLORS.text);
-      doc.text(formatDate(entry.date), dateX, y + 2.5);
-      doc.text(`${entry.score}/10`, scoreX, y + 2.5);
-
-      const zone = getZoneLabel(entry.score);
-      doc.setFillColor(ZONE_COLORS[zone]);
-      doc.circle(zoneX + 1, y + 1.7, 1.1, 'F');
-      doc.setTextColor(COLORS.text);
-      doc.text(zone, zoneX + 4.5, y + 2.5);
-      doc.text(noteLines, noteX, y + 2.5, { lineHeightFactor: 1.22 });
-
-      y += rowHeight + 0.8;
     });
     y += 4;
   }

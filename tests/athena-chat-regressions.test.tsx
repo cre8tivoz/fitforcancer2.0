@@ -65,7 +65,9 @@ describe('ATHENA chat regressions', () => {
     expect(screen.queryByRole('button', { name: /export full ATHENA conversation/i })).not.toBeInTheDocument();
 
     const transcriptDownload = screen.getByRole('button', { name: /download ATHENA chat transcript as text/i });
+    const composerForm = composer.closest('form');
+    expect(composerForm).not.toBeNull();
     expect(transcriptDownload).toHaveTextContent('Download chat transcript (.txt)');
-    expect(composer.compareDocumentPosition(transcriptDownload) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(composerForm?.nextElementSibling).toBe(transcriptDownload);
   });
 });

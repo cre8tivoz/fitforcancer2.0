@@ -503,10 +503,12 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
             </section>
 
             <section className="space-y-2">
-              <p><strong className="text-slate-900">2. AI assistant messages are processed by Google Gemini</strong></p>
-              <p>When you use the AI assistant, your message and the current check-in context supplied to the assistant are sent through Fit for Cancer&apos;s server endpoint to the Google Gemini API to generate a response. Fit for Cancer does not attach a user account, name, or email address because the app does not collect those fields, but the content is still processed by an external AI provider. Google&apos;s use of Gemini API content depends on the API service and billing configuration, so we do not make a blanket claim that submitted content is never used for product improvement. Avoid adding names, contact details, or other identifying information that is not needed for your question.</p>
-              <p>
-                <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Read the current Gemini API terms <ExternalLink className="inline h-3 w-3" /></a>
+              <p><strong className="text-slate-900">2. ATHENA messages are processed by Google Gemini</strong></p>
+              <p>When you use ATHENA, your message and the current check-in context needed to answer it are sent through Fit for Cancer&apos;s server endpoint to the Google Gemini API. The project uses a billing-enabled paid Gemini API service. Under Google&apos;s current paid-service data terms, prompts and responses are not used to improve Google products by default.</p>
+              <p>Fit for Cancer configures Gemini API project logs for a 14-day retention period. These logs may be reviewed by the operator to evaluate ATHENA&apos;s quality and safety, troubleshoot problems, and improve how the assistant performs, and they can be deleted from project storage. Fit for Cancer does not attach a user account, name, or email address to an ATHENA request because the app does not collect those fields. Health information is still sensitive and is processed by an external AI provider, so avoid adding names, contact details, or other identifying information that is not needed for your question.</p>
+              <p className="flex flex-wrap gap-x-4 gap-y-2">
+                <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Gemini API terms <ExternalLink className="inline h-3 w-3" /></a>
+                <a href="https://ai.google.dev/gemini-api/docs/logs-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Gemini logging & retention <ExternalLink className="inline h-3 w-3" /></a>
               </p>
             </section>
 

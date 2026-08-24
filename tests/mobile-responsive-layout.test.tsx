@@ -48,6 +48,28 @@ describe('mobile responsive interaction regressions', () => {
     expect(html).not.toMatch(/maximum-scale|user-scalable/i);
   });
 
+  it('stacks and wraps ATHENA header actions within the mobile viewport', () => {
+    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+    const athena = readFileSync(new URL('../components/AthenaChatPage.tsx', import.meta.url), 'utf8');
+
+    expect(athena).toContain('aria-label="Reset ATHENA conversation and energy check-in"');
+    expect(css).toContain("div:has(> div > button[aria-label='Reset ATHENA conversation and energy check-in'])");
+    expect(css).toContain("div:has(> button[aria-label='Reset ATHENA conversation and energy check-in'])");
+
+    const headerRuleStart = css.indexOf("div:has(> div > button[aria-label='Reset ATHENA conversation and energy check-in'])");
+    const actionRuleStart = css.indexOf("div:has(> button[aria-label='Reset ATHENA conversation and energy check-in'])");
+    const headerRuleEnd = findCssBlockEnd(css, headerRuleStart);
+    const actionRuleEnd = findCssBlockEnd(css, actionRuleStart);
+
+    const headerRule = css.slice(headerRuleStart, headerRuleEnd + 1);
+    const actionRule = css.slice(actionRuleStart, actionRuleEnd + 1);
+
+    expect(headerRule).toContain('flex-direction: column');
+    expect(headerRule).toContain('max-width: 100%');
+    expect(actionRule).toContain('flex-wrap: wrap');
+    expect(actionRule).toContain('max-width: 100%');
+  });
+
   it('constrains Nutrition filter scrollers to the mobile viewport', () => {
     render(
       <MemoryRouter>

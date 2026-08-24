@@ -94,4 +94,27 @@
   select {
     font-size: 16px;
   }
+
+  /*
+   * ATHENA's title plus Export/Caregiver/Reset controls exceed a phone-width
+   * row once a conversation is active. Stack the title above the action row,
+   * then let the actions wrap within the viewport instead of widening it.
+   * The reset button's aria-label gives this layout rule a stable, page-local
+   * anchor without changing desktop markup or behaviour.
+   */
+  div:has(> div > button[aria-label='Reset ATHENA conversation and energy check-in']) {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  div:has(> button[aria-label='Reset ATHENA conversation and energy check-in']) {
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    gap: 0.5rem;
+  }
 }

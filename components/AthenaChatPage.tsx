@@ -544,57 +544,62 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         </Conversation>
       </div>
 
-      {fatigueState.score !== null && (
-        <div className="mt-3 shrink-0">
-          <label htmlFor="athena-message" className="sr-only">Message ATHENA</label>
-          <PromptInput
-            aria-label="Message ATHENA"
-            onSubmit={({ text }) => onSendMessage(text)}
-          >
-            <PromptInputBody>
-              <PromptInputTextarea
-                id="athena-message"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                aria-label="Message ATHENA"
-                placeholder="Ask for help, or just tell ATHENA how the day is going..."
-              />
-            </PromptInputBody>
-            <PromptInputFooter>
-              <PromptInputTools>
-                {speech.isSupported && (
-                  <PromptInputButton
-                    onClick={speech.toggleListening}
-                    disabled={isLoading}
-                    aria-label={speech.isListening ? 'Stop voice dictation' : 'Start voice dictation for ATHENA message'}
-                    aria-pressed={speech.isListening}
-                    className={speech.isListening ? 'border-rose-500 bg-rose-500 text-white hover:bg-rose-500 hover:text-white' : ''}
-                  >
-                    <Mic className="h-5 w-5" aria-hidden="true" />
-                  </PromptInputButton>
-                )}
-                <span className="hidden text-[10px] text-slate-400 sm:inline">Enter to send · Shift+Enter for a new line</span>
-              </PromptInputTools>
-              <PromptInputSubmit
-                status={isLoading ? 'submitted' : 'ready'}
-                disabled={!input.trim()}
-              />
-            </PromptInputFooter>
-          </PromptInput>
+      <div className="mt-3 shrink-0">
+        <label htmlFor="athena-message" className="sr-only">Message ATHENA</label>
+        <PromptInput
+          aria-label="Message ATHENA"
+          onSubmit={({ text }) => onSendMessage(text)}
+        >
+          <PromptInputBody>
+            <PromptInputTextarea
+              id="athena-message"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              disabled={fatigueState.score === null}
+              aria-label="Message ATHENA"
+              placeholder={
+                fatigueState.score === null
+                  ? 'Choose your energy score above to start chatting with ATHENA.'
+                  : 'Ask for help, or just tell ATHENA how the day is going...'
+              }
+            />
+          </PromptInputBody>
+          <PromptInputFooter>
+            <PromptInputTools>
+              {speech.isSupported && (
+                <PromptInputButton
+                  onClick={speech.toggleListening}
+                  disabled={isLoading || fatigueState.score === null}
+                  aria-label={speech.isListening ? 'Stop voice dictation' : 'Start voice dictation for ATHENA message'}
+                  aria-pressed={speech.isListening}
+                  className={speech.isListening ? 'border-rose-500 bg-rose-500 text-white hover:bg-rose-500 hover:text-white' : ''}
+                >
+                  <Mic className="h-5 w-5" aria-hidden="true" />
+                </PromptInputButton>
+              )}
+              <span className="hidden text-[10px] text-slate-400 sm:inline">
+                {fatigueState.score === null ? 'Choose an energy score above to begin' : 'Enter to send · Shift+Enter for a new line'}
+              </span>
+            </PromptInputTools>
+            <PromptInputSubmit
+              status={isLoading ? 'submitted' : 'ready'}
+              disabled={fatigueState.score === null || !input.trim()}
+            />
+          </PromptInputFooter>
+        </PromptInput>
 
-          {messages.length > 1 && (
-            <button
-              type="button"
-              onClick={() => exportConversationAsText(messages)}
-              className="mt-2 inline-flex min-h-11 max-w-full items-center gap-1.5 text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-900"
-              aria-label="Download ATHENA chat transcript as text"
-            >
-              <Download className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="whitespace-nowrap">Download chat transcript (.txt)</span>
-            </button>
-          )}
-        </div>
-      )}
+        {messages.length > 1 && (
+          <button
+            type="button"
+            onClick={() => exportConversationAsText(messages)}
+            className="mt-2 inline-flex min-h-11 max-w-full items-center gap-1.5 text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-900"
+            aria-label="Download ATHENA chat transcript as text"
+          >
+            <Download className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap">Download chat transcript (.txt)</span>
+          </button>
+        )}
+      </div>
 
       <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
         <summary className="cursor-pointer font-semibold text-slate-800">Who is ATHENA?</summary>

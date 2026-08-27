@@ -20,6 +20,27 @@ afterEach(() => {
 });
 
 describe('ATHENA chat regressions', () => {
+  it('keeps the composer visible before an energy score and enables it after selection', async () => {
+    const user = userEvent.setup();
+    renderAthena();
+
+    const composer = screen.getByRole('textbox', { name: /message ATHENA/i });
+    expect(composer).toBeVisible();
+    expect(composer).toBeDisabled();
+    expect(composer).toHaveAttribute(
+      'placeholder',
+      'Choose your energy score above to start chatting with ATHENA.',
+    );
+
+    await user.click(screen.getByRole('button', { name: /set energy score to 1/i }));
+
+    expect(composer).toBeEnabled();
+    expect(composer).toHaveAttribute(
+      'placeholder',
+      'Ask for help, or just tell ATHENA how the day is going...',
+    );
+  });
+
   it('uses a definite scrollable transcript viewport instead of clipping a max-height box', () => {
     renderAthena();
 

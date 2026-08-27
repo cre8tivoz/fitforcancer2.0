@@ -66,6 +66,8 @@ describe("/api/gemini first-party recommendation tools", () => {
       "recommend_movement",
       "recommend_recipe",
     ]);
+    expect(declarations[0].parameters.properties.count.type).toBe("INTEGER");
+    expect(declarations[1].parameters.properties.count.type).toBe("INTEGER");
     expect(forwarded.systemInstruction.parts[0].text).toContain(
       "Never claim a specific item is \"in the app\" unless the tool returned it",
     );
@@ -239,7 +241,7 @@ describe("/api/gemini first-party recommendation tools", () => {
     ]);
   });
 
-  it("preserves IDs for parallel calls to the same tool", async () => {
+  it("preserves function-call correlation while skipping duplicate same-domain operations", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const toolContent = {
       role: "model",
@@ -269,9 +271,6 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(out.status).toBe(200);
     expect(out.body.recommendations).toEqual([
       { kind: "movement", id: "1" },
-      { kind: "movement", id: "2" },
-      { kind: "movement", id: "3" },
-      { kind: "movement", id: "4" },
     ]);
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
@@ -282,7 +281,10 @@ describe("/api/gemini first-party recommendation tools", () => {
       "recommend_movement",
     ]);
     expect(responses[0].response.preference).toBe("walking");
-    expect(responses[1].response.preference).toBe("strength");
+    expect(responses[1].response).toMatchObject({
+      status: "skipped",
+      items: [],
+    });
   });
 
   it("does not guess catalogue intensity if a tool call arrives without a fatigue band", async () => {

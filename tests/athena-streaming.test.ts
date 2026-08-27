@@ -308,6 +308,78 @@ describe('/api/gemini SSE transport', () => {
     expect(output).toContain('"kind":"movement","id":"3"');
   });
 
+  it('streams one Movement and one Nutrition recommendation from the same bounded tool round', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const first = encodeSse([
+      {
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'movement-compound-1',
+                    name: 'recommend_movement',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+                {
+                  functionCall: {
+                    id: 'recipe-compound-1',
+                    name: 'recommend_recipe',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+    const second = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Here is one exercise and one recipe.' }] } }] },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([first]))
+      .mockResolvedValueOnce(responseStream([second]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: {
+          accept: 'text/event-stream',
+          'x-forwarded-for': '10.0.1.20',
+        },
+        body: {
+          history: [{ role: 'user', content: 'Can you give me one exercise and one recipe together?' }],
+          context: { fatigueScore: 2, fatigueZone: '🟢 Green', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
+    expect(responses.map((response: any) => [response.id, response.name])).toEqual([
+      ['movement-compound-1', 'recommend_movement'],
+      ['recipe-compound-1', 'recommend_recipe'],
+    ]);
+    expect(responses[0].response.items.map((item: any) => item.id)).toEqual(['1']);
+    expect(responses[1].response.items.map((item: any) => item.id)).toEqual(['3']);
+
+    const output = out.chunks.join('');
+    expect(output).toContain('Here is one exercise and one recipe.');
+    expect(output).toContain('"kind":"movement","id":"1"');
+    expect(output).toContain('"kind":"recipe","id":"3"');
+    expect(output).toContain('event: done');
+    expect(output).not.toContain('event: error');
+  });
+
   it('does not emit app-level done or recommendation refs when tool synthesis ends without STOP', async () => {
     process.env.GEMINI_API_KEY = 'test-key';
     const first = encodeSse([

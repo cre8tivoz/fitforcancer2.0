@@ -362,7 +362,7 @@ export const generateChatPdf = (cleanText: string, links: ChatPdfLink[]): void =
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(COLORS.accent);
-  doc.text('fitforcancer.vercel.app', margin, pageH - pad(2));
+  doc.text('fitforcancer.com.au', margin, pageH - pad(2));
   doc.setTextColor(COLORS.textMuted);
   doc.text(
     `Generated ${new Intl.DateTimeFormat('en-AU', {

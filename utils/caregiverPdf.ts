@@ -155,7 +155,7 @@ const drawPageChrome = (doc: jsPDF, generatedAt: Date) => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(COLORS.accent);
-  doc.text('fitforcancer.vercel.app', margin, pageH - 2.7);
+  doc.text('fitforcancer.com.au', margin, pageH - 2.7);
 
   doc.setTextColor('#9ca3af');
   doc.text(`Generated ${formatFooterDate(generatedAt)}`, pageW - margin, pageH - 4.2, { align: 'right' });
@@ -585,7 +585,7 @@ export const buildCaregiverPdf = (
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.8);
   doc.setTextColor(COLORS.textMuted);
-  doc.text('Fit For Cancer - free at fitforcancer.vercel.app', PAGE.margin, y);
+  doc.text('Fit For Cancer - free at fitforcancer.com.au', PAGE.margin, y);
 
   return doc;
 };

@@ -51,6 +51,8 @@ describe('caregiver PDF layout', () => {
     expect(commands).toContain('Moderate activity');
     expect(commands).toContain('High-protein focus');
     expect(commands).toContain('Clinical Disclaimer');
+    expect(commands.match(/fitforcancer\\.com\\.au/g)).toHaveLength(2);
+    expect(commands).not.toContain('fitforcancer.vercel.app');
     expect(commands).not.toContain('❤️');
     expect(commands).not.toContain('🟡');
     expect(commands).not.toContain('‑');

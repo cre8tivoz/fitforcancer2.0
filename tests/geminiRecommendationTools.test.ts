@@ -202,8 +202,8 @@ describe("/api/gemini first-party recommendation tools", () => {
     const toolContent = {
       role: "model",
       parts: [
-        { functionCall: { id: "call_move", name: "recommend_movement", args: { preference: "mobility" } } },
-        { functionCall: { id: "call_food", name: "recommend_recipe", args: { preference: "zero_prep" } } },
+        { functionCall: { id: "call_move", name: "recommend_movement", args: { preference: "any", count: 1 } } },
+        { functionCall: { id: "call_food", name: "recommend_recipe", args: { preference: "any", count: 1 } } },
       ],
     };
     const fetchMock = vi
@@ -219,7 +219,7 @@ describe("/api/gemini first-party recommendation tools", () => {
       {
         method: "POST",
         headers: { "x-forwarded-for": "10.20.0.3" },
-        body: requestBody("Give me something gentle to move and something I don't have to cook."),
+        body: requestBody("Give me one exercise and one recipe.", "🟢 Green"),
       } as any,
       res as any,
     );
@@ -227,12 +227,8 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(out.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(out.body.recommendations).toEqual([
-      { kind: "movement", id: "17" },
-      { kind: "movement", id: "18" },
-      { kind: "movement", id: "19" },
-      { kind: "recipe", id: "11" },
-      { kind: "recipe", id: "12" },
-      { kind: "recipe", id: "14" },
+      { kind: "movement", id: "1" },
+      { kind: "recipe", id: "3" },
     ]);
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);

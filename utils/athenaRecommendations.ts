@@ -137,12 +137,19 @@ const normaliseRecipePreference = (value: unknown): RecipePreference =>
     ? (value as RecipePreference)
     : "any";
 
+const normaliseRecommendationCount = (value: unknown): number => {
+  if (!Number.isInteger(value)) return 3;
+  return Math.min(3, Math.max(1, value as number));
+};
+
 export const recommendMovements = (
   fatigueZone: ChatContext["fatigueZone"],
   preferenceInput: unknown = "any",
+  countInput: unknown = 3,
 ) => {
   const zone = getZoneName(fatigueZone);
   const preference = normaliseMovementPreference(preferenceInput);
+  const count = normaliseRecommendationCount(countInput);
 
   if (!zone) {
     return {
@@ -158,7 +165,7 @@ export const recommendMovements = (
     ? sameZone
     : sameZone.filter((item) => item.preferences.includes(preference));
   const preferenceMatched = preference === "any" || preferred.length > 0;
-  const items = (preferenceMatched ? preferred : sameZone).slice(0, 3).map(({ preferences: _preferences, ...item }) => item);
+  const items = (preferenceMatched ? preferred : sameZone).slice(0, count).map(({ preferences: _preferences, ...item }) => item);
 
   return {
     status: "ok" as const,
@@ -173,9 +180,11 @@ export const recommendMovements = (
 export const recommendRecipes = (
   fatigueZone: ChatContext["fatigueZone"],
   preferenceInput: unknown = "any",
+  countInput: unknown = 3,
 ) => {
   const zone = getZoneName(fatigueZone);
   const preference = normaliseRecipePreference(preferenceInput);
+  const count = normaliseRecommendationCount(countInput);
 
   if (!zone) {
     return {
@@ -191,7 +200,7 @@ export const recommendRecipes = (
     ? sameZone
     : sameZone.filter((item) => RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference);
   const preferenceMatched = preference === "any" || preferred.length > 0;
-  const items = (preferenceMatched ? preferred : sameZone).slice(0, 3);
+  const items = (preferenceMatched ? preferred : sameZone).slice(0, count);
 
   return {
     status: "ok" as const,
@@ -216,6 +225,10 @@ export const ATHENA_RECOMMENDATION_TOOL_DECLARATIONS = [
           enum: ["any", "walking", "seated", "lying_down", "strength", "mobility", "balance", "breathing"],
           description: "Optional movement preference inferred from the user's request. Use any when no specific format is requested.",
         },
+        count: {
+          type: "INTEGER",
+          description: "Optional number of movement recommendations explicitly requested by the user. Use 1, 2 or 3. Omit when the user did not specify a quantity.",
+        },
       },
     },
   },
@@ -230,6 +243,10 @@ export const ATHENA_RECOMMENDATION_TOOL_DECLARATIONS = [
           type: "STRING",
           enum: ["any", "high_protein", "easy_to_digest", "hydrating", "anti_nausea", "zero_prep", "quick_assembly"],
           description: "Optional recipe preference inferred from the user's request. Use any when no specific category is requested.",
+        },
+        count: {
+          type: "INTEGER",
+          description: "Optional number of recipe recommendations explicitly requested by the user. Use 1, 2 or 3. Omit when the user did not specify a quantity.",
         },
       },
     },
@@ -246,7 +263,7 @@ export const executeAthenaRecommendationTool = (
     : {};
 
   if (name === "recommend_movement") {
-    const response = recommendMovements(fatigueZone, safeArgs.preference);
+    const response = recommendMovements(fatigueZone, safeArgs.preference, safeArgs.count);
     return {
       response,
       refs: response.status === "ok"
@@ -256,7 +273,7 @@ export const executeAthenaRecommendationTool = (
   }
 
   if (name === "recommend_recipe") {
-    const response = recommendRecipes(fatigueZone, safeArgs.preference);
+    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count);
     return {
       response,
       refs: response.status === "ok"

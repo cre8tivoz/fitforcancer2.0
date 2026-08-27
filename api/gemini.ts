@@ -409,6 +409,62 @@ const dedupeRecommendationRefs = (refs: RecommendationRef[]): RecommendationRef[
   });
 };
 
+const executeBoundedRecommendationCalls = (
+  functionCalls: GeminiFunctionCall[],
+  fatigueZone: ChatContext["fatigueZone"],
+) => {
+  const seenDomains = new Set<string>();
+  const recommendationRefs: RecommendationRef[] = [];
+
+  const functionResponseParts = functionCalls.map((call) => {
+    const isRecommendationDomain =
+      call.name === "recommend_movement" || call.name === "recommend_recipe";
+
+    let execution: { response: Record<string, unknown>; refs: RecommendationRef[] };
+
+    if (isRecommendationDomain && seenDomains.has(call.name)) {
+      execution = {
+        response: {
+          status: "skipped",
+          message: "Only one recommendation request per domain is allowed in a single ATHENA turn.",
+          items: [],
+        },
+        refs: [],
+      };
+    } else {
+      if (isRecommendationDomain) seenDomains.add(call.name);
+
+      try {
+        execution = executeAthenaRecommendationTool(call.name, call.args, fatigueZone);
+      } catch {
+        execution = {
+          response: {
+            status: "error",
+            message: "That recommendation could not be retrieved.",
+            items: [],
+          },
+          refs: [],
+        };
+      }
+    }
+
+    recommendationRefs.push(...execution.refs);
+
+    return {
+      functionResponse: {
+        ...(call.id ? { id: call.id } : {}),
+        name: call.name,
+        response: execution.response,
+      },
+    };
+  });
+
+  return {
+    functionResponseParts,
+    recommendationRefs: dedupeRecommendationRefs(recommendationRefs),
+  };
+};
+
 const makeBaseContents = (history: ChatMessage[]) =>
   history.map((message) => ({
     role: message.role,
@@ -639,24 +695,13 @@ const handleStreamingRequest = async (
       return;
     }
 
-    let recommendationRefs: RecommendationRef[] = [];
-    const functionResponseParts = functionCalls.map((call) => {
-      const execution = executeAthenaRecommendationTool(
-        call.name,
-        call.args,
-        body.context?.fatigueZone ?? null,
-      );
-      recommendationRefs.push(...execution.refs);
-
-      return {
-        functionResponse: {
-          ...(call.id ? { id: call.id } : {}),
-          name: call.name,
-          response: execution.response,
-        },
-      };
-    });
-    recommendationRefs = dedupeRecommendationRefs(recommendationRefs);
+    const {
+      functionResponseParts,
+      recommendationRefs,
+    } = executeBoundedRecommendationCalls(
+      functionCalls,
+      body.context?.fatigueZone ?? null,
+    );
 
     const finalResponse = await openGeminiStream(
       {
@@ -808,24 +853,12 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         return;
       }
 
-      const functionResponseParts = functionCalls.map((call) => {
-        const execution = executeAthenaRecommendationTool(
-          call.name,
-          call.args,
-          body.context?.fatigueZone ?? null,
-        );
-        recommendationRefs.push(...execution.refs);
-
-        return {
-          functionResponse: {
-            ...(call.id ? { id: call.id } : {}),
-            name: call.name,
-            response: execution.response,
-          },
-        };
-      });
-
-      recommendationRefs = dedupeRecommendationRefs(recommendationRefs);
+      const boundedExecution = executeBoundedRecommendationCalls(
+        functionCalls,
+        body.context?.fatigueZone ?? null,
+      );
+      const functionResponseParts = boundedExecution.functionResponseParts;
+      recommendationRefs = boundedExecution.recommendationRefs;
 
       const finalResult = await callGemini(
         {

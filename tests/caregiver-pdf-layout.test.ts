@@ -51,6 +51,7 @@ describe('caregiver PDF layout', () => {
     expect(commands).toContain('Moderate activity');
     expect(commands).toContain('High-protein focus');
     expect(commands).toContain('Clinical Disclaimer');
+    expect(commands).toContain('fitforcancer.com.au');
     expect(commands).not.toContain('❤️');
     expect(commands).not.toContain('🟡');
     expect(commands).not.toContain('‑');

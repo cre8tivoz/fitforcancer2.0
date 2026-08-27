@@ -134,6 +134,48 @@ describe("ATHENA deterministic recommendations", () => {
     expect(result.items.every((item) => item.zone === "Red")).toBe(true);
   });
 
+  it("respects an explicit recommendation count without changing the default ordering", () => {
+    const oneMovement = recommendMovements("🟢 Green", "any", 1);
+    const twoRecipes = recommendRecipes("🟢 Green", "any", 2);
+
+    expect(oneMovement.status).toBe("ok");
+    expect(twoRecipes.status).toBe("ok");
+    if (oneMovement.status !== "ok" || twoRecipes.status !== "ok") {
+      throw new Error("expected recommendations");
+    }
+
+    expect(oneMovement.items.map((item) => item.id)).toEqual(["1"]);
+    expect(twoRecipes.items.map((item) => item.id)).toEqual(["3", "4"]);
+  });
+
+  it("clamps integer recommendation counts to the supported 1-3 range", () => {
+    const belowRange = recommendMovements("🟢 Green", "any", 0);
+    const aboveRange = recommendRecipes("🟢 Green", "any", 99);
+
+    expect(belowRange.status).toBe("ok");
+    expect(aboveRange.status).toBe("ok");
+    if (belowRange.status !== "ok" || aboveRange.status !== "ok") {
+      throw new Error("expected recommendations");
+    }
+
+    expect(belowRange.items).toHaveLength(1);
+    expect(aboveRange.items).toHaveLength(3);
+  });
+
+  it("defaults invalid count arguments to the existing maximum of three", () => {
+    const execution = executeAthenaRecommendationTool(
+      "recommend_recipe",
+      { preference: "any", count: "one" },
+      "🟢 Green",
+    );
+
+    expect(execution.refs).toEqual([
+      { kind: "recipe", id: "3" },
+      { kind: "recipe", id: "4" },
+      { kind: "recipe", id: "5" },
+    ]);
+  });
+
   it("does not guess a catalogue effort level without a fatigue band", () => {
     const movement = recommendMovements(null, "walking");
     const recipe = recommendRecipes(null, "zero_prep");

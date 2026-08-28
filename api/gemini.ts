@@ -409,12 +409,16 @@ const dedupeRecommendationRefs = (refs: RecommendationRef[]): RecommendationRef[
   });
 };
 
-const executeBoundedRecommendationCalls = (
+export const executeBoundedRecommendationCalls = (
   functionCalls: GeminiFunctionCall[],
   fatigueZone: ChatContext["fatigueZone"],
+  executeTool: typeof executeAthenaRecommendationTool = executeAthenaRecommendationTool,
 ) => {
   const seenDomains = new Set<string>();
   const recommendationRefs: RecommendationRef[] = [];
+  let attemptedRecommendationOperations = 0;
+  let successfulRecommendationOperations = 0;
+  let failedRecommendationOperations = 0;
 
   const functionResponseParts = functionCalls.map((call) => {
     const isRecommendationDomain =
@@ -432,11 +436,16 @@ const executeBoundedRecommendationCalls = (
         refs: [],
       };
     } else {
-      if (isRecommendationDomain) seenDomains.add(call.name);
+      if (isRecommendationDomain) {
+        seenDomains.add(call.name);
+        attemptedRecommendationOperations += 1;
+      }
 
       try {
-        execution = executeAthenaRecommendationTool(call.name, call.args, fatigueZone);
+        execution = executeTool(call.name, call.args, fatigueZone);
+        if (isRecommendationDomain) successfulRecommendationOperations += 1;
       } catch {
+        if (isRecommendationDomain) failedRecommendationOperations += 1;
         execution = {
           response: {
             status: "error",
@@ -462,6 +471,10 @@ const executeBoundedRecommendationCalls = (
   return {
     functionResponseParts,
     recommendationRefs: dedupeRecommendationRefs(recommendationRefs),
+    allRecommendationExecutionsFailed:
+      attemptedRecommendationOperations > 0 &&
+      successfulRecommendationOperations === 0 &&
+      failedRecommendationOperations === attemptedRecommendationOperations,
   };
 };
 
@@ -698,10 +711,17 @@ const handleStreamingRequest = async (
     const {
       functionResponseParts,
       recommendationRefs,
+      allRecommendationExecutionsFailed,
     } = executeBoundedRecommendationCalls(
       functionCalls,
       body.context?.fatigueZone ?? null,
     );
+
+    if (allRecommendationExecutionsFailed) {
+      writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
+      res.end!();
+      return;
+    }
 
     const finalResponse = await openGeminiStream(
       {
@@ -859,6 +879,13 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       );
       const functionResponseParts = boundedExecution.functionResponseParts;
       recommendationRefs = boundedExecution.recommendationRefs;
+
+      if (boundedExecution.allRecommendationExecutionsFailed) {
+        res.status(502).json({
+          error: "There was an error connecting to ATHENA. Please try again.",
+        });
+        return;
+      }
 
       const finalResult = await callGemini(
         {

@@ -247,6 +247,9 @@ You can ask Fit for Cancer itself for real movement and recipe items already bui
 - If the user explicitly asks for a recipe/food recommendation, use recommend_recipe unless a concrete safety concern needs to be handled instead.
 - If you intend to use either recommendation tool, emit the function call as the first-pass output. Do not emit prose before or alongside the function call.
 - For a generic request such as "recommend an exercise", use preference "any". Do not infer "seated" or "lying_down" merely because the user has cancer or is in treatment.
+- If the user explicitly asks for 1, 2 or 3 recommendations, pass that number as count. If they do not specify a quantity, omit count so the app keeps its existing default of up to three.
+- If one turn asks for both Movement and Nutrition, emit one recommend_movement call and one recommend_recipe call together in the same first-pass response. Do not handle only one domain and defer the other.
+- Emit at most one recommendation call per domain in a user turn.
 - Treat the current fatigue band as the baseline capacity signal. Do not silently downgrade a Green or Yellow user to lower-effort advice without a user-stated preference, symptom, restriction, or other concrete safety reason.
 - When you want to recommend a specific in-app movement/exercise, use recommend_movement instead of inventing a title.
 - When you want to recommend a specific in-app recipe/food option, use recommend_recipe instead of inventing a title.
@@ -404,6 +407,75 @@ const dedupeRecommendationRefs = (refs: RecommendationRef[]): RecommendationRef[
     seen.add(key);
     return true;
   });
+};
+
+export const executeBoundedRecommendationCalls = (
+  functionCalls: GeminiFunctionCall[],
+  fatigueZone: ChatContext["fatigueZone"],
+  executeTool: typeof executeAthenaRecommendationTool = executeAthenaRecommendationTool,
+) => {
+  const seenDomains = new Set<string>();
+  const recommendationRefs: RecommendationRef[] = [];
+  let attemptedRecommendationOperations = 0;
+  let successfulRecommendationOperations = 0;
+  let failedRecommendationOperations = 0;
+
+  const functionResponseParts = functionCalls.map((call) => {
+    const isRecommendationDomain =
+      call.name === "recommend_movement" || call.name === "recommend_recipe";
+
+    let execution: { response: Record<string, unknown>; refs: RecommendationRef[] };
+
+    if (isRecommendationDomain && seenDomains.has(call.name)) {
+      execution = {
+        response: {
+          status: "skipped",
+          message: "Only one recommendation request per domain is allowed in a single ATHENA turn.",
+          items: [],
+        },
+        refs: [],
+      };
+    } else {
+      if (isRecommendationDomain) {
+        seenDomains.add(call.name);
+        attemptedRecommendationOperations += 1;
+      }
+
+      try {
+        execution = executeTool(call.name, call.args, fatigueZone);
+        if (isRecommendationDomain) successfulRecommendationOperations += 1;
+      } catch {
+        if (isRecommendationDomain) failedRecommendationOperations += 1;
+        execution = {
+          response: {
+            status: "error",
+            message: "That recommendation could not be retrieved.",
+            items: [],
+          },
+          refs: [],
+        };
+      }
+    }
+
+    recommendationRefs.push(...execution.refs);
+
+    return {
+      functionResponse: {
+        ...(call.id ? { id: call.id } : {}),
+        name: call.name,
+        response: execution.response,
+      },
+    };
+  });
+
+  return {
+    functionResponseParts,
+    recommendationRefs: dedupeRecommendationRefs(recommendationRefs),
+    allRecommendationExecutionsFailed:
+      attemptedRecommendationOperations > 0 &&
+      successfulRecommendationOperations === 0 &&
+      failedRecommendationOperations === attemptedRecommendationOperations,
+  };
 };
 
 const makeBaseContents = (history: ChatMessage[]) =>
@@ -636,24 +708,20 @@ const handleStreamingRequest = async (
       return;
     }
 
-    let recommendationRefs: RecommendationRef[] = [];
-    const functionResponseParts = functionCalls.map((call) => {
-      const execution = executeAthenaRecommendationTool(
-        call.name,
-        call.args,
-        body.context?.fatigueZone ?? null,
-      );
-      recommendationRefs.push(...execution.refs);
+    const {
+      functionResponseParts,
+      recommendationRefs,
+      allRecommendationExecutionsFailed,
+    } = executeBoundedRecommendationCalls(
+      functionCalls,
+      body.context?.fatigueZone ?? null,
+    );
 
-      return {
-        functionResponse: {
-          ...(call.id ? { id: call.id } : {}),
-          name: call.name,
-          response: execution.response,
-        },
-      };
-    });
-    recommendationRefs = dedupeRecommendationRefs(recommendationRefs);
+    if (allRecommendationExecutionsFailed) {
+      writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
+      res.end!();
+      return;
+    }
 
     const finalResponse = await openGeminiStream(
       {
@@ -805,24 +873,19 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         return;
       }
 
-      const functionResponseParts = functionCalls.map((call) => {
-        const execution = executeAthenaRecommendationTool(
-          call.name,
-          call.args,
-          body.context?.fatigueZone ?? null,
-        );
-        recommendationRefs.push(...execution.refs);
+      const boundedExecution = executeBoundedRecommendationCalls(
+        functionCalls,
+        body.context?.fatigueZone ?? null,
+      );
+      const functionResponseParts = boundedExecution.functionResponseParts;
+      recommendationRefs = boundedExecution.recommendationRefs;
 
-        return {
-          functionResponse: {
-            ...(call.id ? { id: call.id } : {}),
-            name: call.name,
-            response: execution.response,
-          },
-        };
-      });
-
-      recommendationRefs = dedupeRecommendationRefs(recommendationRefs);
+      if (boundedExecution.allRecommendationExecutionsFailed) {
+        res.status(502).json({
+          error: "There was an error connecting to ATHENA. Please try again.",
+        });
+        return;
+      }
 
       const finalResult = await callGemini(
         {

@@ -201,6 +201,16 @@ Their implementation is in `utils/athenaRecommendations.ts`.
 
 Gemini must not invent an in-app item or override the server-side fatigue band.
 
+### Quantity and compound requests
+
+Each recommendation tool accepts an optional `count` of 1–3. If the user does not specify a quantity, the existing default remains up to three recommendations. The application validates and clamps explicit integer counts; invalid values fall back to the existing default.
+
+A single user turn may request both recommendation domains. Gemini should emit at most one `recommend_movement` call and one `recommend_recipe` call in the same first-pass tool response. Fit For Cancer executes both against the same authoritative fatigue state and combines their canonical refs for the existing synthesis pass.
+
+The server preserves function-response correlation if duplicate same-domain calls are emitted, but only the first operation for that domain is executed. Later duplicate operations are returned to Gemini as skipped and cannot multiply recommendation cards.
+
+This remains one bounded tool round followed by one synthesis call with function calling disabled. It is not an autonomous or recursive agent loop.
+
 ### Fatigue-band behaviour
 
 The current Green/Yellow/Red band is authoritative for recommendation selection.
@@ -286,6 +296,9 @@ Changes to ATHENA should preserve regressions around:
 - direct streamed replies and streamed tool synthesis;
 - treatment-information and blood-cancer routing;
 - deterministic same-band recommendation selection;
+- explicit recommendation cardinality while preserving the default maximum of three;
+- mixed Movement + Nutrition requests in one bounded tool round;
+- duplicate same-domain call suppression and compound-call failure isolation;
 - catalogue parity;
 - Gemini function-call/function-response correlation;
 - structured recommendation refs and stale-ref handling;

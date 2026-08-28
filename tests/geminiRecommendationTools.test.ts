@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import handler from "../api/gemini";
+import handler, { executeBoundedRecommendationCalls } from "../api/gemini";
 
 const makeRes = () => {
   const out: { status?: number; body?: any } = {};
@@ -38,6 +38,72 @@ afterEach(() => {
   delete process.env.FFC_CHAT_ACCESS_PASSWORD;
 });
 
+describe("ATHENA bounded recommendation execution", () => {
+  it("flags the round when every requested recommendation execution fails", () => {
+    const result = executeBoundedRecommendationCalls(
+      [
+        { id: "call_move", name: "recommend_movement", args: { count: 1 } },
+        { id: "call_food", name: "recommend_recipe", args: { count: 1 } },
+      ],
+      "🟢 Green",
+      (() => {
+        throw new Error("catalogue unavailable");
+      }) as any,
+    );
+
+    expect(result.allRecommendationExecutionsFailed).toBe(true);
+    expect(result.recommendationRefs).toEqual([]);
+    expect(
+      result.functionResponseParts.map((part: any) => part.functionResponse.response.status),
+    ).toEqual(["error", "error"]);
+  });
+
+  it("preserves a genuine partial success when the other recommendation execution fails", () => {
+    const executeTool = vi.fn((name: unknown) => {
+      if (name === "recommend_movement") {
+        throw new Error("movement catalogue unavailable");
+      }
+
+      return {
+        response: {
+          status: "ok",
+          kind: "recipe",
+          items: [{ id: "3", title: "Zucchini & Feta Muffins" }],
+        },
+        refs: [{ kind: "recipe", id: "3" }],
+      };
+    }) as any;
+
+    const result = executeBoundedRecommendationCalls(
+      [
+        { id: "call_move", name: "recommend_movement", args: { count: 1 } },
+        { id: "call_food", name: "recommend_recipe", args: { count: 1 } },
+      ],
+      "🟢 Green",
+      executeTool,
+    );
+
+    expect(result.allRecommendationExecutionsFailed).toBe(false);
+    expect(result.recommendationRefs).toEqual([{ kind: "recipe", id: "3" }]);
+    expect(
+      result.functionResponseParts.map((part: any) => part.functionResponse.response.status),
+    ).toEqual(["error", "ok"]);
+  });
+
+  it("does not treat a valid no-result recommendation outcome as an execution failure", () => {
+    const result = executeBoundedRecommendationCalls(
+      [{ id: "call_move", name: "recommend_movement", args: { count: 1 } }],
+      null,
+    );
+
+    expect(result.allRecommendationExecutionsFailed).toBe(false);
+    expect(result.recommendationRefs).toEqual([]);
+    expect(
+      (result.functionResponseParts[0] as any).functionResponse.response.status,
+    ).toBe("needs_fatigue_score");
+  });
+});
+
 describe("/api/gemini first-party recommendation tools", () => {
   it("declares recommendation tools but keeps ordinary chat to one Gemini request", async () => {
     process.env.GEMINI_API_KEY = "test-key";
@@ -66,6 +132,8 @@ describe("/api/gemini first-party recommendation tools", () => {
       "recommend_movement",
       "recommend_recipe",
     ]);
+    expect(declarations[0].parameters.properties.count.type).toBe("INTEGER");
+    expect(declarations[1].parameters.properties.count.type).toBe("INTEGER");
     expect(forwarded.systemInstruction.parts[0].text).toContain(
       "Never claim a specific item is \"in the app\" unless the tool returned it",
     );
@@ -202,8 +270,8 @@ describe("/api/gemini first-party recommendation tools", () => {
     const toolContent = {
       role: "model",
       parts: [
-        { functionCall: { id: "call_move", name: "recommend_movement", args: { preference: "mobility" } } },
-        { functionCall: { id: "call_food", name: "recommend_recipe", args: { preference: "zero_prep" } } },
+        { functionCall: { id: "call_move", name: "recommend_movement", args: { preference: "any", count: 1 } } },
+        { functionCall: { id: "call_food", name: "recommend_recipe", args: { preference: "any", count: 1 } } },
       ],
     };
     const fetchMock = vi
@@ -219,7 +287,7 @@ describe("/api/gemini first-party recommendation tools", () => {
       {
         method: "POST",
         headers: { "x-forwarded-for": "10.20.0.3" },
-        body: requestBody("Give me something gentle to move and something I don't have to cook."),
+        body: requestBody("Give me one exercise and one recipe.", "🟢 Green"),
       } as any,
       res as any,
     );
@@ -227,12 +295,8 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(out.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(out.body.recommendations).toEqual([
-      { kind: "movement", id: "17" },
-      { kind: "movement", id: "18" },
-      { kind: "movement", id: "19" },
-      { kind: "recipe", id: "11" },
-      { kind: "recipe", id: "12" },
-      { kind: "recipe", id: "14" },
+      { kind: "movement", id: "1" },
+      { kind: "recipe", id: "3" },
     ]);
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
@@ -243,7 +307,7 @@ describe("/api/gemini first-party recommendation tools", () => {
     ]);
   });
 
-  it("preserves IDs for parallel calls to the same tool", async () => {
+  it("preserves function-call correlation while skipping duplicate same-domain operations", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const toolContent = {
       role: "model",
@@ -273,9 +337,6 @@ describe("/api/gemini first-party recommendation tools", () => {
     expect(out.status).toBe(200);
     expect(out.body.recommendations).toEqual([
       { kind: "movement", id: "1" },
-      { kind: "movement", id: "2" },
-      { kind: "movement", id: "3" },
-      { kind: "movement", id: "4" },
     ]);
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
@@ -286,7 +347,10 @@ describe("/api/gemini first-party recommendation tools", () => {
       "recommend_movement",
     ]);
     expect(responses[0].response.preference).toBe("walking");
-    expect(responses[1].response.preference).toBe("strength");
+    expect(responses[1].response).toMatchObject({
+      status: "skipped",
+      items: [],
+    });
   });
 
   it("does not guess catalogue intensity if a tool call arrives without a fatigue band", async () => {

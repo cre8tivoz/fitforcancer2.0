@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import handler from "../api/gemini";
+import handler, { executeBoundedRecommendationCalls } from "../api/gemini";
 
 const makeRes = () => {
   const out: { status?: number; body?: any } = {};
@@ -36,6 +36,72 @@ afterEach(() => {
   delete process.env.GEMINI_API_KEY;
   delete process.env.CHAT_ACCESS_PASSWORD;
   delete process.env.FFC_CHAT_ACCESS_PASSWORD;
+});
+
+describe("ATHENA bounded recommendation execution", () => {
+  it("flags the round when every requested recommendation execution fails", () => {
+    const result = executeBoundedRecommendationCalls(
+      [
+        { id: "call_move", name: "recommend_movement", args: { count: 1 } },
+        { id: "call_food", name: "recommend_recipe", args: { count: 1 } },
+      ],
+      "🟢 Green",
+      (() => {
+        throw new Error("catalogue unavailable");
+      }) as any,
+    );
+
+    expect(result.allRecommendationExecutionsFailed).toBe(true);
+    expect(result.recommendationRefs).toEqual([]);
+    expect(
+      result.functionResponseParts.map((part: any) => part.functionResponse.response.status),
+    ).toEqual(["error", "error"]);
+  });
+
+  it("preserves a genuine partial success when the other recommendation execution fails", () => {
+    const executeTool = vi.fn((name: unknown) => {
+      if (name === "recommend_movement") {
+        throw new Error("movement catalogue unavailable");
+      }
+
+      return {
+        response: {
+          status: "ok",
+          kind: "recipe",
+          items: [{ id: "3", title: "Zucchini & Feta Muffins" }],
+        },
+        refs: [{ kind: "recipe", id: "3" }],
+      };
+    }) as any;
+
+    const result = executeBoundedRecommendationCalls(
+      [
+        { id: "call_move", name: "recommend_movement", args: { count: 1 } },
+        { id: "call_food", name: "recommend_recipe", args: { count: 1 } },
+      ],
+      "🟢 Green",
+      executeTool,
+    );
+
+    expect(result.allRecommendationExecutionsFailed).toBe(false);
+    expect(result.recommendationRefs).toEqual([{ kind: "recipe", id: "3" }]);
+    expect(
+      result.functionResponseParts.map((part: any) => part.functionResponse.response.status),
+    ).toEqual(["error", "ok"]);
+  });
+
+  it("does not treat a valid no-result recommendation outcome as an execution failure", () => {
+    const result = executeBoundedRecommendationCalls(
+      [{ id: "call_move", name: "recommend_movement", args: { count: 1 } }],
+      null,
+    );
+
+    expect(result.allRecommendationExecutionsFailed).toBe(false);
+    expect(result.recommendationRefs).toEqual([]);
+    expect(
+      (result.functionResponseParts[0] as any).functionResponse.response.status,
+    ).toBe("needs_fatigue_score");
+  });
 });
 
 describe("/api/gemini first-party recommendation tools", () => {

@@ -689,8 +689,56 @@ const handleStreamingRequest = async (
       writeSse(res, "delta", { text: textChunk });
     });
 
-    const completedResponseMode: "unknown" | "text" | "tool" =
+    let completedResponseMode: "unknown" | "text" | "tool" =
       functionCalls.length > 0 ? "tool" : directText ? "text" : "unknown";
+
+    if (completedResponseMode === "unknown") {
+      // Gemini can occasionally finish the streamed selection pass with STOP
+      // without yielding consumable text or a complete function call. Recover
+      // once with the equivalent unary request; this is not an agent loop.
+      const retryResult = await callGemini(
+        {
+          systemInstruction,
+          contents: baseContents,
+          tools,
+          generationConfig: { temperature: 0.7 },
+        },
+        apiKey,
+        signal,
+      );
+
+      if (!retryResult.ok) {
+        logGeminiError(
+          `[gemini] unary selection retry error status=${retryResult.status}`,
+          retryResult.json ?? retryResult.rawText,
+        );
+        writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
+        res.end!();
+        return;
+      }
+
+      const retryFunctionCalls = extractFunctionCalls(retryResult.json);
+      if (retryFunctionCalls.length > 0) {
+        const retryModelContent = extractModelContent(retryResult.json);
+        const retryParts = retryModelContent?.parts;
+        if (!Array.isArray(retryParts) || retryParts.length === 0) {
+          writeSse(res, "error", { error: "ATHENA returned an invalid tool response. Please try again." });
+          res.end!();
+          return;
+        }
+
+        functionCalls.splice(0, functionCalls.length, ...retryFunctionCalls);
+        modelParts.splice(0, modelParts.length, ...retryParts);
+        completedResponseMode = "tool";
+      } else {
+        const retryText = extractText(retryResult.json);
+        if (retryText) {
+          directText = retryText;
+          completedResponseMode = "text";
+          writeSse(res, "delta", { text: retryText });
+        }
+      }
+    }
 
     if (completedResponseMode === "text") {
       if (!directText.trim()) {

@@ -211,6 +211,8 @@ The server preserves function-response correlation if duplicate same-domain call
 
 This remains one bounded tool round followed by one synthesis call with function calling disabled. It is not an autonomous or recursive agent loop.
 
+If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
+
 ### Fatigue-band behaviour
 
 The current Green/Yellow/Red band is authoritative for recommendation selection.

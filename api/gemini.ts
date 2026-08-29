@@ -690,7 +690,7 @@ const handleStreamingRequest = async (
     });
 
     let completedResponseMode: "unknown" | "text" | "tool" =
-      functionCalls.length > 0 ? "tool" : directText ? "text" : "unknown";
+      functionCalls.length > 0 ? "tool" : directText.trim() ? "text" : "unknown";
 
     if (completedResponseMode === "unknown") {
       // Gemini can occasionally finish the streamed selection pass with STOP
@@ -717,6 +717,18 @@ const handleStreamingRequest = async (
         return;
       }
 
+      const retryCandidate = retryResult.json?.candidates?.[0];
+      const retryFinishReason = retryCandidate?.finishReason;
+      if (retryFinishReason !== "STOP") {
+        logGeminiError(
+          `[gemini] unary selection retry ended with finish reason ${retryFinishReason ?? "missing"}`,
+          retryResult.json,
+        );
+        writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
+        res.end!();
+        return;
+      }
+
       const retryFunctionCalls = extractFunctionCalls(retryResult.json);
       if (retryFunctionCalls.length > 0) {
         const retryModelContent = extractModelContent(retryResult.json);
@@ -727,6 +739,10 @@ const handleStreamingRequest = async (
           return;
         }
 
+        if (directText) {
+          directText = "";
+          writeSse(res, "reset", {});
+        }
         functionCalls.splice(0, functionCalls.length, ...retryFunctionCalls);
         modelParts.splice(0, modelParts.length, ...retryParts);
         completedResponseMode = "tool";

@@ -102,7 +102,7 @@ describe("App.tsx — smoke", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByText(/I see you've selected 8 today/i)).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe("App.tsx — smoke", () => {
     const user = userEvent.setup();
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
     await user.click(screen.getByRole("button", { name: /change energy score/i }));
 
     expect(screen.getByText(/Update Your Energy \(currently 8\/10\)/i)).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("App.tsx — smoke", () => {
 
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
     expect(fetchMock).not.toHaveBeenCalled();
 
     await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "Post chemo fatigue");
@@ -177,14 +177,14 @@ describe("App.tsx — smoke", () => {
 
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
     await user.click(screen.getByRole("button", { name: /change energy score/i }));
     await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "I feel wiped out today");
     await user.click(screen.getByRole("button", { name: /send message to ATHENA/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("button", { name: /change energy score/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /set energy score to 4/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /set fatigue score to 4/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /reset ATHENA conversation/i })).toBeDisabled();
 
     resolveFetch({
@@ -194,7 +194,7 @@ describe("App.tsx — smoke", () => {
     });
 
     expect(await screen.findByText(/keep today simple/i)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: /set energy score to 4/i })).not.toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /set fatigue score to 4/i })).not.toBeDisabled());
   });
 
   it("explains who ATHENA is and how she is tuned", async () => {

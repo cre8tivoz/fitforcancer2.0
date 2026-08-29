@@ -3,7 +3,7 @@ import type React from 'react';
 import type { ChatMessage } from '../types';
 
 export const INITIAL_ATHENA_MESSAGE =
-  "Hi, I'm ATHENA — your treatment-day companion. How's your energy today? Choose a number from 0–10 and we'll go from there.";
+  "Hi, I'm ATHENA — your treatment-day companion. How's your fatigue today? Choose 0–10, where 0 means no fatigue and 10 means the worst fatigue.";
 
 export const buildInitialAthenaMessages = (score: number | null): ChatMessage[] => [
   {
@@ -11,7 +11,7 @@ export const buildInitialAthenaMessages = (score: number | null): ChatMessage[] 
     content:
       score === null
         ? INITIAL_ATHENA_MESSAGE
-        : `Hi, I'm ATHENA — your treatment-day companion. I see your energy is set to ${score} today. What would you like help with first — nutrition, movement, or just a chat?`,
+        : `Hi, I'm ATHENA — your treatment-day companion. I see your fatigue is set to ${score}/10 today. What would you like help with first — nutrition, movement, or just a chat?`,
   },
 ];
 

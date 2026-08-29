@@ -96,7 +96,7 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText("Hydrating Watermelon & Mint Cooler")).toBeInTheDocument();
   });
 
-  it("locks an ATHENA energy score without calling Gemini and shares it with the app", async () => {
+  it("locks an ATHENA fatigue score without calling Gemini and shares it with the app", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -114,12 +114,12 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText(/Red Zone Active/i)).toBeInTheDocument();
   });
 
-  it("preserves the current energy score until a replacement is selected", async () => {
+  it("preserves the current fatigue score until a replacement is selected", async () => {
     const user = userEvent.setup();
     renderWithRouter("/assistant");
 
     await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
-    await user.click(screen.getByRole("button", { name: /change energy score/i }));
+    await user.click(screen.getByRole("button", { name: /change fatigue score/i }));
 
     expect(screen.getByText(/Update Your Energy \(currently 8\/10\)/i)).toBeInTheDocument();
     expect(screen.getByText(/current 8\/10 stays active until you choose a replacement/i)).toBeInTheDocument();
@@ -178,12 +178,12 @@ describe("App.tsx — smoke", () => {
     renderWithRouter("/assistant");
 
     await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
-    await user.click(screen.getByRole("button", { name: /change energy score/i }));
+    await user.click(screen.getByRole("button", { name: /change fatigue score/i }));
     await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "I feel wiped out today");
     await user.click(screen.getByRole("button", { name: /send message to ATHENA/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: /change energy score/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /change fatigue score/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /set fatigue score to 4/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /reset ATHENA conversation/i })).toBeDisabled();
 

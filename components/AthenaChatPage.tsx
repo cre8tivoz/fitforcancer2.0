@@ -442,7 +442,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 onClick={changeEnergyScore}
                 disabled={isLoading || isEditingEnergy}
                 className="ml-1 text-[9px] font-bold uppercase tracking-wider text-white/55 hover:text-white underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Change energy score"
+                aria-label="Change fatigue score"
               >
                 Change
               </button>

@@ -380,6 +380,392 @@ describe('/api/gemini SSE transport', () => {
     expect(output).not.toContain('event: error');
   });
 
+  it('recovers an empty streamed selection with one unary compound-tool retry', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const emptySelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [] } }] },
+    ]);
+    const unaryToolSelection = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'movement-recovered-1',
+                    name: 'recommend_movement',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+                {
+                  functionCall: {
+                    id: 'recipe-recovered-1',
+                    name: 'recommend_recipe',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+              ],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const synthesis = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Here is one exercise and one recipe.' }] } }] },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([emptySelection]))
+      .mockResolvedValueOnce(unaryToolSelection)
+      .mockResolvedValueOnce(responseStream([synthesis]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.21' },
+        body: {
+          history: [{ role: 'user', content: 'Give me one exercise and one recipe together' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[0][0]).toContain(':streamGenerateContent?alt=sse');
+    expect(fetchMock.mock.calls[1][0]).toContain(':generateContent');
+    expect(fetchMock.mock.calls[1][0]).not.toContain(':streamGenerateContent');
+    expect(fetchMock.mock.calls[2][0]).toContain(':streamGenerateContent?alt=sse');
+
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[2][1].body);
+    const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
+    expect(responses.map((response: any) => [response.id, response.name])).toEqual([
+      ['movement-recovered-1', 'recommend_movement'],
+      ['recipe-recovered-1', 'recommend_recipe'],
+    ]);
+    expect(responses[0].response.items).toHaveLength(1);
+    expect(responses[1].response.items).toHaveLength(1);
+
+    const output = out.chunks.join('');
+    expect(output).toContain('Here is one exercise and one recipe.');
+    expect(output).toContain('"kind":"movement"');
+    expect(output).toContain('"kind":"recipe"');
+    expect(output).toContain('event: done');
+    expect(output).not.toContain('event: error');
+  });
+
+  it('recovers an empty streamed selection when the unary retry returns direct text', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const emptySelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [] } }] },
+    ]);
+    const unaryText = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [{ text: 'I can help with that.' }],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([emptySelection]))
+      .mockResolvedValueOnce(unaryText);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.22' },
+        body: {
+          history: [{ role: 'user', content: 'Can we just chat?' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const output = out.chunks.join('');
+    expect(output).toContain('event: delta');
+    expect(output).toContain('I can help with that.');
+    expect(output).toContain('event: done');
+    expect(output).toContain('"recommendations":[]');
+    expect(output).not.toContain('event: error');
+  });
+
+  it('treats whitespace-only streamed selection as recoverable and resets it before tool synthesis', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const whitespaceSelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [{ text: '   ' }] } }] },
+    ]);
+    const unaryToolSelection = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'movement-whitespace-1',
+                    name: 'recommend_movement',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+                {
+                  functionCall: {
+                    id: 'recipe-whitespace-1',
+                    name: 'recommend_recipe',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+              ],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const synthesis = encodeSse([
+      { candidates: [{ content: { parts: [{ text: 'Recovered recommendations.' }] } }] },
+    ]);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([whitespaceSelection]))
+      .mockResolvedValueOnce(unaryToolSelection)
+      .mockResolvedValueOnce(responseStream([synthesis]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.24' },
+        body: {
+          history: [{ role: 'user', content: 'Give me one exercise and one recipe together' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const output = out.chunks.join('');
+    expect(output).toContain('event: reset');
+    expect(output).toContain('Recovered recommendations.');
+    expect(output).toContain('"kind":"movement"');
+    expect(output).toContain('"kind":"recipe"');
+    expect(output).toContain('event: done');
+    expect(output).not.toContain('event: error');
+  });
+
+  it('resets provisional whitespace before emitting recovered direct text', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const whitespaceSelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [{ text: '    ' }] } }] },
+    ]);
+    const unaryText = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [{ text: 'Recovered plain text.' }],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([whitespaceSelection]))
+      .mockResolvedValueOnce(unaryText);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.27' },
+        body: {
+          history: [{ role: 'user', content: 'Can we just chat?' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const output = out.chunks.join('');
+    expect(output).toContain('event: reset');
+    expect(output.indexOf('event: reset')).toBeGreaterThan(output.indexOf('    '));
+    expect(output.indexOf('Recovered plain text.')).toBeGreaterThan(output.indexOf('event: reset'));
+    expect(output).toContain('event: done');
+    expect(output).not.toContain('event: error');
+  });
+
+  it('rejects truncated unary text recovery instead of marking partial text done', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const emptySelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [] } }] },
+    ]);
+    const truncatedUnary = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [{ text: 'Partial recovered answer' }],
+            },
+            finishReason: 'MAX_TOKENS',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([emptySelection]))
+      .mockResolvedValueOnce(truncatedUnary);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.25' },
+        body: {
+          history: [{ role: 'user', content: 'Can we just chat?' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const output = out.chunks.join('');
+    expect(output).toContain('ATHENA returned an incomplete response. Please try again.');
+    expect(output).toContain('event: error');
+    expect(output).not.toContain('Partial recovered answer');
+    expect(output).not.toContain('event: done');
+  });
+
+  it('rejects truncated unary tool recovery before executing recommendations', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const emptySelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [] } }] },
+    ]);
+    const truncatedUnary = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [
+                {
+                  functionCall: {
+                    id: 'movement-partial-1',
+                    name: 'recommend_movement',
+                    args: { preference: 'any', count: 1 },
+                  },
+                },
+              ],
+            },
+            finishReason: 'MAX_TOKENS',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([emptySelection]))
+      .mockResolvedValueOnce(truncatedUnary);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.26' },
+        body: {
+          history: [{ role: 'user', content: 'Give me one exercise' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const output = out.chunks.join('');
+    expect(output).toContain('ATHENA returned an incomplete response. Please try again.');
+    expect(output).toContain('event: error');
+    expect(output).not.toContain('"kind":"movement"');
+    expect(output).not.toContain('event: done');
+  });
+
+  it('stops after one recovery attempt when both streamed and unary selection are empty', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const emptySelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [] } }] },
+    ]);
+    const emptyUnary = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([emptySelection]))
+      .mockResolvedValueOnce(emptyUnary);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.23' },
+        body: {
+          history: [{ role: 'user', content: 'Give me one exercise and one recipe together' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const output = out.chunks.join('');
+    expect(output).toContain('ATHENA returned an invalid streaming response. Please try again.');
+    expect(output).toContain('event: error');
+    expect(output).not.toContain('event: done');
+  });
+
   it('does not emit app-level done or recommendation refs when tool synthesis ends without STOP', async () => {
     process.env.GEMINI_API_KEY = 'test-key';
     const first = encodeSse([

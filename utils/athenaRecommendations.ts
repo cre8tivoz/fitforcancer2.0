@@ -142,14 +142,19 @@ const normaliseRecommendationCount = (value: unknown): number => {
   return Math.min(3, Math.max(1, value as number));
 };
 
+const normaliseExcludedIds = (value: readonly string[]): Set<string> =>
+  new Set(value.filter((id) => typeof id === "string" && id.length > 0));
+
 export const recommendMovements = (
   fatigueZone: ChatContext["fatigueZone"],
   preferenceInput: unknown = "any",
   countInput: unknown = 3,
+  excludedIdsInput: readonly string[] = [],
 ) => {
   const zone = getZoneName(fatigueZone);
   const preference = normaliseMovementPreference(preferenceInput);
   const count = normaliseRecommendationCount(countInput);
+  const excludedIds = normaliseExcludedIds(excludedIdsInput);
 
   if (!zone) {
     return {
@@ -160,7 +165,20 @@ export const recommendMovements = (
     };
   }
 
-  const sameZone = MOVEMENT_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
+  const sameZoneAll = MOVEMENT_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
+  const sameZone = sameZoneAll.filter((item) => !excludedIds.has(item.id));
+
+  if (sameZone.length === 0 && sameZoneAll.length > 0 && excludedIds.size > 0) {
+    return {
+      status: "no_new_results" as const,
+      kind: "movement" as const,
+      zone,
+      preference,
+      items: [],
+      message: "No unseen movement recommendations remain in the current fatigue band.",
+    };
+  }
+
   const preferred = preference === "any"
     ? sameZone
     : sameZone.filter((item) => item.preferences.includes(preference));
@@ -181,10 +199,12 @@ export const recommendRecipes = (
   fatigueZone: ChatContext["fatigueZone"],
   preferenceInput: unknown = "any",
   countInput: unknown = 3,
+  excludedIdsInput: readonly string[] = [],
 ) => {
   const zone = getZoneName(fatigueZone);
   const preference = normaliseRecipePreference(preferenceInput);
   const count = normaliseRecommendationCount(countInput);
+  const excludedIds = normaliseExcludedIds(excludedIdsInput);
 
   if (!zone) {
     return {
@@ -195,7 +215,20 @@ export const recommendRecipes = (
     };
   }
 
-  const sameZone = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
+  const sameZoneAll = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
+  const sameZone = sameZoneAll.filter((item) => !excludedIds.has(item.id));
+
+  if (sameZone.length === 0 && sameZoneAll.length > 0 && excludedIds.size > 0) {
+    return {
+      status: "no_new_results" as const,
+      kind: "recipe" as const,
+      zone,
+      preference,
+      items: [],
+      message: "No unseen recipe recommendations remain in the current fatigue band.",
+    };
+  }
+
   const preferred = preference === "any"
     ? sameZone
     : sameZone.filter((item) => RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference);
@@ -229,6 +262,10 @@ export const ATHENA_RECOMMENDATION_TOOL_DECLARATIONS = [
           type: "INTEGER",
           description: "Optional number of movement recommendations explicitly requested by the user. Use 1, 2 or 3. Omit when the user did not specify a quantity.",
         },
+        avoid_previous: {
+          type: "BOOLEAN",
+          description: "Set true when the user explicitly asks for another, different or new movement option, or points out that a previous movement was repeated. Fit For Cancer derives the IDs to exclude from conversation history.",
+        },
       },
     },
   },
@@ -248,6 +285,10 @@ export const ATHENA_RECOMMENDATION_TOOL_DECLARATIONS = [
           type: "INTEGER",
           description: "Optional number of recipe recommendations explicitly requested by the user. Use 1, 2 or 3. Omit when the user did not specify a quantity.",
         },
+        avoid_previous: {
+          type: "BOOLEAN",
+          description: "Set true when the user explicitly asks for another, different or new recipe/food option, or points out that a previous recipe was repeated. Fit For Cancer derives the IDs to exclude from conversation history.",
+        },
       },
     },
   },
@@ -257,13 +298,17 @@ export const executeAthenaRecommendationTool = (
   name: unknown,
   args: unknown,
   fatigueZone: ChatContext["fatigueZone"],
+  previousRecommendations: readonly RecommendationRef[] = [],
 ): { response: Record<string, unknown>; refs: RecommendationRef[] } => {
   const safeArgs = args && typeof args === "object" && !Array.isArray(args)
     ? (args as Record<string, unknown>)
     : {};
 
   if (name === "recommend_movement") {
-    const response = recommendMovements(fatigueZone, safeArgs.preference, safeArgs.count);
+    const excludedIds = safeArgs.avoid_previous === true
+      ? previousRecommendations.filter((ref) => ref.kind === "movement").map((ref) => ref.id)
+      : [];
+    const response = recommendMovements(fatigueZone, safeArgs.preference, safeArgs.count, excludedIds);
     return {
       response,
       refs: response.status === "ok"
@@ -273,7 +318,10 @@ export const executeAthenaRecommendationTool = (
   }
 
   if (name === "recommend_recipe") {
-    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count);
+    const excludedIds = safeArgs.avoid_previous === true
+      ? previousRecommendations.filter((ref) => ref.kind === "recipe").map((ref) => ref.id)
+      : [];
+    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count, excludedIds);
     return {
       response,
       refs: response.status === "ok"

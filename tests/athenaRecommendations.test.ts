@@ -176,6 +176,44 @@ describe("ATHENA deterministic recommendations", () => {
     ]);
   });
 
+  it("excludes previously shown same-band recipes when another option is requested", () => {
+    const result = recommendRecipes("🟢 Green", "any", 1, ["3"]);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") throw new Error("expected recommendations");
+    expect(result.items.map((item) => item.id)).toEqual(["4"]);
+  });
+
+  it("uses server-owned previous refs only when avoid_previous is explicitly requested", () => {
+    const previous = [
+      { kind: "recipe" as const, id: "3" },
+      { kind: "movement" as const, id: "1" },
+    ];
+
+    const repeated = executeAthenaRecommendationTool(
+      "recommend_recipe",
+      { preference: "any", count: 1 },
+      "🟢 Green",
+      previous,
+    );
+    const another = executeAthenaRecommendationTool(
+      "recommend_recipe",
+      { preference: "any", count: 1, avoid_previous: true },
+      "🟢 Green",
+      previous,
+    );
+
+    expect(repeated.refs).toEqual([{ kind: "recipe", id: "3" }]);
+    expect(another.refs).toEqual([{ kind: "recipe", id: "4" }]);
+  });
+
+  it("does not repeat an old item when all same-band options have already been shown", () => {
+    const result = recommendRecipes("🟢 Green", "any", 1, ["3", "4", "5", "6", "7", "9"]);
+
+    expect(result.status).toBe("no_new_results");
+    expect(result.items).toEqual([]);
+  });
+
   it("does not guess a catalogue effort level without a fatigue band", () => {
     const movement = recommendMovements(null, "walking");
     const recipe = recommendRecipes(null, "zero_prep");

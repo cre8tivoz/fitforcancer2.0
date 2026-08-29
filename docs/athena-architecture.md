@@ -209,9 +209,13 @@ A single user turn may request both recommendation domains. Gemini should emit a
 
 The server preserves function-response correlation if duplicate same-domain calls are emitted, but only the first operation for that domain is executed. Later duplicate operations are returned to Gemini as skipped and cannot multiply recommendation cards.
 
+For conversational novelty requests such as "another recipe" or "something different", Gemini may set `avoid_previous: true`. Fit For Cancer derives the actual prior canonical IDs from structured recommendation refs already present in the current in-memory conversation and excludes same-domain IDs before deterministic selection. Gemini never supplies the exclusion IDs. If all eligible same-band items have already been shown, the tool reports no new result rather than repeating an old card.
+
 This remains one bounded tool round followed by one synthesis call with function calling disabled. It is not an autonomous or recursive agent loop.
 
-If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
+If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. On this recovery call only, Gemini 2.5 Flash thinking is disabled with a zero thinking budget so the single fallback is directed toward usable text/tool output. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
+
+If that recovery still produces no usable text/tool output, the server logs only response-shape metadata (finish reason, candidate/part counts and part kinds) for troubleshooting. Prompt text, response text, function arguments, fatigue/cancer context and conversation history are not included in that diagnostic.
 
 ### Fatigue-band behaviour
 

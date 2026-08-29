@@ -96,16 +96,16 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText("Hydrating Watermelon & Mint Cooler")).toBeInTheDocument();
   });
 
-  it("locks an ATHENA energy score without calling Gemini and shares it with the app", async () => {
+  it("locks an ATHENA fatigue score without calling Gemini and shares it with the app", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText(/I see you've selected 8 today/i)).toBeInTheDocument();
+    expect(screen.getByText(/I see you've selected 8\/10 for fatigue today/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nutrition" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Movement" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Just a chat" })).toBeInTheDocument();
@@ -114,14 +114,14 @@ describe("App.tsx — smoke", () => {
     expect(screen.getByText(/Red Zone Active/i)).toBeInTheDocument();
   });
 
-  it("preserves the current energy score until a replacement is selected", async () => {
+  it("preserves the current fatigue score until a replacement is selected", async () => {
     const user = userEvent.setup();
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
-    await user.click(screen.getByRole("button", { name: /change energy score/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /change fatigue score/i }));
 
-    expect(screen.getByText(/Update Your Energy \(currently 8\/10\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Update Your Fatigue \(currently 8\/10\)/i)).toBeInTheDocument();
     expect(screen.getByText(/current 8\/10 stays active until you choose a replacement/i)).toBeInTheDocument();
 
     const historyBefore = JSON.parse(window.localStorage.getItem("energy_history") || "[]");
@@ -147,7 +147,7 @@ describe("App.tsx — smoke", () => {
 
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
     expect(fetchMock).not.toHaveBeenCalled();
 
     await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "Post chemo fatigue");
@@ -177,14 +177,14 @@ describe("App.tsx — smoke", () => {
 
     renderWithRouter("/assistant");
 
-    await user.click(screen.getByRole("button", { name: /set energy score to 8/i }));
-    await user.click(screen.getByRole("button", { name: /change energy score/i }));
+    await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
+    await user.click(screen.getByRole("button", { name: /change fatigue score/i }));
     await user.type(screen.getByRole("textbox", { name: /message ATHENA/i }), "I feel wiped out today");
     await user.click(screen.getByRole("button", { name: /send message to ATHENA/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("button", { name: /change energy score/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /set energy score to 4/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /change fatigue score/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /set fatigue score to 4/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /reset ATHENA conversation/i })).toBeDisabled();
 
     resolveFetch({
@@ -194,7 +194,7 @@ describe("App.tsx — smoke", () => {
     });
 
     expect(await screen.findByText(/keep today simple/i)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: /set energy score to 4/i })).not.toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /set fatigue score to 4/i })).not.toBeDisabled());
   });
 
   it("explains who ATHENA is and how she is tuned", async () => {

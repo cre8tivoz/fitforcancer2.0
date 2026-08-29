@@ -8,8 +8,8 @@ export const getFatigueZone = (score: number): FatigueZone =>
  * Returns null unless the message plausibly REPORTS a score:
  *   - the whole message is just a number ("7", "7/10", " 7. ")
  *   - an "N/10" or "N out of 10" phrase appears anywhere
- *   - a number directly follows a fatigue keyword (fatigue/energy/tired/
- *     tiredness/score), allowing only filler words like "is/was/at/about/
+ *   - a number directly follows a fatigue keyword (fatigue/tired/tiredness/
+ *     score), allowing only filler words like "is/was/at/about/
  *     around/a/an/level/:/=" between keyword and number
  */
 export const detectFatigueScore = (text: string): number | null => {
@@ -33,7 +33,7 @@ export const detectFatigueScore = (text: string): number | null => {
 
   // 3. Keyword-anchored: keyword then optional filler then number
   const keywordRe =
-    /(?:fatigue|energy|tired(?:ness)?|score)(?:\s*(?:level|score|is|was|at|of|about|around|a|an|:|=|-|–))*\s*(10|[0-9])\b/i;
+    /(?:fatigue|tired(?:ness)?|score)(?:\s*(?:level|score|is|was|at|of|about|around|a|an|:|=|-|–))*\s*(10|[0-9])\b/i;
   const keywordMatch = text.match(keywordRe);
   if (keywordMatch) {
     const n = parseInt(keywordMatch[1], 10);

@@ -12,7 +12,10 @@ describe("detectFatigueScore", () => {
   it('detects "my fatigue is 7"', () => expect(detectFatigueScore("my fatigue is 7")).toBe(7));
   it('detects "fatigue 7"', () => expect(detectFatigueScore("fatigue 7")).toBe(7));
   it('detects "My fatigue score is 9"', () => expect(detectFatigueScore("My fatigue score is 9")).toBe(9));
-  it('detects "energy is about a 4"', () => expect(detectFatigueScore("energy is about a 4")).toBe(4));
+  it('does not reinterpret an energy rating as fatigue severity', () => {
+    expect(detectFatigueScore("energy is about a 4")).toBeNull();
+    expect(detectFatigueScore("my energy is 1")).toBeNull();
+  });
 
   // MUST return null
   it('returns null for "I did 3 short walks today"', () => {

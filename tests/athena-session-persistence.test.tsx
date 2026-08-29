@@ -21,6 +21,19 @@ describe('ATHENA in-memory session continuity', () => {
     vi.restoreAllMocks();
   });
 
+  it('presents the 0–10 check-in as fatigue severity', () => {
+    render(
+      <MemoryRouter initialEntries={['/assistant']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/How's your fatigue today/i)).toBeInTheDocument();
+    expect(screen.getByText(/0 means no fatigue and 10 means the worst fatigue/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /set fatigue score to 0/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /set fatigue score to 10/i })).toBeInTheDocument();
+  });
+
   it('keeps the conversation and draft when navigating away and back', async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn().mockResolvedValue({
@@ -36,7 +49,7 @@ describe('ATHENA in-memory session continuity', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole('button', { name: /set fatigue score to 8/i }));
     const messageInput = screen.getByRole('textbox', { name: /message ATHENA/i });
     await user.type(messageInput, 'My body feels achy today');
     await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));
@@ -106,7 +119,7 @@ describe('ATHENA in-memory session continuity', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole('button', { name: /set fatigue score to 8/i }));
     await user.type(screen.getByRole('textbox', { name: /message ATHENA/i }), 'This conversation should be cleared');
     await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -123,7 +136,7 @@ describe('ATHENA in-memory session continuity', () => {
 
     expect(screen.queryByText('This conversation should be cleared')).not.toBeInTheDocument();
     expect(screen.queryByText(/This reply belongs to the cleared chat/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/How's your energy today/i)).toBeInTheDocument();
+    expect(screen.getByText(/How's your fatigue today/i)).toBeInTheDocument();
   });
 
   it('clears ATHENA and invalidates a pending reply when another tab clears fatigue data', async () => {
@@ -143,7 +156,7 @@ describe('ATHENA in-memory session continuity', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /set energy score to 8/i }));
+    await user.click(screen.getByRole('button', { name: /set fatigue score to 8/i }));
     await user.type(screen.getByRole('textbox', { name: /message ATHENA/i }), 'This chat is open in another tab too');
     await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -166,6 +179,6 @@ describe('ATHENA in-memory session continuity', () => {
 
     expect(screen.queryByText('This chat is open in another tab too')).not.toBeInTheDocument();
     expect(screen.queryByText(/other-tab-cleared chat/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/How's your energy today/i)).toBeInTheDocument();
+    expect(screen.getByText(/How's your fatigue today/i)).toBeInTheDocument();
   });
 });

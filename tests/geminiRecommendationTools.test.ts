@@ -134,6 +134,8 @@ describe("/api/gemini first-party recommendation tools", () => {
     ]);
     expect(declarations[0].parameters.properties.count.type).toBe("INTEGER");
     expect(declarations[1].parameters.properties.count.type).toBe("INTEGER");
+    expect(declarations[0].parameters.properties.avoid_previous.type).toBe("BOOLEAN");
+    expect(declarations[1].parameters.properties.avoid_previous.type).toBe("BOOLEAN");
     expect(forwarded.systemInstruction.parts[0].text).toContain(
       "Never claim a specific item is \"in the app\" unless the tool returned it",
     );
@@ -142,6 +144,9 @@ describe("/api/gemini first-party recommendation tools", () => {
     );
     expect(forwarded.systemInstruction.parts[0].text).toContain(
       "Do not silently downgrade a Green or Yellow user",
+    );
+    expect(forwarded.systemInstruction.parts[0].text).toContain(
+      "set avoid_previous to true",
     );
   });
 
@@ -351,6 +356,64 @@ describe("/api/gemini first-party recommendation tools", () => {
       status: "skipped",
       items: [],
     });
+  });
+
+  it("returns a different recipe when conversation history and avoid_previous request novelty", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const toolContent = {
+      role: "model",
+      parts: [
+        {
+          functionCall: {
+            id: "call_another_recipe",
+            name: "recommend_recipe",
+            args: { preference: "any", count: 1, avoid_previous: true },
+          },
+        },
+      ],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse({ candidates: [{ content: toolContent }] }))
+      .mockResolvedValueOnce(
+        geminiResponse({
+          candidates: [{ content: { role: "model", parts: [{ text: "Here is a different recipe." }] } }],
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { out, res } = makeRes();
+    await handler(
+      {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.20.0.22" },
+        body: {
+          history: [
+            { role: "user", content: "Give me one recipe" },
+            {
+              role: "model",
+              content: "Try the Zucchini & Feta Muffins.",
+              recommendations: [{ kind: "recipe", id: "3" }],
+            },
+            { role: "user", content: "Can you give me another recipe?" },
+          ],
+          context: {
+            fatigueScore: 2,
+            fatigueZone: "🟢 Green",
+            isMyelomaPatient: false,
+          },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(out.status).toBe(200);
+    expect(out.body.recommendations).toEqual([{ kind: "recipe", id: "4" }]);
+
+    const synthesisBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const response = synthesisBody.contents.at(-1).parts[0].functionResponse.response;
+    expect(response.status).toBe("ok");
+    expect(response.items.map((item: any) => item.id)).toEqual(["4"]);
   });
 
   it("does not guess catalogue intensity if a tool call arrives without a fatigue band", async () => {

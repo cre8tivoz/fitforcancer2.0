@@ -248,6 +248,7 @@ You can ask Fit for Cancer itself for real movement and recipe items already bui
 - If you intend to use either recommendation tool, emit the function call as the first-pass output. Do not emit prose before or alongside the function call.
 - For a generic request such as "recommend an exercise", use preference "any". Do not infer "seated" or "lying_down" merely because the user has cancer or is in treatment.
 - If the user explicitly asks for 1, 2 or 3 recommendations, pass that number as count. If they do not specify a quantity, omit count so the app keeps its existing default of up to three.
+- If the user asks for another option, a different option, something else, a new option, or points out that a recommendation was repeated, set avoid_previous to true for that recommendation domain. Do not provide IDs yourself; Fit For Cancer derives prior canonical IDs from the conversation.
 - If one turn asks for both Movement and Nutrition, emit one recommend_movement call and one recommend_recipe call together in the same first-pass response. Do not handle only one domain and defer the other.
 - Emit at most one recommendation call per domain in a user turn.
 - Treat the current fatigue band as the baseline capacity signal. Do not silently downgrade a Green or Yellow user to lower-effort advice without a user-stated preference, symptom, restriction, or other concrete safety reason.
@@ -409,10 +410,53 @@ const dedupeRecommendationRefs = (refs: RecommendationRef[]): RecommendationRef[
   });
 };
 
+const collectPreviousRecommendationRefs = (history: ChatMessage[]): RecommendationRef[] => {
+  const refs: RecommendationRef[] = [];
+
+  for (const message of history) {
+    if (message.role !== "model" || !Array.isArray(message.recommendations)) continue;
+
+    for (const ref of message.recommendations) {
+      if (
+        ref &&
+        (ref.kind === "movement" || ref.kind === "recipe") &&
+        typeof ref.id === "string" &&
+        ref.id.length > 0
+      ) {
+        refs.push({ kind: ref.kind, id: ref.id });
+      }
+    }
+  }
+
+  return dedupeRecommendationRefs(refs);
+};
+
+const summariseGeminiResponseShape = (payload: any) => {
+  const candidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+  const candidate = candidates[0];
+  const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+
+  return {
+    candidateCount: candidates.length,
+    finishReason:
+      typeof candidate?.finishReason === "string" && candidate.finishReason.length > 0
+        ? candidate.finishReason
+        : null,
+    partCount: parts.length,
+    partKinds: parts.map((part: any) => {
+      if (part?.thought === true) return "thought";
+      if (part?.functionCall && typeof part.functionCall.name === "string") return "functionCall";
+      if (typeof part?.text === "string") return "text";
+      return "other";
+    }),
+  };
+};
+
 export const executeBoundedRecommendationCalls = (
   functionCalls: GeminiFunctionCall[],
   fatigueZone: ChatContext["fatigueZone"],
   executeTool: typeof executeAthenaRecommendationTool = executeAthenaRecommendationTool,
+  previousRecommendationRefs: RecommendationRef[] = [],
 ) => {
   const seenDomains = new Set<string>();
   const recommendationRefs: RecommendationRef[] = [];
@@ -442,7 +486,7 @@ export const executeBoundedRecommendationCalls = (
       }
 
       try {
-        execution = executeTool(call.name, call.args, fatigueZone);
+        execution = executeTool(call.name, call.args, fatigueZone, previousRecommendationRefs);
         if (isRecommendationDomain) successfulRecommendationOperations += 1;
       } catch {
         if (isRecommendationDomain) failedRecommendationOperations += 1;
@@ -649,8 +693,11 @@ const handleStreamingRequest = async (
     const functionCalls: GeminiFunctionCall[] = [];
     const functionCallIds = new Set<string>();
     const modelParts: any[] = [];
+    let selectionStreamShape: ReturnType<typeof summariseGeminiResponseShape> | null = null;
+    let recoveryShape: ReturnType<typeof summariseGeminiResponseShape> | null = null;
 
     await consumeGeminiSse(firstResponse, (payload) => {
+      selectionStreamShape = summariseGeminiResponseShape(payload);
       const calls = extractFunctionCalls(payload);
       const parts = payload?.candidates?.[0]?.content?.parts;
 
@@ -701,11 +748,16 @@ const handleStreamingRequest = async (
           systemInstruction,
           contents: baseContents,
           tools,
-          generationConfig: { temperature: 0.7 },
+          generationConfig: {
+            temperature: 0.7,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         },
         apiKey,
         signal,
       );
+
+      recoveryShape = summariseGeminiResponseShape(retryResult.json);
 
       if (!retryResult.ok) {
         logGeminiError(
@@ -771,6 +823,12 @@ const handleStreamingRequest = async (
     }
 
     if (completedResponseMode !== "tool" || functionCalls.length === 0 || modelParts.length === 0) {
+      console.warn("[gemini] selection recovery exhausted", {
+        stream: selectionStreamShape,
+        recovery: recoveryShape,
+        functionCallCount: functionCalls.length,
+        modelPartCount: modelParts.length,
+      });
       writeSse(res, "error", { error: "ATHENA returned an invalid streaming response. Please try again." });
       res.end!();
       return;
@@ -783,6 +841,8 @@ const handleStreamingRequest = async (
     } = executeBoundedRecommendationCalls(
       functionCalls,
       body.context?.fatigueZone ?? null,
+      executeAthenaRecommendationTool,
+      collectPreviousRecommendationRefs(body.history!),
     );
 
     if (allRecommendationExecutionsFailed) {
@@ -944,6 +1004,8 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       const boundedExecution = executeBoundedRecommendationCalls(
         functionCalls,
         body.context?.fatigueZone ?? null,
+        executeAthenaRecommendationTool,
+        collectPreviousRecommendationRefs(body.history!),
       );
       const functionResponseParts = boundedExecution.functionResponseParts;
       recommendationRefs = boundedExecution.recommendationRefs;

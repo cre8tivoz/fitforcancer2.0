@@ -443,7 +443,13 @@ describe('/api/gemini SSE transport', () => {
     expect(fetchMock.mock.calls[1][0]).not.toContain(':streamGenerateContent');
     expect(fetchMock.mock.calls[2][0]).toContain(':streamGenerateContent?alt=sse');
 
+    const firstPassBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const recoveryBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(firstPassBody.generationConfig.thinkingConfig).toBeUndefined();
+    expect(recoveryBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+
     const synthesisBody = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(synthesisBody.generationConfig.thinkingConfig).toBeUndefined();
     const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
     expect(responses.map((response: any) => [response.id, response.name])).toEqual([
       ['movement-recovered-1', 'recommend_movement'],
@@ -723,6 +729,7 @@ describe('/api/gemini SSE transport', () => {
 
   it('stops after one recovery attempt when both streamed and unary selection are empty', async () => {
     process.env.GEMINI_API_KEY = 'test-key';
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const emptySelection = encodeSse([
       { candidates: [{ content: { role: 'model', parts: [] } }] },
     ]);
@@ -764,6 +771,18 @@ describe('/api/gemini SSE transport', () => {
     expect(output).toContain('ATHENA returned an invalid streaming response. Please try again.');
     expect(output).toContain('event: error');
     expect(output).not.toContain('event: done');
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[gemini] selection recovery exhausted',
+      expect.objectContaining({
+        stream: expect.objectContaining({ finishReason: 'STOP', partCount: 0 }),
+        recovery: expect.objectContaining({ finishReason: 'STOP', partCount: 0 }),
+        functionCallCount: 0,
+        modelPartCount: 0,
+      }),
+    );
+    const logged = JSON.stringify(warnSpy.mock.calls);
+    expect(logged).not.toContain('Give me one exercise and one recipe together');
   });
 
   it('does not emit app-level done or recommendation refs when tool synthesis ends without STOP', async () => {

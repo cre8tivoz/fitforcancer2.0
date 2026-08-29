@@ -183,7 +183,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         ...current,
         {
           role: 'model',
-          content: `Got it — I've updated your energy to ${score} for the rest of this chat.`,
+          content: `Got it — I've updated your fatigue to ${score}/10 for the rest of this chat.`,
         },
       ]);
       return;
@@ -193,7 +193,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       ...current,
       {
         role: 'model',
-        content: `I see you've selected ${score} today. What would you like help with first — nutrition, movement, or just a chat?`,
+        content: `I see you've selected ${score}/10 for fatigue today. What would you like help with first — nutrition, movement, or just a chat?`,
       },
     ]);
   };
@@ -338,7 +338,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               onClick={resetAthena}
               disabled={isLoading}
               className="inline-flex min-h-11 items-center text-[10px] font-bold text-slate-400 hover:text-neon-pink uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Reset ATHENA conversation and energy check-in"
+              aria-label="Reset ATHENA conversation and fatigue check-in"
             >
               Reset ATHENA
             </button>
@@ -360,10 +360,10 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               <Activity className="w-4 h-4 text-neon-blue" />
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 {isEnergyPromptMinimized
-                  ? 'Expand to set your energy score'
+                  ? 'Expand to set your fatigue score'
                   : isEditingEnergy
-                    ? `Update Your Energy (currently ${fatigueState.score}/10)`
-                    : 'Check Your Battery (0–10)'}
+                    ? `Update Your Fatigue (currently ${fatigueState.score}/10)`
+                    : 'Check Your Fatigue (0–10)'}
               </h3>
             </div>
             <svg className={`w-4 h-4 text-slate-400 transition-transform ${isEnergyPromptMinimized ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -399,7 +399,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                     type="button"
                     onClick={() => selectEnergyScore(score)}
                     disabled={isLoading}
-                    aria-label={`Set energy score to ${score}`}
+                    aria-label={`Set fatigue score to ${score}`}
                     className={`min-h-[44px] rounded-lg font-bold text-xs transition-shadow transition-transform transition-colors border disabled:cursor-not-allowed disabled:opacity-50 ${fatigueState.score === score ? 'ring-2 ring-slate-900/20' : ''} ${score >= 7 ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-500 hover:text-white hover:border-rose-500' : score >= 4 ? 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-400 hover:text-amber-950 hover:border-amber-400' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'}`}
                   >
                     {score}
@@ -410,7 +410,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 <p className="text-[11px] leading-5 text-slate-500">
                   {isEditingEnergy
                     ? `Your current ${fatigueState.score}/10 stays active until you choose a replacement.`
-                    : 'Choose the number that best matches your energy today. ATHENA will use it quietly in the background and save the check-in to your Energy Bank.'}
+                    : 'Choose how fatigued you feel today: 0 means no fatigue and 10 means the worst fatigue. ATHENA will use it quietly in the background and save the check-in to your Energy Bank.'}
                 </p>
                 {isEditingEnergy && (
                   <button
@@ -432,7 +432,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
         <div className="mb-3 p-2 bg-slate-900 text-white rounded-lg border border-white/10 shadow-md flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
           {fatigueState.score !== null && (
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Energy:</span>
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Fatigue:</span>
               <div className="flex items-center gap-1">
                 <span className="text-xs">{fatigueState.zone?.split(' ')[0] || '⚪'}</span>
                 <span className="text-[10px] font-bold">{fatigueState.score}/10</span>
@@ -442,7 +442,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 onClick={changeEnergyScore}
                 disabled={isLoading || isEditingEnergy}
                 className="ml-1 text-[9px] font-bold uppercase tracking-wider text-white/55 hover:text-white underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Change energy score"
+                aria-label="Change fatigue score"
               >
                 Change
               </button>
@@ -559,7 +559,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
               aria-label="Message ATHENA"
               placeholder={
                 fatigueState.score === null
-                  ? 'Choose your energy score above to start chatting with ATHENA.'
+                  ? 'Choose your fatigue score above to start chatting with ATHENA.'
                   : 'Ask for help, or just tell ATHENA how the day is going...'
               }
             />
@@ -578,7 +578,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
                 </PromptInputButton>
               )}
               <span className="hidden text-[10px] text-slate-400 sm:inline">
-                {fatigueState.score === null ? 'Choose an energy score above to begin' : 'Enter to send · Shift+Enter for a new line'}
+                {fatigueState.score === null ? 'Choose a fatigue score above to begin' : 'Enter to send · Shift+Enter for a new line'}
               </span>
             </PromptInputTools>
             <PromptInputSubmit
@@ -608,7 +608,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
             ATHENA is Fit for Cancer&apos;s treatment-day companion. The name nods to Athena from Greek mythology, traditionally associated with wisdom and practical strategy — a good fit for an assistant built to help make manageable choices on low-energy days.
           </p>
           <p>
-            <strong className="text-slate-800">How is she tuned?</strong> ATHENA uses your selected energy score and optional cancer context quietly in the background. She is tuned around Fit for Cancer&apos;s evidence-informed movement, nutrition and fatigue-support content, Australian sources, and firm safety guardrails. Replies are kept concise by default, and sources come forward when you ask for them rather than being dumped into every conversation.
+            <strong className="text-slate-800">How is she tuned?</strong> ATHENA uses your selected fatigue score and optional cancer context quietly in the background. She is tuned around Fit for Cancer&apos;s evidence-informed movement, nutrition and fatigue-support content, Australian sources, and firm safety guardrails. Replies are kept concise by default, and sources come forward when you ask for them rather than being dumped into every conversation.
           </p>
         </div>
       </details>

@@ -749,6 +749,10 @@ const handleStreamingRequest = async (
       } else {
         const retryText = extractText(retryResult.json);
         if (retryText) {
+          if (directText) {
+            directText = "";
+            writeSse(res, "reset", {});
+          }
           directText = retryText;
           completedResponseMode = "text";
           writeSse(res, "delta", { text: retryText });

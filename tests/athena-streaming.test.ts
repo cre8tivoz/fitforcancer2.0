@@ -574,6 +574,53 @@ describe('/api/gemini SSE transport', () => {
     expect(output).not.toContain('event: error');
   });
 
+  it('resets provisional whitespace before emitting recovered direct text', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    const whitespaceSelection = encodeSse([
+      { candidates: [{ content: { role: 'model', parts: [{ text: '    ' }] } }] },
+    ]);
+    const unaryText = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              role: 'model',
+              parts: [{ text: 'Recovered plain text.' }],
+            },
+            finishReason: 'STOP',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseStream([whitespaceSelection]))
+      .mockResolvedValueOnce(unaryText);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { out, res } = makeStreamRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { accept: 'text/event-stream', 'x-forwarded-for': '10.0.1.27' },
+        body: {
+          history: [{ role: 'user', content: 'Can we just chat?' }],
+          context: { fatigueScore: 4, fatigueZone: '🟡 Yellow', isMyelomaPatient: false },
+        },
+      } as any,
+      res as any,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const output = out.chunks.join('');
+    expect(output).toContain('event: reset');
+    expect(output.indexOf('event: reset')).toBeGreaterThan(output.indexOf('    '));
+    expect(output.indexOf('Recovered plain text.')).toBeGreaterThan(output.indexOf('event: reset'));
+    expect(output).toContain('event: done');
+    expect(output).not.toContain('event: error');
+  });
+
   it('rejects truncated unary text recovery instead of marking partial text done', async () => {
     process.env.GEMINI_API_KEY = 'test-key';
     const emptySelection = encodeSse([

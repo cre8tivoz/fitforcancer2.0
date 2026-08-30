@@ -105,7 +105,7 @@ describe("App.tsx — smoke", () => {
     await user.click(screen.getByRole("button", { name: /set fatigue score to 8/i }));
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText(/I see you've selected 8\/10 for fatigue today/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change fatigue score" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nutrition" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Movement" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Just a chat" })).toBeInTheDocument();

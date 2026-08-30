@@ -98,7 +98,7 @@ describe('ATHENA recommendation destinations', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/From ATHENA:/i)).toHaveTextContent('Brisk Walking');
+    expect(screen.getByText(/highlighted below/i)).toHaveTextContent('Brisk Walking');
     expect(screen.getByText('Brisk Walking')).toBeInTheDocument();
     const target = screen.getByLabelText('ATHENA recommendation: Brisk Walking');
     await waitFor(() => expect(document.activeElement).toBe(target));
@@ -139,7 +139,7 @@ describe('ATHENA recommendation destinations', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/From ATHENA:/i)).toHaveTextContent('Poached Chicken & Steamed Greens');
+    expect(screen.getByText(/highlighted below/i)).toHaveTextContent('Poached Chicken & Steamed Greens');
     expect(screen.getByText('Poached Chicken & Steamed Greens')).toBeInTheDocument();
     const target = screen.getByLabelText('ATHENA recommendation: Poached Chicken & Steamed Greens');
     await waitFor(() => expect(document.activeElement).toBe(target));

@@ -1,4 +1,6 @@
-# Security Best Practices Report
+# Historical Security Best Practices Report
+
+> Historical snapshot only (superseded August 2026). The critical findings below described an earlier client-side Gemini integration and missing edge headers. The current architecture uses the server-side `/api/gemini` boundary and Vercel security headers; do not use this document as a statement of current risk. See `SECURITY.md` and the current pre-beta security audit for live controls and remediation status.
 
 ## Executive Summary
 

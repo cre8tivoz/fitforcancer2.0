@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 import NutritionPage from '../components/NutritionPage';
 
 const noop = () => {};
 
 const renderNutritionPage = (recipeZoneFilter: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null = 'All') => render(
-  <NutritionPage
+  <MemoryRouter><NutritionPage
     fatigueZone={null}
     recipeZoneFilter={recipeZoneFilter}
     recipeCategoryFilter="All"
@@ -14,7 +15,7 @@ const renderNutritionPage = (recipeZoneFilter: '🟢 Green' | '🟡 Yellow' | '�
     onRecipeZoneFilterChange={noop}
     onCategoryFilterChange={noop}
     onSearchChange={noop}
-  />
+  /></MemoryRouter>
 );
 
 describe('Nutrition UX', () => {

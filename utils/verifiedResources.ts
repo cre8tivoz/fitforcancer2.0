@@ -115,6 +115,30 @@ export const VERIFIED_RESOURCES: Record<string, VerifiedResource> = {
   },
 } as const;
 
+// Treatment information uses a small additional source set. Keep the exact
+// URLs here so model output can never present an arbitrary URL as verified.
+const CANONICAL_TREATMENT_RESOURCE_URLS = [
+  'https://www.canceraustralia.gov.au/cancer-types/bowel-cancer/treatment-options',
+  'https://www.canceraustralia.gov.au/cancer-types/melanoma-skin/treatment-options',
+  'https://www.cancer.org.au/types-of-cancer/breast-cancer/treatments-for-breast-cancer',
+  'https://www.canceraustralia.gov.au/cancer-types/breast-cancer',
+  'https://www.canceraustralia.gov.au/cancer-types/prostate-cancer/treatment-options',
+  'https://www.canceraustralia.gov.au/cancer-types/lung-cancer/treatment-options',
+  'https://www.leukaemia.org.au/education/education-treatment-options/',
+  'https://www.canceraustralia.gov.au/all-cancer-types',
+  'https://myeloma.org.au/your-guide/understanding-your-treatment/',
+  'https://www.canceraustralia.gov.au/cancer-types/myeloma/treatment-options',
+  'https://www.leukaemia.org.au/blood-cancer-information/navigating-blood-cancer/in-treatment/',
+  'https://www.canceraustralia.gov.au/cancer-types/leukaemia/treatment-options',
+  'https://www.lymphoma.org.au/lymphoma/treatments/',
+  'https://www.canceraustralia.gov.au/cancer-types/lymphoma/treatment-options',
+  'https://www.leukaemia.org.au/types-of-blood-cancer/lymphoma/non-hodgkin-lymphoma/chronic-lymphocytic-leukaemia-cll/',
+] as const;
+
+export const isCanonicalResourceUrl = (url: string): boolean =>
+  Object.values(VERIFIED_RESOURCES).some((resource) => resource.url === url) ||
+  CANONICAL_TREATMENT_RESOURCE_URLS.includes(url as (typeof CANONICAL_TREATMENT_RESOURCE_URLS)[number]);
+
 /**
  * Builds the markdown resource block to inject into the Gemini system
  * instruction. The AI will use these URLs when constructing its

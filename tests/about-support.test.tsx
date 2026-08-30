@@ -43,7 +43,7 @@ describe('About and Support information architecture', () => {
     expect(screen.getByText(/Because I wish it existed when I needed it/i)).toBeInTheDocument();
     expect(screen.getByText(/Energy Bank, treatment-aware movement and food ideas, and ATHENA/i)).toBeInTheDocument();
     expect(screen.getByText(/There is no pressure to contribute/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Support Fit For Cancer/i })).toHaveAttribute('href', '/support');
+    expect(screen.getAllByRole('link', { name: /Support Fit For Cancer/i })[0]).toHaveAttribute('href', '/support');
   });
 
   it('uses Ko-fi as the dedicated support destination without a fake fundraising meter', async () => {

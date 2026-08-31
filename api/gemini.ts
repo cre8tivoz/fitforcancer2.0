@@ -141,6 +141,14 @@ const MAX_HISTORY_MESSAGES = 32;
 const MAX_MESSAGE_CHARS = 8000;
 const MAX_TOTAL_CHARS = 60000;
 const MAX_OUTPUT_TOKENS = 512;
+// Gemini's token cap covers both thinking and visible output. ATHENA's prompt
+// calls for concise replies, so disable hidden reasoning on every request to
+// avoid turning an otherwise complete streamed reply into MAX_TOKENS.
+const GEMINI_GENERATION_CONFIG = {
+  temperature: 0.7,
+  maxOutputTokens: MAX_OUTPUT_TOKENS,
+  thinkingConfig: { thinkingBudget: 0 },
+};
 const VALID_ROLES = new Set(["user", "model"]);
 const VALID_CANCER_TYPES = new Set(["bowel", "melanoma", "breast", "prostate", "lung", "blood_myeloma", "other"]);
 
@@ -699,7 +707,7 @@ const handleStreamingRequest = async (
         systemInstruction,
         contents: baseContents,
         tools,
-        generationConfig: { temperature: 0.7, maxOutputTokens: MAX_OUTPUT_TOKENS },
+        generationConfig: GEMINI_GENERATION_CONFIG,
       },
       apiKey,
       signal,
@@ -775,11 +783,7 @@ const handleStreamingRequest = async (
           systemInstruction,
           contents: baseContents,
           tools,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: MAX_OUTPUT_TOKENS,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
+          generationConfig: GEMINI_GENERATION_CONFIG,
         },
         apiKey,
         signal,
@@ -893,7 +897,7 @@ const handleStreamingRequest = async (
             mode: "NONE",
           },
         },
-        generationConfig: { temperature: 0.7, maxOutputTokens: MAX_OUTPUT_TOKENS },
+        generationConfig: GEMINI_GENERATION_CONFIG,
       },
       apiKey,
       signal,
@@ -1006,10 +1010,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         systemInstruction,
         contents: baseContents,
         tools,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-        },
+        generationConfig: GEMINI_GENERATION_CONFIG,
       },
       apiKey,
       controller.signal,
@@ -1068,10 +1069,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
               mode: "NONE",
             },
           },
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: MAX_OUTPUT_TOKENS,
-          },
+          generationConfig: GEMINI_GENERATION_CONFIG,
         },
         apiKey,
         controller.signal,

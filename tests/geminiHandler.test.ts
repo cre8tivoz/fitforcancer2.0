@@ -70,6 +70,7 @@ describe("/api/gemini handler", () => {
     expect(fetchArgs[0]).not.toContain("key=");
     expect(fetchArgs[1].headers["x-goog-api-key"]).toBe("test-key");
     expect(JSON.parse(fetchArgs[1].body).generationConfig.maxOutputTokens).toBe(512);
+    expect(JSON.parse(fetchArgs[1].body).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
   });
 
   it("rejects 33 messages as too long (MAX_HISTORY_MESSAGES=32)", async () => {

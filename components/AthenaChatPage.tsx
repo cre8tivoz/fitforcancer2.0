@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Download, MessageCircle, Mic, Sparkles, Utensils } from 'lucide-react';
-import { CancerTypeOption, ChatContext } from '../types';
+import { CancerTypeOption, ChatContext, ChatMessage } from '../types';
 import { getFatigueZone } from '../utils/fatigueScore';
 import { getGeminiStreamingResponsePayload } from '../services/geminiService';
 import { saveDailyCheckIn } from '../utils/patientContextStorage';
@@ -71,6 +71,15 @@ const ATHENA_STARTERS = [
     prompt: "I'd just like to chat about my treatment or day.",
   },
 ];
+
+const MAX_CLIENT_HISTORY_MESSAGES = 32;
+
+const getRecentRequestHistory = (messages: ChatMessage[]): ChatMessage[] => {
+  if (messages.length <= MAX_CLIENT_HISTORY_MESSAGES) return messages;
+  // Retain ATHENA's initial framing and the newest turn window. The displayed
+  // transcript remains intact; only the bounded server request is trimmed.
+  return [messages[0], ...messages.slice(-(MAX_CLIENT_HISTORY_MESSAGES - 1))];
+};
 
 const ConversationFollower: React.FC<{
   messageCount: number;
@@ -282,7 +291,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
     try {
       const aiResponse = await getGeminiStreamingResponsePayload(
-        newMessages,
+        getRecentRequestHistory(newMessages),
         context,
         replaceStreamingMessage,
       );

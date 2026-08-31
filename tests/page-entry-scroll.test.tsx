@@ -63,6 +63,7 @@ describe('Movement and Nutrition page entry scroll', () => {
       </MemoryRouter>,
     );
 
+    scrollTo.mockClear();
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
@@ -83,6 +84,7 @@ describe('Movement and Nutrition page entry scroll', () => {
       </MemoryRouter>,
     );
 
+    scrollTo.mockClear();
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
@@ -111,6 +113,7 @@ describe('Movement and Nutrition page entry scroll', () => {
       </MemoryRouter>,
     );
 
+    scrollTo.mockClear();
     expect(scrollTo).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Normal Movement' }));
     await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' }));
@@ -144,6 +147,7 @@ describe('Movement and Nutrition page entry scroll', () => {
       </MemoryRouter>,
     );
 
+    scrollTo.mockClear();
     expect(scrollTo).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Normal Nutrition' }));
     await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' }));
@@ -164,6 +168,7 @@ describe('Movement and Nutrition page entry scroll', () => {
       </MemoryRouter>,
     );
 
+    scrollTo.mockClear();
     await user.click(screen.getByRole('radio', { name: '🟡 Yellow' }));
     await waitFor(() => expect(screen.queryByText(/From ATHENA:/i)).not.toBeInTheDocument());
     expect(scrollTo).not.toHaveBeenCalled();
@@ -187,6 +192,7 @@ describe('Movement and Nutrition page entry scroll', () => {
       </MemoryRouter>,
     );
 
+    scrollTo.mockClear();
     await user.type(screen.getByRole('textbox', { name: /search recipes/i }), 'x');
     await waitFor(() => expect(screen.queryByText(/From ATHENA:/i)).not.toBeInTheDocument());
     expect(scrollTo).not.toHaveBeenCalled();

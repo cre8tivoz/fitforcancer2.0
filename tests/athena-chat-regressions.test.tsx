@@ -29,10 +29,10 @@ describe('ATHENA chat regressions', () => {
     expect(composer).toBeDisabled();
     expect(composer).toHaveAttribute(
       'placeholder',
-      'Choose your energy score above to start chatting with ATHENA.',
+      'Choose your fatigue score above to start chatting with ATHENA.',
     );
 
-    await user.click(screen.getByRole('button', { name: /set energy score to 1/i }));
+    await user.click(screen.getByRole('button', { name: 'Set fatigue score to 1' }));
 
     expect(composer).toBeEnabled();
     expect(composer).toHaveAttribute(
@@ -67,7 +67,7 @@ describe('ATHENA chat regressions', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderAthena();
-    await user.click(screen.getByRole('button', { name: /set energy score to 1/i }));
+    await user.click(screen.getByRole('button', { name: 'Set fatigue score to 1' }));
     const composer = screen.getByRole('textbox', { name: /message ATHENA/i });
     await user.type(composer, 'How should I approach today?');
     await user.click(screen.getByRole('button', { name: /send message to ATHENA/i }));

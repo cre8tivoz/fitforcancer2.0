@@ -45,6 +45,9 @@ const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ content }) => {
               {children}
             </code>
           ),
+          // Model-authored links outside the controlled resource-chip section
+          // are rendered as text, not navigable destinations.
+          a: ({ children }) => <span>{children}</span>,
         }}
       >
         {cleanText}

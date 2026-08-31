@@ -28,8 +28,8 @@ afterEach(cleanup);
 
 describe('mobile responsive interaction regressions', () => {
   it('keeps the mobile 16px focus guard outside Tailwind layers without disabling page zoom', () => {
-    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
-    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const css = readFileSync('index.css', 'utf8');
+    const html = readFileSync('index.html', 'utf8');
 
     const baseLayerStart = css.indexOf('@layer base');
     const baseLayerEnd = findCssBlockEnd(css, baseLayerStart);
@@ -49,15 +49,15 @@ describe('mobile responsive interaction regressions', () => {
   });
 
   it('stacks and wraps ATHENA header actions within the mobile viewport', () => {
-    const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
-    const athena = readFileSync(new URL('../components/AthenaChatPage.tsx', import.meta.url), 'utf8');
+    const css = readFileSync('index.css', 'utf8');
+    const athena = readFileSync('components/AthenaChatPage.tsx', 'utf8');
 
-    expect(athena).toContain('aria-label="Reset ATHENA conversation and energy check-in"');
-    expect(css).toContain("div:has(> div > button[aria-label='Reset ATHENA conversation and energy check-in'])");
-    expect(css).toContain("div:has(> button[aria-label='Reset ATHENA conversation and energy check-in'])");
+    expect(athena).toContain('aria-label="Reset ATHENA conversation and fatigue check-in"');
+    expect(css).toContain("div:has(> div > button[aria-label='Reset ATHENA conversation and fatigue check-in'])");
+    expect(css).toContain("div:has(> button[aria-label='Reset ATHENA conversation and fatigue check-in'])");
 
-    const headerRuleStart = css.indexOf("div:has(> div > button[aria-label='Reset ATHENA conversation and energy check-in'])");
-    const actionRuleStart = css.indexOf("div:has(> button[aria-label='Reset ATHENA conversation and energy check-in'])");
+    const headerRuleStart = css.indexOf("div:has(> div > button[aria-label='Reset ATHENA conversation and fatigue check-in'])");
+    const actionRuleStart = css.indexOf("div:has(> button[aria-label='Reset ATHENA conversation and fatigue check-in'])");
     const headerRuleEnd = findCssBlockEnd(css, headerRuleStart);
     const actionRuleEnd = findCssBlockEnd(css, actionRuleStart);
 

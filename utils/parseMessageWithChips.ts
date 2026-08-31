@@ -29,7 +29,7 @@ export const parseMessageWithChips = (text: string): ParsedMessageWithChips => {
     const title = match[1]?.trim();
     const url = match[2]?.trim();
 
-    if (!title || !url || seenUrls.has(url)) {
+    if (!title || !url || !isCanonicalResourceUrl(url) || seenUrls.has(url)) {
       continue;
     }
 
@@ -44,3 +44,4 @@ export const parseMessageWithChips = (text: string): ParsedMessageWithChips => {
 };
 
 export type { ParsedChipLink, ParsedMessageWithChips };
+import { isCanonicalResourceUrl } from './verifiedResources';

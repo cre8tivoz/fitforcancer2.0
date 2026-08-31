@@ -7,6 +7,7 @@ import {
 import { buildClinicalKnowledgeBaseText } from "../utils/clinical_guidelines.js";
 import { buildTreatmentInformationText } from "../utils/treatmentInformation.js";
 import { buildVerifiedResourcesPromptBlock } from "../utils/verifiedResources.js";
+import { getFatigueZone } from "../utils/fatigueScore.js";
 import { checkGeminiRateLimit, getHeaderValue } from "./rateLimit.js";
 import { timingSafeEqual } from "node:crypto";
 
@@ -134,11 +135,20 @@ const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?:
   return "Not specified";
 };
 
-const MAX_HISTORY_MESSAGES = 40;
-// ATHENA defaults to concise replies, but these caps remain generous so a user
-// can explicitly ask for a detailed explanation without breaking later turns.
-const MAX_MESSAGE_CHARS = 16000;
-const MAX_TOTAL_CHARS = 200000;
+const MAX_HISTORY_MESSAGES = 32;
+// Keep enough prior context for a normal conversation without allowing a
+// public endpoint to forward an unbounded amount of health-related text.
+const MAX_MESSAGE_CHARS = 8000;
+const MAX_TOTAL_CHARS = 60000;
+const MAX_OUTPUT_TOKENS = 512;
+// Gemini's token cap covers both thinking and visible output. ATHENA's prompt
+// calls for concise replies, so disable hidden reasoning on every request to
+// avoid turning an otherwise complete streamed reply into MAX_TOKENS.
+const GEMINI_GENERATION_CONFIG = {
+  temperature: 0.7,
+  maxOutputTokens: MAX_OUTPUT_TOKENS,
+  thinkingConfig: { thinkingBudget: 0 },
+};
 const VALID_ROLES = new Set(["user", "model"]);
 const VALID_CANCER_TYPES = new Set(["bowel", "melanoma", "breast", "prostate", "lung", "blood_myeloma", "other"]);
 
@@ -179,8 +189,33 @@ const validateRequestBody = (body: GeminiRequestBody): string | null => {
     if (ctxCancer !== undefined && ctxCancer !== null && !VALID_CANCER_TYPES.has(ctxCancer)) {
       return "Invalid context";
     }
+    if (body.cancerType && ctxCancer && body.cancerType !== ctxCancer) {
+      return "Conflicting cancer context";
+    }
   }
   return null;
+};
+
+// Do not let a caller choose a recommendation band independently of its
+// numeric score. The client still sends the display value for compatibility,
+// but the server is the authoritative boundary for all model and tool calls.
+const normaliseRequestBody = (body: GeminiRequestBody): GeminiRequestBody => {
+  if (!body.context) return body;
+
+  const cancerType = body.cancerType ?? body.context.cancerType;
+  const fatigueScore = body.context.fatigueScore;
+  return {
+    ...body,
+    cancerType,
+    context: {
+      ...body.context,
+      cancerType,
+      fatigueZone: typeof fatigueScore === "number" ? getFatigueZone(fatigueScore) : null,
+      // This client boolean is redundant with the selected cancer category.
+      // Derive it here so it cannot be forged independently.
+      isMyelomaPatient: cancerType === "blood_myeloma",
+    },
+  };
 };
 
 const getSystemInstruction = (
@@ -546,7 +581,7 @@ const isStreamingRequest = (req: VercelLikeRequest, res: VercelLikeResponse) =>
 
 const startSse = (res: VercelLikeResponse) => {
   res.setHeader!("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader!("Cache-Control", "no-cache, no-transform");
+  res.setHeader!("Cache-Control", "private, no-store");
   res.setHeader!("Connection", "keep-alive");
   res.setHeader!("X-Accel-Buffering", "no");
   res.flushHeaders?.();
@@ -672,7 +707,7 @@ const handleStreamingRequest = async (
         systemInstruction,
         contents: baseContents,
         tools,
-        generationConfig: { temperature: 0.7 },
+        generationConfig: GEMINI_GENERATION_CONFIG,
       },
       apiKey,
       signal,
@@ -748,10 +783,7 @@ const handleStreamingRequest = async (
           systemInstruction,
           contents: baseContents,
           tools,
-          generationConfig: {
-            temperature: 0.7,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
+          generationConfig: GEMINI_GENERATION_CONFIG,
         },
         apiKey,
         signal,
@@ -865,7 +897,7 @@ const handleStreamingRequest = async (
             mode: "NONE",
           },
         },
-        generationConfig: { temperature: 0.7 },
+        generationConfig: GEMINI_GENERATION_CONFIG,
       },
       apiKey,
       signal,
@@ -917,6 +949,8 @@ const handleStreamingRequest = async (
 };
 
 export default async function handler(req: VercelLikeRequest, res: VercelLikeResponse): Promise<void> {
+  res.setHeader?.("Cache-Control", "private, no-store");
+
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -929,6 +963,14 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   }
 
   const configuredAccessPassword = process.env.CHAT_ACCESS_PASSWORD || process.env.FFC_CHAT_ACCESS_PASSWORD;
+  // Share the same IP limiter with the optional access gate so incorrect
+  // password guesses cannot be made without a bounded cost.
+  const rateLimit = await checkGeminiRateLimit(req.headers);
+  if (!rateLimit.allowed) {
+    res.status(429).json({ error: "Too many requests. Please wait a moment before trying again." });
+    return;
+  }
+
   if (configuredAccessPassword) {
     const providedAccessPassword = getHeaderValue(req.headers, "x-chat-access-password");
     if (!providedAccessPassword || !safeEqual(providedAccessPassword, configuredAccessPassword)) {
@@ -937,13 +979,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     }
   }
 
-  const rateLimit = await checkGeminiRateLimit(req.headers);
-  if (!rateLimit.allowed) {
-    res.status(429).json({ error: "Too many requests. Please wait a moment before trying again." });
-    return;
-  }
-
-  const body = parseBody(req.body);
+  let body = parseBody(req.body);
   if (!body) {
     res.status(400).json({ error: "Invalid JSON payload" });
     return;
@@ -954,6 +990,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     res.status(400).json({ error: validationError });
     return;
   }
+  body = normaliseRequestBody(body);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
@@ -973,9 +1010,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         systemInstruction,
         contents: baseContents,
         tools,
-        generationConfig: {
-          temperature: 0.7,
-        },
+        generationConfig: GEMINI_GENERATION_CONFIG,
       },
       apiKey,
       controller.signal,
@@ -1034,9 +1069,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
               mode: "NONE",
             },
           },
-          generationConfig: {
-            temperature: 0.7,
-          },
+          generationConfig: GEMINI_GENERATION_CONFIG,
         },
         apiKey,
         controller.signal,

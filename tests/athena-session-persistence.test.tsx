@@ -28,7 +28,7 @@ describe('ATHENA in-memory session continuity', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/How's your fatigue today/i)).toBeInTheDocument();
+    expect(screen.getByText(/Choose how fatigued you feel today/i)).toBeInTheDocument();
     expect(screen.getByText(/0 means no fatigue and 10 means the worst fatigue/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /set fatigue score to 0/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /set fatigue score to 10/i })).toBeInTheDocument();

@@ -445,11 +445,11 @@ describe('/api/gemini SSE transport', () => {
 
     const firstPassBody = JSON.parse(fetchMock.mock.calls[0][1].body);
     const recoveryBody = JSON.parse(fetchMock.mock.calls[1][1].body);
-    expect(firstPassBody.generationConfig.thinkingConfig).toBeUndefined();
+    expect(firstPassBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
     expect(recoveryBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[2][1].body);
-    expect(synthesisBody.generationConfig.thinkingConfig).toBeUndefined();
+    expect(synthesisBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
     const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
     expect(responses.map((response: any) => [response.id, response.name])).toEqual([
       ['movement-recovered-1', 'recommend_movement'],

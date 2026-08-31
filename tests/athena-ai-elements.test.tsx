@@ -40,7 +40,7 @@ describe('ATHENA AI Elements chat surface', () => {
 
     renderAthena();
 
-    await user.click(screen.getByRole('button', { name: /set fatigue score to 1/i }));
+    await user.click(screen.getByRole('button', { name: 'Set fatigue score to 1' }));
 
     expect(screen.getByRole('log', { name: /ATHENA conversation/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /message ATHENA/i }).tagName).toBe('TEXTAREA');
@@ -62,7 +62,7 @@ describe('ATHENA AI Elements chat surface', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderAthena();
-    await user.click(screen.getByRole('button', { name: /set fatigue score to 1/i }));
+    await user.click(screen.getByRole('button', { name: 'Set fatigue score to 1' }));
 
     const input = screen.getByRole('textbox', { name: /message ATHENA/i });
     await user.type(input, 'First line{Shift>}{Enter}{/Shift}second line');
@@ -87,7 +87,7 @@ describe('ATHENA AI Elements chat surface', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderAthena();
-    await user.click(screen.getByRole('button', { name: /set fatigue score to 1/i }));
+    await user.click(screen.getByRole('button', { name: 'Set fatigue score to 1' }));
 
     const input = screen.getByRole('textbox', { name: /message ATHENA/i });
     await user.type(input, 'First question{Enter}');
@@ -137,7 +137,7 @@ describe('ATHENA AI Elements chat surface', () => {
     const user = userEvent.setup();
     renderAthena();
 
-    await user.click(screen.getByRole('button', { name: /set fatigue score to 1/i }));
+    await user.click(screen.getByRole('button', { name: 'Set fatigue score to 1' }));
 
     const input = screen.getByRole('textbox', { name: /message ATHENA/i });
     const send = screen.getByRole('button', { name: /send message to ATHENA/i });

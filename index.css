@@ -102,7 +102,7 @@
    * The reset button's aria-label gives this layout rule a stable, page-local
    * anchor without changing desktop markup or behaviour.
    */
-  div:has(> div > button[aria-label='Reset ATHENA conversation and energy check-in']) {
+  div:has(> div > button[aria-label='Reset ATHENA conversation and fatigue check-in']) {
     flex-direction: column;
     align-items: stretch;
     width: 100%;
@@ -110,7 +110,7 @@
     max-width: 100%;
   }
 
-  div:has(> button[aria-label='Reset ATHENA conversation and energy check-in']) {
+  div:has(> button[aria-label='Reset ATHENA conversation and fatigue check-in']) {
     flex-wrap: wrap;
     width: 100%;
     min-width: 0;

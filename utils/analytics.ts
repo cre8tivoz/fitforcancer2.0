@@ -46,7 +46,10 @@ const sanitiseReferrer = (): string | undefined => {
 
   try {
     const referrer = new URL(document.referrer);
-    return `${referrer.origin}${referrer.pathname}`;
+    if (typeof window !== 'undefined' && referrer.origin === window.location.origin) {
+      return referrer.pathname;
+    }
+    return referrer.origin;
   } catch {
     return undefined;
   }

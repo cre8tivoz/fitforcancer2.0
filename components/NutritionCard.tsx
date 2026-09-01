@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Recipe } from '../types';
 import { X, Clock, ChefHat, Info, ExternalLink, TriangleAlert } from 'lucide-react';
+import { trackNutritionRecipeOpened } from '../utils/analytics';
 
 interface NutritionCardProps {
   recipe: Recipe;
@@ -12,6 +13,11 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const openRecipe = () => {
+    trackNutritionRecipeOpened(recipe.id);
+    setIsModalOpen(true);
+  };
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -115,7 +121,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="w-full py-3 bg-neon-blue text-neon-dark rounded-xl font-bold text-sm hover:bg-neon-blue/90 transition-shadow transition-transform transition-colors shadow-sm shadow-neon-blue/20 flex items-center justify-center gap-2"
-            onClick={() => setIsModalOpen(true)}
+            onClick={openRecipe}
             aria-haspopup="dialog"
             aria-expanded={isModalOpen}
           >

@@ -11,11 +11,18 @@ import {
 } from '../utils/analytics';
 
 const getCountMock = () => window.goatcounter?.count as ReturnType<typeof vi.fn>;
+const setReferrer = (value: string) => {
+  Object.defineProperty(document, 'referrer', {
+    configurable: true,
+    value,
+  });
+};
 
 describe('privacy-first analytics', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.goatcounter = { count: vi.fn() };
+    setReferrer('');
   });
 
   afterEach(() => {
@@ -32,6 +39,34 @@ describe('privacy-first analytics', () => {
     expect(getCountMock()).toHaveBeenCalledTimes(1);
     expect(getCountMock()).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/nutrition', title: 'Nutrition' }),
+    );
+  });
+
+  it('reduces external referrers to origin only', () => {
+    setReferrer('https://external.example/patients/alice@example.com/treatment/123?source=private');
+
+    trackPageView('/assistant');
+
+    expect(getCountMock()).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/assistant',
+        referrer: 'https://external.example',
+      }),
+    );
+    expect(JSON.stringify(getCountMock().mock.calls)).not.toContain('alice@example.com');
+    expect(JSON.stringify(getCountMock().mock.calls)).not.toContain('/treatment/123');
+  });
+
+  it('keeps only the pathname for same-origin referrers', () => {
+    setReferrer(`${window.location.origin}/nutrition?cancer=breast#private`);
+
+    trackPageView('/assistant');
+
+    expect(getCountMock()).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/assistant',
+        referrer: '/nutrition',
+      }),
     );
   });
 

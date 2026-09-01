@@ -23,12 +23,6 @@ importers:
       '@upstash/redis':
         specifier: ^1.38.0
         version: 1.38.0
-      '@vercel/analytics':
-        specifier: ^2.0.1
-        version: 2.0.1(react@19.2.8)
-      '@vercel/speed-insights':
-        specifier: ^2.0.0
-        version: 2.0.0(react@19.2.8)
       framer-motion:
         specifier: ^12.42.2
         version: 12.43.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

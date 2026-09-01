@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   clearAnalyticsLocalState,
   trackAthenaCheckInCompleted,
@@ -131,5 +132,20 @@ describe('privacy-first analytics', () => {
 
     expect(() => trackPageView('/assistant')).not.toThrow();
     expect(() => trackAthenaMessageSent()).not.toThrow();
+  });
+
+  it('keeps the pinned tracker and both CSP layers aligned', () => {
+    const html = readFileSync('index.html', 'utf8');
+    const vercel = readFileSync('vercel.json', 'utf8');
+
+    expect(html).toContain('https://gc.zgo.at/count.v5.js');
+    expect(html).toContain('sha384-atnOLvQb9t+jTSipvd75X2yginT4PjVbqDdlJAmxMm+wYElFmeR6EmLP5bYeoRVQ');
+    expect(html).toContain('"no_onload":true');
+    expect(html).toContain('"no_events":true');
+
+    for (const policy of [html, vercel]) {
+      expect(policy).toContain("script-src 'self' https://gc.zgo.at");
+      expect(policy).toContain("connect-src 'self' https://witchdaddylabs.goatcounter.com");
+    }
   });
 });

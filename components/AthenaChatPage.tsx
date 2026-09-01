@@ -4,6 +4,12 @@ import { CancerTypeOption, ChatContext, ChatMessage } from '../types';
 import { getFatigueZone } from '../utils/fatigueScore';
 import { getGeminiStreamingResponsePayload } from '../services/geminiService';
 import { saveDailyCheckIn } from '../utils/patientContextStorage';
+import {
+  trackAthenaCheckInCompleted,
+  trackAthenaMessageSent,
+  trackCancerTypeSelected,
+  trackRepeatAthenaCheckInIfReached,
+} from '../utils/analytics';
 import { DAILY_CHECKIN_STORAGE_KEY, FatigueState } from '../hooks/useFatigueState';
 import {
   AthenaSessionState,
@@ -159,6 +165,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
       ...current,
       cancerType: nextCancerType,
     }));
+    if (nextCancerType) trackCancerTypeSelected(nextCancerType);
   };
 
   const selectEnergyScore = (score: number) => {
@@ -179,6 +186,8 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
     if (shouldSaveCheckIn) {
       saveDailyCheckIn(score, '');
+      trackAthenaCheckInCompleted();
+      trackRepeatAthenaCheckInIfReached();
       onEnergyHistoryChange();
       window.sessionStorage.setItem(DAILY_CHECKIN_STORAGE_KEY, 'true');
       window.localStorage.setItem(DAILY_CHECKIN_STORAGE_KEY, 'true');
@@ -247,6 +256,7 @@ const AthenaChatPage: React.FC<AthenaChatPageProps> = ({ fatigueState, setFatigu
 
     const requestGeneration = getGeneration();
     speech.stopListening();
+    trackAthenaMessageSent();
     setHasStartedConversation(true);
 
     const userMessage = { role: 'user' as const, content: textToSend };

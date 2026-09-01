@@ -16,6 +16,7 @@ import {
 } from './hooks/useFatigueState';
 import { useAthenaSession } from './hooks/useAthenaSession';
 import { clearEnergyHistory, clearPatientContext } from './utils/patientContextStorage';
+import { clearAnalyticsLocalState, trackPageView } from './utils/analytics';
 import { BookOpen, ChartColumnIncreasing, Dumbbell, Heart, House, Info, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
 
 const EnergyBank = React.lazy(() => import('./components/EnergyBank'));
@@ -64,6 +65,7 @@ const Layout: React.FC = () => {
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    trackPageView(location.pathname);
   }, [location.pathname]);
 
   const renderMobileNavItem = ({ to, label, description, icon: Icon }: (typeof mobileNavItems)[number] | (typeof mobileSecondaryNavItems)[number]) => {
@@ -188,6 +190,7 @@ const App: React.FC = () => {
   const clearSavedData = useCallback(() => {
     clearPatientContext();
     clearEnergyHistory();
+    clearAnalyticsLocalState();
 
     [FATIGUE_STORAGE_KEY, FATIGUE_ZONE_STORAGE_KEY, DAILY_CHECKIN_STORAGE_KEY].forEach((key) => {
       window.localStorage.removeItem(key);

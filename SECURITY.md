@@ -39,6 +39,37 @@ Current public references:
 - [Gemini API terms](https://ai.google.dev/gemini-api/terms)
 - [Gemini logging and retention policy](https://ai.google.dev/gemini-api/docs/logs-policy)
 
+## Privacy-first analytics
+
+Fit For Cancer uses hosted GoatCounter for aggregate product-usage analytics. The browser integration is intentionally narrow and is not a general-purpose event payload API.
+
+Allowed analytics signals are limited to:
+
+- known app route views;
+- canonical Nutrition recipe IDs when a recipe is opened;
+- generic ATHENA message/check-in/repeat-check-in events;
+- the optional cancer category when a user explicitly changes the cancer-type selector.
+
+The analytics layer must not receive:
+
+- fatigue score or fatigue zone;
+- Energy Bank entries, dates or notes;
+- Quick Notes;
+- ATHENA prompt, response or transcript content;
+- treatment context or recommendation reasoning;
+- names, email addresses or other contact details;
+- Gemini request/response payloads;
+- exported transcript or caregiver-PDF contents;
+- a persistent Fit For Cancer user/account identifier.
+
+Cancer types inferred from free-text ATHENA messages are not sent to GoatCounter. Only an explicit selector choice may emit a cancer-category event.
+
+Repeat ATHENA check-in engagement is derived locally from Energy Bank dates. When the browser has check-ins on at least two different local calendar days it emits a one-time aggregate milestone event; the dates and check-in values remain on-device. Clearing saved browser data also clears this local analytics milestone marker.
+
+GoatCounter is loaded from the pinned v5 script with Subresource Integrity and no-onload/no-events behaviour; React route changes and approved events are sent manually through utils/analytics.ts. Query strings are not analytics routes. The app must continue to work normally if GoatCounter is blocked or unavailable.
+
+The hosted GoatCounter setting for individual pageview storage should remain disabled. Enabling individual pageview storage, adding persistent analytics identifiers, or expanding the analytics payload beyond this allow-list requires a separate privacy/security review.
+
 ## Client-side exports
 
 ATHENA currently offers two distinct local export paths:
@@ -50,7 +81,7 @@ Neither export is uploaded to a Fit For Cancer server as part of generation. Onc
 
 ## Clear/reset behaviour
 
-The Resources saved-data clear path removes browser-local patient context, Energy Bank history, fatigue/check-in keys and resets ATHENA's in-memory session.
+The Resources saved-data clear path removes browser-local patient context, Energy Bank history, fatigue/check-in keys, the local repeat-engagement analytics marker and resets ATHENA's in-memory session.
 
 ATHENA uses a request-generation token so an in-flight Gemini request that started before a reset may finish on the network but cannot repopulate the cleared conversation.
 
@@ -155,7 +186,7 @@ Gemini log-retention duration is a provider/project setting, not a repository se
 
 ## Contribution rules for health/chat data
 
-Do not introduce new logging, analytics, persistence, cloud transcript storage or third-party transmission of health/chat content as an incidental implementation detail.
+Do not introduce new logging, analytics, persistence, cloud transcript storage or third-party transmission of health/chat content as an incidental implementation detail. New analytics events must stay within the allow-list above unless separately reviewed.
 
 Any new account/cloud-history design should be scoped separately and document:
 

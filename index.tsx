@@ -1,13 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
 import App from './App';
 import './index.css';
 
-inject();
-injectSpeedInsights();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -518,11 +518,11 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
             </section>
 
             <section className="space-y-2">
-              <p><strong className="text-slate-900">4. Privacy-focused site analytics and performance data</strong></p>
-              <p>Fit for Cancer uses Vercel Web Analytics and Speed Insights to understand page usage and site performance. Vercel documents these services as collecting anonymised traffic and performance data rather than maintaining an identifiable cross-site visitor profile. This can include page or route, referrer, approximate country, browser or device information, and performance metrics. Fit for Cancer does not send your fatigue score, cancer type, Quick Notes, or chat message content to Vercel as custom analytics events.</p>
+              <p><strong className="text-slate-900">4. Privacy-focused usage analytics</strong></p>
+              <p>From September 2026, Fit for Cancer uses GoatCounter to understand which pages and features people use. Aggregate events include visits to Movement, Nutrition, Energy Bank and ATHENA, recipe opens, ATHENA message and check-in counts, and an optional cancer category when you explicitly select one.</p>
+              <p>We do not send fatigue scores or zones, Energy Bank history, Quick Notes, ATHENA conversation content, or other treatment context to GoatCounter. A cancer category recognised from free-text chat is not sent to analytics.</p>
               <p className="flex flex-wrap gap-x-4 gap-y-2">
-                <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Web Analytics privacy <ExternalLink className="inline h-3 w-3" /></a>
-                <a href="https://vercel.com/docs/speed-insights/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">Speed Insights privacy <ExternalLink className="inline h-3 w-3" /></a>
+                <a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-neon-blue hover:underline">GoatCounter privacy <ExternalLink className="inline h-3 w-3" /></a>
               </p>
             </section>
 

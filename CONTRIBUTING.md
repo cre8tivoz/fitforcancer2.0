@@ -1,58 +1,98 @@
 # Contributing to Fit For Cancer
 
-Thank you for wanting to help. Fit For Cancer is built for people dealing with cancer treatment and fatigue, so contributions should favour low cognitive load, accessibility, predictable behaviour and clear safety boundaries over unnecessary complexity.
+Thanks for wanting to help.
 
-## License
+Fit For Cancer is a free, open-source app for people dealing with cancer treatment and fatigue. Contributions should make the product easier to use, more reliable and safer without turning it into an over-engineered health platform.
 
-This project is licensed under the [Apache License 2.0](LICENSE). By contributing, you agree that your contribution will be licensed under the same licence.
+## Where we most need help
 
-## Current architecture in brief
+### 1. Design and UX
 
-Fit For Cancer is a Vite + React 19 + TypeScript app with browser-local fatigue/context features and a Vercel serverless Gemini endpoint.
+This is a current priority.
 
-ATHENA is the main conversational layer. Her active transcript is memory-only, while selected supporting context (such as fatigue state, cancer type and Energy Bank entries) is stored browser-side. Movement/Nutrition recommendations are selected deterministically by Fit For Cancer functions rather than invented by Gemini.
+Useful contributions include:
 
-The six primary app destinations remain Home, Movement, Nutrition, Energy Bank, ATHENA and Resources. About and Support are secondary public routes and should not be turned into new primary product tabs without an explicit information-architecture decision.
+- improving the visual hierarchy and consistency of Movement, Nutrition and ATHENA surfaces;
+- making cards easier to scan on mobile;
+- reducing unnecessary labels, chips and interaction clutter;
+- improving spacing, typography and responsive behaviour;
+- strengthening keyboard, focus and screen-reader behaviour;
+- reducing cognitive load for tired users;
+- improving empty, loading, error and recovery states.
 
-Before changing ATHENA, read:
+Small, focused polish is welcome. For larger redesigns or changes to navigation/information architecture, open an issue first so the direction can be agreed before significant work is done.
 
-- [`docs/athena-architecture.md`](docs/athena-architecture.md)
-- [`docs/athena-ai-elements.md`](docs/athena-ai-elements.md)
-- [`SECURITY.md`](SECURITY.md)
-- [`docs/product-roadmap.md`](docs/product-roadmap.md)
+### 2. ATHENA's AI framework and reliability
 
-## What contributions are useful
+ATHENA is the main conversational layer in Fit For Cancer, and this is the other major area where outside help is useful.
 
-- **Bug fixes** — especially session/privacy edge cases, fatigue-zone logic, deep links and failure states.
-- **Accessibility** — screen-reader behaviour, focus management, keyboard navigation, reduced interaction burden and mobile ergonomics.
-- **Test coverage** — focused regressions around real failure modes.
-- **Documentation** — keeping product/architecture/privacy docs aligned with shipped code and external-provider configuration.
-- **Performance** — improvements that preserve behaviour and avoid unnecessary dependencies.
-- **Content maintenance** — verified resource-link updates or carefully reviewed canonical Movement/Nutrition content.
-- **Translation/localisation groundwork** — when scoped so medical/safety meaning is not lost.
-- **Cross-cancer test findings** — reproducible examples showing where ATHENA's current behaviour does not generalise cleanly beyond the scenarios already tested.
+We are interested in work that improves:
 
-## Changes that require explicit maintainer approval
+- model orchestration and provider boundaries;
+- streaming reliability and malformed-response handling;
+- first-party tool calling and function-response correctness;
+- compound requests and multi-tool behaviour;
+- deterministic recommendation hand-off;
+- useful fallback behaviour when the model or provider fails;
+- regression testing against real failure modes;
+- model/provider portability without weakening the product's safety boundaries.
 
-Open an issue or discuss the approach before implementing any of the following:
+The aim is not to make ATHENA more complicated. The aim is to make her more dependable.
 
-- **Clinical/safety content** — health guidance, symptom escalation, fatigue thresholds, treatment information or source changes.
-- **ATHENA prompt/behaviour** — tone, treatment-decision boundaries, evidence behaviour, cancer-family routing or safety rules.
-- **Recommendation logic** — changing fatigue-band enforcement, tool contracts, canonical catalogue metadata or what Gemini is allowed to choose.
-- **Persistence/privacy** — any new `localStorage`/`sessionStorage` schema, durable transcript storage, accounts, cloud sync, analytics involving health/chat content or retention changes.
-- **Gemini/API architecture** — model/provider changes, tool-loop changes, request history limits, SSE event contracts or server-side data handling.
-- **Provider logging/retention** — changes to Gemini project logging, retention or public claims about how paid API content is handled.
-- **New dependencies** — every runtime package needs a necessity/security review.
-- **AI Elements architecture** — replacing local source-owned components, introducing AI SDK/Next.js dependencies or materially changing the chat-state boundary.
-- **Exports** — changing the semantic purpose of the plain-text transcript vs caregiver PDF, or introducing server/cloud upload of either export.
-- **Payments/support** — in-app payments, donation tracking, payment-linked identity or replacing the current external Ko-fi boundary.
-- **Major routes/data models** — significant app-shell or canonical-content restructuring.
+Before working on ATHENA, read:
 
-When in doubt, ask first.
+- [ATHENA architecture](docs/athena-architecture.md)
+- [ATHENA + AI Elements](docs/athena-ai-elements.md)
+- [Recommendation correctness](docs/athena-recommendation-correctness.md)
+- [Security notes](SECURITY.md)
+
+### 3. Overall app reliability
+
+Also useful:
+
+- bug fixes;
+- browser and mobile edge cases;
+- accessibility;
+- focused test coverage;
+- performance improvements that do not add unnecessary dependencies;
+- privacy/session edge cases;
+- documentation that keeps shipped behaviour and technical docs aligned;
+- verified Australian resource-link maintenance.
+
+## The important ATHENA rule
+
+The established product boundary is:
+
+> **ATHENA interprets intent and explains; Fit For Cancer owns deterministic app state, canonical content and safety-critical selection.**
+
+For example, a language model may understand that someone wants a simple high-protein meal, but Fit For Cancer decides which real recipes are eligible for that user's current fatigue band.
+
+Do not move canonical recommendation selection, fatigue-band enforcement or safety metadata into a model prompt.
+
+## Changes that need maintainer discussion first
+
+Please open an issue before implementing changes to:
+
+- clinical or safety guidance;
+- symptom escalation language;
+- treatment-information boundaries;
+- ATHENA's core prompt, tone or treatment-decision rules;
+- model/provider architecture;
+- recommendation tool contracts or fatigue-band enforcement;
+- accounts, cloud sync or durable chat storage;
+- browser-storage schemas involving health/context data;
+- analytics involving chat or health content;
+- external provider logging or retention behaviour;
+- new runtime dependencies;
+- exports or any server-side upload of exported data;
+- payments or donation-linked identity;
+- major routes, navigation or canonical data models.
+
+This is not intended to block useful work. These areas affect health information, privacy or core product behaviour, so they need a deliberate review.
 
 ## Development setup
 
-The repo declares:
+The repo uses:
 
 - Node `24.x`
 - pnpm `10.34.5`
@@ -63,13 +103,13 @@ Install dependencies:
 pnpm install
 ```
 
-Run the Vite frontend:
+Run the frontend:
 
 ```bash
 pnpm dev
 ```
 
-For local testing that requires `/api/gemini`, use Vercel dev so the serverless route and environment variables are available.
+For local work that requires ATHENA's serverless API route, run the project through Vercel dev and configure a local environment file from `.env.example`.
 
 ## Verification before a pull request
 
@@ -81,104 +121,68 @@ pnpm lint
 pnpm build
 ```
 
-- `pnpm test` runs Vitest.
-- `pnpm lint` runs the TypeScript no-emit check.
-- `pnpm build` validates the production Vite bundle.
+A successful build is not a substitute for the test suite.
 
-Do not treat a successful Vercel/Vite build as proof that the Vitest suite ran; they are separate checks.
+When fixing a bug, add or update a regression test where practical. Good tests should reproduce the real failure mode rather than assert incidental implementation details or CSS classes.
 
-Documentation-only changes can be committed without creating artificial code changes, but links, filenames, version statements, privacy claims and shipped/pending roadmap status should still be checked against the current repository before committing.
+Areas with existing regression coverage include:
 
-### Regression expectations
-
-The repo now has meaningful regression coverage. Preserve and extend tests when touching:
-
-- fatigue-score/band logic;
+- fatigue-score and fatigue-band behaviour;
 - Energy Bank/browser persistence;
-- Gemini handler validation and error behaviour;
-- treatment-information and blood-cancer routing;
-- first-party recommendation tools and catalogue parity;
-- Gemini function-call/function-response correlation;
-- SSE `delta`/`reset`/`error`/`done` semantics;
-- malformed, truncated or post-terminal app streams;
-- malformed or semantically invalid upstream Gemini streams;
-- recommendation refs/cards/deep links and exports;
-- ATHENA route-level session continuity;
-- local and cross-tab privacy clears;
-- stale in-flight response invalidation;
-- storage hydration;
-- AI Elements composer, keyboard/focus and scroll behaviour;
-- plain-text transcript placement/metadata;
-- caregiver-PDF layout, pagination and text-sanitisation;
-- mobile overflow/iOS input behaviour;
-- About/Support routing and `/why-free -> /about` canonical redirect behaviour;
-- user-facing privacy statements when provider configuration changes.
-
-A good regression reproduces the failure mode that motivated the change, not just a CSS class or implementation detail.
+- ATHENA request validation and error handling;
+- treatment-information routing;
+- recommendation tools and catalogue parity;
+- streaming integrity;
+- recommendation cards and deep links;
+- ATHENA session continuity and privacy resets;
+- exports;
+- mobile layout and navigation;
+- accessibility-sensitive chat interactions.
 
 ## Code standards
 
-- Use TypeScript; avoid `any` unless the boundary genuinely requires untyped external data and it is validated immediately.
-- Reuse existing Tailwind design tokens and component patterns.
-- Keep touch targets, keyboard navigation, focus visibility and accessible names intact.
-- Prefer deterministic app logic for canonical content/state over pushing responsibility into the language model.
-- Do not duplicate Movement/Nutrition titles, safety notes or other canonical presentation data into prompts when an app-owned structured reference can be used instead.
-- Keep server secrets server-side.
-- Do not introduce logging or new persistence of chat/health information without explicit review.
-- Treat externally configured privacy/security claims (for example provider log retention) as part of the product contract: update code-facing docs and user-facing disclosure together when they change.
+- Use TypeScript.
+- Avoid `any` unless an untyped external boundary genuinely requires it and the value is validated immediately.
+- Reuse existing design tokens and component patterns.
+- Preserve touch targets, accessible names, focus visibility and keyboard behaviour.
+- Prefer deterministic app logic over asking the model to own canonical state or content.
+- Keep secrets server-side.
+- Do not log or persist chat/health payloads without explicit review.
+- Avoid new dependencies when a small existing solution will do the job.
 
-## ATHENA-specific rule of thumb
+## A note on prompt changes
 
-The established architecture is:
+ATHENA is tested through repeated human conversations, not just prompt inspection.
 
-> **ATHENA interprets intent and explains; Fit For Cancer owns deterministic app state, canonical content and safety-critical selection.**
-
-For example, Gemini may infer that someone wants a high-protein option, but the app-owned recommendation function decides which current-band recipes are real and eligible.
-
-The current product strategy also favours **evidence from repeated human testing over speculative prompt tuning**. Do not broaden or rewrite the core prompt because of a single stylistic preference when the existing behaviour is otherwise within the safety/product boundary.
-
-## Updating AI Elements
-
-The files under `components/ai-elements/` are source-owned adaptations of official Vercel AI Elements components.
-
-Do not overwrite them blindly with upstream files. Compare upstream deliberately, preserve Fit For Cancer's Vite/Gemini/session architecture, preserve the transcript-download boundary outside the message log, and add regressions for any interaction changes. See [`docs/athena-ai-elements.md`](docs/athena-ai-elements.md).
-
-## Export boundaries
-
-The current exports solve different problems:
-
-- `utils/chatExport.ts` creates the raw `.txt` conversation export, including canonical recommendation metadata.
-- `utils/caregiverPdf.ts` creates a structured caregiver summary from fatigue/Energy Bank data and is not a chat transcript.
-
-Both are generated client-side. Do not merge these into one semantic output or upload either file to a server without an explicit product/privacy decision.
+Do not rewrite the core prompt because of one odd answer or stylistic preference. If behaviour is genuinely wrong, first capture a reproducible example, identify whether the problem belongs in app logic, tool logic or model instructions, then add a regression where possible.
 
 ## Pull requests
 
-Keep PRs focused. The recent ATHENA architecture was deliberately built as separate changes for treatment behaviour, session continuity, recommendation tools, recommendation cards, chat UI, streaming integrity, exports and public information architecture; continue that discipline when a change crosses meaningful product boundaries.
+Keep PRs focused.
 
-A useful PR description should state:
+A useful PR description should explain:
 
-- what user problem is being fixed;
-- what behaviour changed;
-- what explicitly did **not** change;
-- what regression/verification covers the change;
-- whether privacy, safety, clinical content or external dependencies are affected.
+- the user problem;
+- what changed;
+- what deliberately did not change;
+- how the change was verified;
+- whether privacy, safety, health content or external dependencies are affected.
+
+## Licence
+
+Fit For Cancer is licensed under the [Apache License 2.0](LICENSE). By contributing, you agree that your contribution will be licensed under the same licence.
+
+By submitting a pull request, you confirm that you have the right to submit the contribution and are not contributing code or content you do not have permission to share.
 
 ## Code of conduct
 
-Be respectful and practical. This app is for people going through cancer treatment, and some users may be tired, frightened or cognitively foggy. Product and contributor communication should not create unnecessary friction.
+Be respectful and practical.
 
-## Contributor licence statement
-
-By submitting a pull request, you confirm that:
-
-- you have the right to submit the contribution;
-- you are not contributing code/content you do not have permission to share;
-- you understand the contribution will be available under Apache License 2.0.
+This app is used by people who may be tired, frightened or cognitively foggy. Product decisions and contributor communication should not create unnecessary friction.
 
 ## Questions
 
-Open an issue with the `question` label when a change needs discussion before implementation.
+Open an issue with the `question` label if you are unsure whether a change needs discussion first.
 
 ---
 

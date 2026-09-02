@@ -1,5 +1,19 @@
 # Fit For Cancer
 
+<div align="center">
+
+[![Open Fit For Cancer](https://img.shields.io/badge/OPEN_THE_LIVE_APP-Fit_For_Cancer-00d1ff?style=for-the-badge&logo=vercel&logoColor=000000)](https://fitforcancer.com.au)
+
+[![Verify](https://github.com/cre8tivoz/fitforcancer2.0/actions/workflows/verify.yml/badge.svg)](https://github.com/cre8tivoz/fitforcancer2.0/actions/workflows/verify.yml)
+[![React 19](https://img.shields.io/badge/React_19-20232a?style=flat-square&logo=react&logoColor=61dafb)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-646cff?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
+[![Apache 2.0](https://img.shields.io/badge/licence-Apache--2.0-d22128?style=flat-square&logo=apache)](LICENSE)
+
+</div>
+
 Fit For Cancer is a free, open-source Australian web app for people living through cancer treatment and cancer-related fatigue.
 
 It combines practical movement, nutrition, energy check-ins and **ATHENA** — an AI-powered treatment-day guide designed to make evidence-informed support easier to understand and use when someone may be tired, overwhelmed or simply not in the mood for another clinical-looking website.

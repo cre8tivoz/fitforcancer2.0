@@ -96,6 +96,7 @@ The AI-provider implementation is an infrastructure detail rather than the produ
 - [Product roadmap](docs/product-roadmap.md)
 - [Security and privacy notes](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## Licence
 

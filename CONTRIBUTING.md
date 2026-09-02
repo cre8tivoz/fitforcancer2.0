@@ -176,9 +176,7 @@ By submitting a pull request, you confirm that you have the right to submit the 
 
 ## Code of conduct
 
-Be respectful and practical.
-
-This app is used by people who may be tired, frightened or cognitively foggy. Product decisions and contributor communication should not create unnecessary friction.
+Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before contributing. The short version: be respectful, coordinate significant changes, and remember this project exists to support people going through cancer treatment and the people caring for them.
 
 ## Questions
 

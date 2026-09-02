@@ -321,15 +321,15 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[Your browser] --> B[Fatigue and Energy Bank stay here]
-    A --> C[ATHENA question]
+    A[Your browser] --> B[Energy Bank history stays on your device]
+    A --> C[ATHENA question + current fatigue context]
     C --> D[Fit For Cancer server]
     D --> E[AI provider]
     A --> F[Anonymous usage events]
     F --> G[GoatCounter]
 ```
 
-The public page should not show implementation plumbing such as streaming protocols, function-call rounds or serverless internals. Those belong in repo documentation.
+The public page should not show implementation plumbing such as streaming protocols, function-call rounds or serverless internals. Those belong in repo documentation. The privacy diagram must stay accurate: Energy Bank history remains browser-local, while the current fatigue score/zone is included in ATHENA requests so the assistant can respond in context.
 
 ---
 

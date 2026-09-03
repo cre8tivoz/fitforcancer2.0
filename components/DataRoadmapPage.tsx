@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowDown,
@@ -252,6 +252,13 @@ const DataRoadmapPage: React.FC = () => {
   const [openDataDetail, setOpenDataDetail] = useState<'count' | 'privacy' | 'costs' | null>(null);
   const [openAudience, setOpenAudience] = useState<'researchers' | 'developers' | null>(null);
 
+  useEffect(() => {
+    const sectionId = window.location.hash.slice(1);
+    if (!['data', 'roadmap', 'wrapped', 'developers'].includes(sectionId)) return;
+
+    document.getElementById(sectionId)?.scrollIntoView({ block: 'start' });
+  }, []);
+
   const toggleRoadmap = (section: 'built' | 'next' | 'crystal') => {
     setOpenRoadmap((current) => (current === section ? null : section));
   };
@@ -299,7 +306,7 @@ const DataRoadmapPage: React.FC = () => {
 
       <nav
         aria-label="Data and Roadmap sections"
-        className="sticky top-[72px] z-30 -mx-1 overflow-x-auto border-y border-slate-200 bg-white/95 px-1 py-2 backdrop-blur sm:mx-0 sm:rounded-full sm:border"
+        className="sticky top-[72px] z-30 -mx-1 overflow-x-auto border-y border-slate-200 bg-white/95 px-1 py-2 backdrop-blur sm:top-[84px] sm:mx-0 sm:rounded-full sm:border"
       >
         <div className="flex min-w-max gap-1 sm:justify-center">
           {[

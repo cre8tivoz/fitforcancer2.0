@@ -21,7 +21,7 @@ import {
   UtensilsCrossed,
   WandSparkles,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import athenaFlowDiagram from '../media/data/athena-flow.svg';
 import privacyBoundaryDiagram from '../media/data/privacy-boundary.svg';
 
@@ -241,19 +241,20 @@ const MetricPlaceholder: React.FC<{ label: string; detail: string; icon: React.C
 );
 
 const DataRoadmapPage: React.FC = () => {
+  const location = useLocation();
   const [openRoadmap, setOpenRoadmap] = useState<'built' | 'next' | 'crystal' | null>(null);
   const [openDataDetail, setOpenDataDetail] = useState<'count' | 'privacy' | 'costs' | null>(null);
   const [openAudience, setOpenAudience] = useState<'researchers' | 'developers' | null>(null);
 
   useEffect(() => {
-    const sectionId = window.location.hash.slice(1);
+    const sectionId = location.hash.slice(1);
     if (['data', 'roadmap', 'wrapped', 'developers'].includes(sectionId)) {
       document.getElementById(sectionId)?.scrollIntoView({ block: 'start' });
       return;
     }
 
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, []);
+  }, [location.hash, location.key]);
 
   const toggleRoadmap = (section: 'built' | 'next' | 'crystal') => {
     setOpenRoadmap((current) => {
@@ -376,7 +377,7 @@ const DataRoadmapPage: React.FC = () => {
               <p>
                 Repeat check-in use is worked out in the browser and reported only as a milestone. Clearing browser data or changing device can reset that local count.
               </p>
-              <Link to="/resources" className="inline-flex min-h-11 items-center font-semibold text-[color:var(--color-primary)] hover:underline">
+              <Link to="/resources#privacy" className="inline-flex min-h-11 items-center font-semibold text-[color:var(--color-primary)] hover:underline">
                 Read the privacy details →
               </Link>
             </div>

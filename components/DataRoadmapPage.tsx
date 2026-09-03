@@ -158,7 +158,7 @@ const NEXT_ITEMS: RoadmapItem[] = [
   },
   {
     title: 'Better cards and easier screens',
-    text: 'Keep refining the UX and UI of Movement, Nutrition and other key parts of the app.',
+    text: 'Keep refining the design and usability of Movement, Nutrition and other key parts of the app.',
     icon: WandSparkles,
   },
   {
@@ -195,8 +195,8 @@ const CRYSTAL_ITEMS: RoadmapItem[] = [
     icon: Sparkles,
   },
   {
-    title: 'Mobile app or stronger PWA',
-    text: 'Explore whether Fit For Cancer should eventually feel more like an installed app.',
+    title: 'Mobile app or installable web app',
+    text: 'Explore whether Fit For Cancer should eventually work more like an app people can install on their phone.',
     icon: Smartphone,
   },
   {
@@ -248,7 +248,7 @@ const ArrowConnector = () => (
 );
 
 const DataRoadmapPage: React.FC = () => {
-  const [openRoadmap, setOpenRoadmap] = useState<'built' | 'next' | 'crystal' | null>('built');
+  const [openRoadmap, setOpenRoadmap] = useState<'built' | 'next' | 'crystal' | null>(null);
   const [openDataDetail, setOpenDataDetail] = useState<'count' | 'privacy' | 'costs' | null>(null);
   const [openAudience, setOpenAudience] = useState<'researchers' | 'developers' | null>(null);
 
@@ -548,7 +548,7 @@ const DataRoadmapPage: React.FC = () => {
                       Energy Bank history stays on your device
                     </div>
                     <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-center">
-                      ATHENA question + current fatigue context → Fit For Cancer server → AI provider
+                      ATHENA question + current fatigue/cancer context → Fit For Cancer server → AI provider
                     </div>
                     <div className="rounded-xl border border-violet-100 bg-violet-50 p-3 text-center">
                       Anonymous usage events → GoatCounter

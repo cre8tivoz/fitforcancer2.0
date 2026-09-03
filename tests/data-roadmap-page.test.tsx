@@ -1,13 +1,35 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
 import DataRoadmapPage from '../components/DataRoadmapPage';
 
+const scrollIntoView = vi.fn();
+const scrollTo = vi.fn();
+
+beforeEach(() => {
+  scrollIntoView.mockClear();
+  scrollTo.mockClear();
+
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scrollIntoView,
+  });
+  Object.defineProperty(window, 'scrollTo', {
+    configurable: true,
+    value: scrollTo,
+  });
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    callback(0);
+    return 1;
+  });
+});
+
 afterEach(() => {
   cleanup();
   window.history.replaceState({}, '', '/');
+  vi.restoreAllMocks();
 });
 
 const renderPage = () =>
@@ -25,6 +47,15 @@ describe('Data & Roadmap page', () => {
     expect(screen.getByText(/analytics collection began in september 2026/i)).toBeInTheDocument();
     expect(screen.getAllByText('Collecting now')).toHaveLength(4);
     expect(screen.getByText('Useful data, not personal profiles.')).toBeInTheDocument();
+    expect(screen.queryByText('Our annual snapshot')).not.toBeInTheDocument();
+  });
+
+  it('resets a normal unfragmented page entry to the top', () => {
+    window.history.replaceState({}, '', '/data');
+
+    renderPage();
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' });
   });
 
   it('provides stable section navigation anchors', () => {
@@ -38,16 +69,12 @@ describe('Data & Roadmap page', () => {
   });
 
   it('scrolls to a direct section fragment after the lazy page mounts', () => {
-    const scrollIntoView = vi.fn();
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    });
     window.history.replaceState({}, '', '/data#roadmap');
 
     renderPage();
 
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 
   it('uses one controlled Roadmap accordion instead of showing every section at once', async () => {
@@ -68,12 +95,14 @@ describe('Data & Roadmap page', () => {
     expect(built).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('ATHENA rebuilt from the ground up')).toBeInTheDocument();
 
+    scrollIntoView.mockClear();
     await user.click(next);
 
     expect(built).toHaveAttribute('aria-expanded', 'false');
     expect(next).toHaveAttribute('aria-expanded', 'true');
     expect(screen.queryByText('ATHENA rebuilt from the ground up')).not.toBeInTheDocument();
     expect(screen.getByText('More recipes')).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'auto' });
 
     await user.click(crystal);
 

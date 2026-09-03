@@ -25,6 +25,7 @@ const TRACKED_ROUTE_TITLES: Record<string, string> = {
   '/assistant': 'ATHENA',
   '/resources': 'Evidence & Resources',
   '/about': 'About',
+  '/data': 'Data & Roadmap',
   '/support': 'Support Fit For Cancer',
 };
 

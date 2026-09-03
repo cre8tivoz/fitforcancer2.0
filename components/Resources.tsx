@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ExternalLink,
   BookOpen,
@@ -14,6 +14,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import SupportThisApp from './SupportThisApp';
+import { useLocation } from 'react-router-dom';
 
 const INTERACTIVE_FOCUS_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]';
@@ -34,12 +35,23 @@ const CollapsibleCard: React.FC<{
   icon: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
-}> = ({ title, icon, children, defaultOpen = false }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  id?: string;
+  forceOpen?: boolean;
+}> = ({ title, icon, children, defaultOpen = false, id, forceOpen = false }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen || forceOpen);
   const contentId = React.useId();
 
+  useEffect(() => {
+    if (!forceOpen) return;
+
+    setIsOpen(true);
+    window.requestAnimationFrame(() => {
+      if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' });
+    });
+  }, [forceOpen, id]);
+
   return (
-    <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div id={id} className="scroll-mt-28 mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -67,6 +79,7 @@ interface ResourcesProps {
 }
 
 const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
+  const location = useLocation();
   const [hasClearedSavedData, setHasClearedSavedData] = useState(false);
 
   const handleClearSavedData = () => {
@@ -493,8 +506,10 @@ const Resources: React.FC<ResourcesProps> = ({ onClearSavedData }) => {
         </CollapsibleCard>
 
         <CollapsibleCard
+          id="privacy"
           title="Privacy & Sensitive Data Handling"
           icon={<Globe className="h-6 w-6 text-[color:var(--color-tertiary)]" />}
+          forceOpen={location.hash === '#privacy'}
         >
           <div className="space-y-6 text-sm leading-7 text-slate-600">
             <section className="space-y-2">

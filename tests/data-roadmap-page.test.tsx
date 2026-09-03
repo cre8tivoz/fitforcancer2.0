@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { Link, MemoryRouter } from 'react-router-dom';
 
 import DataRoadmapPage from '../components/DataRoadmapPage';
 
@@ -39,6 +39,14 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
+const renderPageWithSameRouteLink = () =>
+  render(
+    <MemoryRouter initialEntries={['/data#developers']}>
+      <Link to="/data">Back to Data top</Link>
+      <DataRoadmapPage />
+    </MemoryRouter>,
+  );
+
 describe('Data & Roadmap page', () => {
   it('keeps the landing view compact and honest before live metrics exist', () => {
     renderPage();
@@ -54,6 +62,18 @@ describe('Data & Roadmap page', () => {
     window.history.replaceState({}, '', '/data');
 
     renderPage();
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' });
+  });
+
+  it('resets to the top when navigating to /data again without remounting', async () => {
+    const user = userEvent.setup();
+    renderPageWithSameRouteLink();
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    scrollTo.mockClear();
+
+    await user.click(screen.getByRole('link', { name: 'Back to Data top' }));
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' });
   });
@@ -140,6 +160,7 @@ describe('Data & Roadmap page', () => {
 
     const counting = screen.getByRole('button', { name: /how we count this/i });
     const costs = screen.getByRole('button', { name: /running costs/i });
+    const privacy = screen.getByRole('button', { name: /privacy and limitations/i });
 
     expect(counting).toHaveAttribute('aria-expanded', 'false');
     expect(costs).toHaveAttribute('aria-expanded', 'false');
@@ -148,5 +169,11 @@ describe('Data & Roadmap page', () => {
 
     expect(counting).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(/recipe opens are counted when someone chooses to view a recipe/i)).toBeInTheDocument();
+
+    await user.click(privacy);
+    expect(screen.getByRole('link', { name: /read the privacy details/i })).toHaveAttribute(
+      'href',
+      '/resources#privacy',
+    );
   });
 });

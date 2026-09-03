@@ -1,11 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
 import DataRoadmapPage from '../components/DataRoadmapPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.history.replaceState({}, '', '/');
+});
 
 const renderPage = () =>
   render(
@@ -32,6 +35,19 @@ describe('Data & Roadmap page', () => {
     expect(within(nav).getByRole('link', { name: 'Roadmap' })).toHaveAttribute('href', '#roadmap');
     expect(within(nav).getByRole('link', { name: 'Wrapped' })).toHaveAttribute('href', '#wrapped');
     expect(within(nav).getByRole('link', { name: 'Developers' })).toHaveAttribute('href', '#developers');
+  });
+
+  it('scrolls to a direct section fragment after the lazy page mounts', () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    window.history.replaceState({}, '', '/data#roadmap');
+
+    renderPage();
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
   });
 
   it('uses one controlled Roadmap accordion instead of showing every section at once', async () => {

@@ -42,9 +42,14 @@ describe('Data & Roadmap page', () => {
     const next = screen.getByRole('button', { name: /what’s next/i });
     const crystal = screen.getByRole('button', { name: /in the crystal ball/i });
 
-    expect(built).toHaveAttribute('aria-expanded', 'true');
+    expect(built).toHaveAttribute('aria-expanded', 'false');
     expect(next).toHaveAttribute('aria-expanded', 'false');
     expect(crystal).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('ATHENA rebuilt from the ground up')).not.toBeInTheDocument();
+
+    await user.click(built);
+
+    expect(built).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('ATHENA rebuilt from the ground up')).toBeInTheDocument();
 
     await user.click(next);

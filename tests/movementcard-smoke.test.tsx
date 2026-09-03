@@ -6,9 +6,11 @@ import MovementCard from "../components/MovementCard";
 import { MOVEMENTS } from "../constants";
 
 describe("MovementCard.tsx — smoke", () => {
-  it("renders without crashing with first movement", () => {
+  it("renders the movement title as the card's clear heading", () => {
     render(<MovementCard movement={MOVEMENTS[0]} />);
-    expect(screen.getByText(MOVEMENTS[0].title)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: MOVEMENTS[0].title })
+    ).toBeInTheDocument();
   });
 
   it("shows safety note section", () => {

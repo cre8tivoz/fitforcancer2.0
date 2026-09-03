@@ -17,12 +17,13 @@ import {
 import { useAthenaSession } from './hooks/useAthenaSession';
 import { clearEnergyHistory, clearPatientContext } from './utils/patientContextStorage';
 import { clearAnalyticsLocalState, trackPageView } from './utils/analytics';
-import { BookOpen, ChartColumnIncreasing, Dumbbell, Heart, House, Info, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
+import { BarChart3, BookOpen, ChartColumnIncreasing, Dumbbell, Heart, House, Info, Menu, MessageSquare, UtensilsCrossed, X } from 'lucide-react';
 
 const EnergyBank = React.lazy(() => import('./components/EnergyBank'));
 const Resources = React.lazy(() => import('./components/Resources'));
 const AboutPage = React.lazy(() => import('./components/AboutPage'));
 const SupportPage = React.lazy(() => import('./components/SupportPage'));
+const DataRoadmapPage = React.lazy(() => import('./components/DataRoadmapPage'));
 
 const TAB_PATHS: Record<AppTab, string> = {
   [AppTab.HOME]: '/',
@@ -53,6 +54,7 @@ const mobileNavItems = [
 
 const mobileSecondaryNavItems = [
   { to: '/about', label: 'About', description: 'Why Fit For Cancer exists', icon: Info },
+  { to: '/data', label: 'Data & Roadmap', description: 'Usage, plans and developer notes', icon: BarChart3 },
   { to: '/support', label: 'Support Fit For Cancer', description: 'Help keep the app free', icon: Heart },
 ];
 
@@ -147,6 +149,7 @@ const Layout: React.FC = () => {
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm font-semibold">
             <Link to="/resources" className={CONTROL_FOCUS_CLASS}>Evidence & Resources</Link>
             <Link to="/about" className={CONTROL_FOCUS_CLASS}>About</Link>
+            <Link to="/data" className={CONTROL_FOCUS_CLASS}>Data & Roadmap</Link>
             <Link to="/support" className={CONTROL_FOCUS_CLASS}>Support Fit For Cancer</Link>
           </div>
         </div>
@@ -254,6 +257,7 @@ const App: React.FC = () => {
           />
           <Route path="/resources" element={<React.Suspense fallback={<div>Loading...</div>}><Resources onClearSavedData={clearSavedData} /></React.Suspense>} />
           <Route path="/about" element={<React.Suspense fallback={<div>Loading...</div>}><AboutPage /></React.Suspense>} />
+          <Route path="/data" element={<React.Suspense fallback={<div>Loading...</div>}><DataRoadmapPage /></React.Suspense>} />
           <Route path="/support" element={<React.Suspense fallback={<div>Loading...</div>}><SupportPage /></React.Suspense>} />
           <Route path="/why-free" element={<Navigate to="/about" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

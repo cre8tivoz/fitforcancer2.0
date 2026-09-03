@@ -32,9 +32,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const renderPage = () =>
+const renderPage = (initialEntry = '/') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <DataRoadmapPage />
     </MemoryRouter>,
   );
@@ -59,9 +59,7 @@ describe('Data & Roadmap page', () => {
   });
 
   it('resets a normal unfragmented page entry to the top', () => {
-    window.history.replaceState({}, '', '/data');
-
-    renderPage();
+    renderPage('/data');
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' });
   });
@@ -89,9 +87,7 @@ describe('Data & Roadmap page', () => {
   });
 
   it('scrolls to a direct section fragment after the lazy page mounts', () => {
-    window.history.replaceState({}, '', '/data#roadmap');
-
-    renderPage();
+    renderPage('/data#roadmap');
 
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     expect(scrollTo).not.toHaveBeenCalled();

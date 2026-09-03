@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   Activity,
-  ArrowDown,
-  ArrowRight,
   BarChart3,
   BookOpen,
   Brain,
@@ -24,6 +22,8 @@ import {
   WandSparkles,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import athenaFlowDiagram from '../media/data/athena-flow.svg';
+import privacyBoundaryDiagram from '../media/data/privacy-boundary.svg';
 
 type AccordionItemProps = {
   id: string;
@@ -53,7 +53,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({
         aria-expanded={isOpen}
         aria-controls={panelId}
         onClick={onToggle}
-        className="flex min-h-16 w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--color-nav)]"
+        className="flex min-h-16 w-full scroll-mt-36 items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--color-nav)]"
       >
         <span className="min-w-0">
           <span className="block font-bold text-slate-900">{title}</span>
@@ -240,13 +240,6 @@ const MetricPlaceholder: React.FC<{ label: string; detail: string; icon: React.C
   </article>
 );
 
-const ArrowConnector = () => (
-  <span className="flex h-8 items-center justify-center text-slate-300" aria-hidden="true">
-    <ArrowRight className="hidden h-4 w-4 sm:block" />
-    <ArrowDown className="h-4 w-4 sm:hidden" />
-  </span>
-);
-
 const DataRoadmapPage: React.FC = () => {
   const [openRoadmap, setOpenRoadmap] = useState<'built' | 'next' | 'crystal' | null>(null);
   const [openDataDetail, setOpenDataDetail] = useState<'count' | 'privacy' | 'costs' | null>(null);
@@ -254,13 +247,27 @@ const DataRoadmapPage: React.FC = () => {
 
   useEffect(() => {
     const sectionId = window.location.hash.slice(1);
-    if (!['data', 'roadmap', 'wrapped', 'developers'].includes(sectionId)) return;
+    if (['data', 'roadmap', 'wrapped', 'developers'].includes(sectionId)) {
+      document.getElementById(sectionId)?.scrollIntoView({ block: 'start' });
+      return;
+    }
 
-    document.getElementById(sectionId)?.scrollIntoView({ block: 'start' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
   const toggleRoadmap = (section: 'built' | 'next' | 'crystal') => {
-    setOpenRoadmap((current) => (current === section ? null : section));
+    setOpenRoadmap((current) => {
+      const next = current === section ? null : section;
+      if (next) {
+        window.requestAnimationFrame(() => {
+          document.getElementById(`roadmap-${section}-button`)?.scrollIntoView({
+            block: 'start',
+            behavior: 'auto',
+          });
+        });
+      }
+      return next;
+    });
   };
 
   const toggleDataDetail = (section: 'count' | 'privacy' | 'costs') => {
@@ -285,23 +292,6 @@ const DataRoadmapPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            ['#data', 'By the numbers', 'What people are using'],
-            ['#roadmap', 'Roadmap', 'Built, next and maybe later'],
-            ['#wrapped', 'ATHENA Wrapped', 'Our annual snapshot'],
-            ['#developers', 'Researchers & developers', 'Method, code and contribution'],
-          ].map(([href, title, text]) => (
-            <a
-              key={href}
-              href={href}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2"
-            >
-              <span className="block text-sm font-bold text-slate-900">{title}</span>
-              <span className="mt-1 block text-xs leading-5 text-slate-500">{text}</span>
-            </a>
-          ))}
-        </div>
       </header>
 
       <nav
@@ -533,35 +523,20 @@ const DataRoadmapPage: React.FC = () => {
 
               <figure className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                 <figcaption className="mb-4 font-bold text-slate-900">How ATHENA works</figcaption>
-                <div className="flex flex-col items-stretch gap-2 text-center text-xs font-semibold text-slate-700 sm:flex-row sm:items-center">
-                  <div className="rounded-xl bg-white p-3 shadow-sm">You talk to ATHENA</div>
-                  <ArrowConnector />
-                  <div className="rounded-xl bg-white p-3 shadow-sm">ATHENA understands what you need</div>
-                  <ArrowConnector />
-                  <div className="grid gap-2">
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">Conversation → ATHENA replies</div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">Movement → Fit For Cancer chooses</div>
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">Nutrition → Fit For Cancer chooses</div>
-                  </div>
-                </div>
+                <img
+                  src={athenaFlowDiagram}
+                  alt="Diagram showing a user talking to ATHENA, which either replies directly or uses Fit For Cancer-owned Movement and Nutrition selection."
+                  className="h-auto w-full rounded-xl bg-white"
+                />
               </figure>
 
               <figure className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                 <figcaption className="mb-4 font-bold text-slate-900">Privacy boundary</figcaption>
-                <div className="space-y-3 text-xs font-semibold text-slate-700">
-                  <div className="rounded-xl bg-white p-3 text-center shadow-sm">Your browser</div>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center">
-                      Energy Bank history stays on your device
-                    </div>
-                    <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-center">
-                      ATHENA question + current fatigue/cancer context → Fit For Cancer server → AI provider
-                    </div>
-                    <div className="rounded-xl border border-violet-100 bg-violet-50 p-3 text-center">
-                      Anonymous usage events → GoatCounter
-                    </div>
-                  </div>
-                </div>
+                <img
+                  src={privacyBoundaryDiagram}
+                  alt="Diagram showing Energy Bank history staying on-device, ATHENA questions and current fatigue or cancer context going through the Fit For Cancer server to the AI provider, and anonymous usage events going separately to GoatCounter."
+                  className="h-auto w-full rounded-xl bg-white"
+                />
               </figure>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5">

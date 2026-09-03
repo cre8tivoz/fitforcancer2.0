@@ -100,7 +100,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
       return;
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [athenaTarget, prefersReducedMotion]);
+  }, [athenaTarget]);
 
   useEffect(() => {
     if (!athenaTarget) return;
@@ -114,7 +114,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [athenaTarget]);
+  }, [athenaTarget, prefersReducedMotion]);
 
   const categories: (Recipe['category'] | 'All')[] = ['All', 'High Protein', 'Anti-Nausea', 'Easy to Digest', 'Hydrating', 'Zero-Prep', 'Quick Assembly'];
   const isFiltering = recipeCategoryFilter !== 'All' || recipeSearchQuery !== '' || recipeZoneFilter !== null;

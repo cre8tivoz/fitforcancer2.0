@@ -13,10 +13,26 @@ const LocationProbe = () => {
   return <div data-testid="location">{location.pathname}{location.search}</div>;
 };
 
+const mockMatchMedia = (matches: boolean) => (query: string) => ({
+  matches,
+  media: query,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(() => false),
+});
+
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
     configurable: true,
     value: vi.fn(),
+  });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: mockMatchMedia(false),
   });
 });
 
@@ -108,6 +124,40 @@ describe('ATHENA recommendation destinations', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/exercise');
     expect(screen.queryByText(/From ATHENA:/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Brisk Walking')).not.toBeInTheDocument();
+  });
+
+  it('uses immediate target scrolling when reduced motion is requested', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: mockMatchMedia(true),
+    });
+
+    const Harness = () => {
+      const [zone, setZone] = useState<'🟢 Green' | '🟡 Yellow' | '🔴 Red' | 'All' | null>('🔴 Red');
+      return (
+        <ExercisePage
+          fatigueZone="🔴 Red"
+          exerciseZoneFilter={zone}
+          isMyelomaPatient={false}
+          onExerciseZoneFilterChange={setZone}
+        />
+      );
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/exercise?athena=1']}>
+        <Harness />
+      </MemoryRouter>,
+    );
+
+    const target = screen.getByLabelText('ATHENA recommendation: Brisk Walking');
+    await waitFor(() => expect(document.activeElement).toBe(target));
+
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'center',
+    });
   });
 
   it('keeps a linked recipe visible against older filters, focuses it, then restores normal filtering after search input', async () => {

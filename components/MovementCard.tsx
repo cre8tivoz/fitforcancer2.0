@@ -1,130 +1,134 @@
-
 import React from 'react';
 import { motion } from 'motion/react';
 import { Movement } from '../types';
 import { Brain, Dumbbell, ShieldAlert, Clock, CheckCircle2, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 interface MovementCardProps {
   movement: Movement;
 }
 
 const MovementCard: React.FC<MovementCardProps> = ({ movement }) => {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   const intensityMap = {
-    'Green': {
+    Green: {
       label: 'More Energy',
       color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      emoji: '🟢'
     },
-    'Yellow': {
+    Yellow: {
       label: 'Take It Easier',
       color: 'bg-amber-100 text-amber-700 border-amber-200',
-      emoji: '🟡'
     },
-    'Red': {
+    Red: {
       label: 'Low Battery',
       color: 'bg-rose-100 text-rose-700 border-rose-200',
-      emoji: '🔴'
-    }
-  };
+    },
+  } as const;
 
   const zone = intensityMap[movement.intensity];
 
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-shadow transition-transform duration-500 group flex flex-col h-full"
+    <motion.article
+      whileHover={prefersReducedMotion ? undefined : { y: -2 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
     >
-      <div className="relative aspect-video bg-slate-50 overflow-hidden border-b border-slate-100">
+      <div className="relative aspect-video overflow-hidden border-b border-slate-100 bg-slate-50">
         {movement.imageUrl ? (
           <img
             src={movement.imageUrl}
             alt={movement.title}
-            className="w-full h-full object-cover object-center"
+            className="h-full w-full object-cover object-center transition-transform duration-200 motion-safe:group-hover:scale-[1.015] motion-reduce:transform-none"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-300">
-            <ImageIcon className="w-10 h-10 opacity-20" />
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-300">
+            <ImageIcon className="h-10 w-10 opacity-20" />
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Visual Guide Coming Soon</span>
           </div>
         )}
 
-        <div className="absolute top-4 left-4 z-10">
-          <span className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] rounded-full border shadow-sm backdrop-blur-md ${zone.color.replace('bg-', 'bg-opacity-90 bg-')}`}>
+        <div className="absolute left-4 top-4 z-10">
+          <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] shadow-sm backdrop-blur-md ${zone.color}`}>
             {zone.label}
           </span>
         </div>
       </div>
 
-      <div className="p-6 flex flex-col flex-1">
-        <div className="flex justify-between items-start gap-3 mb-4">
-          <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-            <span className="mr-2">{zone.emoji}</span>
-            {movement.title}
-          </h3>
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h3 className="text-xl font-bold leading-tight text-slate-900">{movement.title}</h3>
           {movement.citation && (
             movement.sourceUrl ? (
               <a
                 href={movement.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 inline-flex items-center gap-1 text-[9px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-[0.12em] mt-1.5"
+                className="mt-1 inline-flex shrink-0 items-center gap-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-400 transition-colors duration-200 hover:text-slate-600"
                 aria-label={`Open source for ${movement.title}`}
               >
-                Source <ExternalLink className="w-3 h-3" />
+                Source <ExternalLink className="h-3 w-3" />
               </a>
             ) : (
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.12em] mt-1.5">Source</span>
+              <span className="mt-1 shrink-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Source</span>
             )
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-6">
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
           <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-neon-blue" />
-            {movement.duration}
+            <Clock className="h-3.5 w-3.5 text-[color:var(--color-primary)]" aria-hidden="true" />
+            <span>{movement.duration}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-neon-blue" />
-            {movement.benefit}
+          <div className="flex min-w-0 items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[color:var(--color-primary)]" aria-hidden="true" />
+            <span>{movement.benefit}</span>
           </div>
         </div>
 
-        <p className="text-sm text-slate-600 mb-8 leading-relaxed font-medium">
+        <p className="mb-5 text-sm font-medium leading-relaxed text-slate-600">
           {movement.description}
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-[color:var(--color-primary)]/10 p-4 rounded-xl border border-[color:var(--color-primary)]/15">
-            <div className="flex items-center gap-2 mb-2 text-[color:var(--color-primary)]">
-              <Brain className="w-4 h-4" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Mind & Mood</span>
+        <section className="mb-5 border-t border-slate-100 pt-4" aria-label={`Why ${movement.title} may help`}>
+          <h4 className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Why it may help</h4>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)]">
+                <Brain className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Mind & Mood</p>
+                <p className="mt-0.5 text-xs font-medium leading-relaxed text-slate-600">{movement.mentalWellbeingBenefit}</p>
+              </div>
             </div>
-            <p className="text-xs text-[color:var(--color-primary)]/85 leading-relaxed font-medium">{movement.mentalWellbeingBenefit}</p>
-          </div>
-          <div className="bg-[color:var(--color-tertiary)]/10 p-4 rounded-xl border border-[color:var(--color-tertiary)]/15">
-            <div className="flex items-center gap-2 mb-2 text-[color:var(--color-tertiary)]">
-              <Dumbbell className="w-4 h-4" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Body & Strength</span>
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color:var(--color-tertiary)]/10 text-[color:var(--color-tertiary)]">
+                <Dumbbell className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Body & Strength</p>
+                <p className="mt-0.5 text-xs font-medium leading-relaxed text-slate-600">{movement.strengthBenefit}</p>
+              </div>
             </div>
-            <p className="text-xs text-[color:var(--color-tertiary)]/85 leading-relaxed font-medium">{movement.strengthBenefit}</p>
           </div>
-        </div>
+        </section>
 
-        <div className="p-4 rounded-xl border mt-auto bg-amber-50 border-amber-100">
-          <div className="flex items-center gap-2 mb-2 text-amber-700">
-            <ShieldAlert className="w-4 h-4" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Things to watch</span>
+        <section className="mt-auto rounded-xl border border-amber-100 bg-amber-50/70 p-4" aria-label={`Safety notes for ${movement.title}`}>
+          <div className="mb-2 flex items-center gap-2 text-amber-700">
+            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+            <h4 className="text-[10px] font-black uppercase tracking-widest">Things to watch</h4>
           </div>
-          <p className="text-xs leading-relaxed font-medium text-amber-700/90">{movement.safetyNote}</p>
+          <p className="text-xs font-medium leading-relaxed text-amber-800">{movement.safetyNote}</p>
           {movement.citation && (
-            <p className="mt-3 text-[10px] text-amber-800/70 leading-relaxed">
+            <p className="mt-3 text-[10px] leading-relaxed text-amber-900/65">
               {movement.citation}
             </p>
           )}
-        </div>
+        </section>
       </div>
-    </motion.div>
+    </motion.article>
   );
 };
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MOVEMENTS } from '../movements';
 import MovementCard from './MovementCard';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 interface ExercisePageProps {
   fatigueScore?: number | null;
@@ -18,6 +19,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
   onExerciseZoneFilterChange,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const suppressNextNormalEntryScrollRef = useRef(false);
   const athenaTargetId = searchParams.get('athena');
   const athenaTarget = athenaTargetId ? MOVEMENTS.find((movement) => movement.id === athenaTargetId) : undefined;
@@ -59,12 +61,12 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
       if (!target) return;
       target.focus({ preventScroll: true });
       target.scrollIntoView({
-        behavior: 'smooth',
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
         block: 'center',
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [athenaTarget]);
+  }, [athenaTarget, prefersReducedMotion]);
 
   return (
     <div className="min-w-0 space-y-6">
@@ -172,7 +174,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
                 id={`movement-${movement.id}`}
                 tabIndex={isAthenaTarget ? -1 : undefined}
                 aria-label={isAthenaTarget ? `ATHENA recommendation: ${movement.title}` : undefined}
-                className={`scroll-mt-24 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-4 ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
+                className={`scroll-mt-24 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-4 ${isAthenaTarget ? 'athena-target-arrival ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
               >
                 {isAthenaTarget && (
                   <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-neon-blue">ATHENA recommendation</div>

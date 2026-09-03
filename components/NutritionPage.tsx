@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { RECIPES } from '../constants';
 import { Recipe } from '../types';
 import NutritionCard from './NutritionCard';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 interface NutritionPageProps {
   fatigueZone: '🟢 Green' | '🟡 Yellow' | '🔴 Red' | null;
@@ -34,6 +35,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
   onSearchChange,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const suppressNextNormalEntryScrollRef = useRef(false);
   const athenaTargetId = searchParams.get('athena');
   const athenaTarget = athenaTargetId ? RECIPES.find((recipe) => recipe.id === athenaTargetId) : undefined;
@@ -107,12 +109,12 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
       if (!target) return;
       target.focus({ preventScroll: true });
       target.scrollIntoView({
-        behavior: 'smooth',
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
         block: 'center',
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [athenaTarget]);
+  }, [athenaTarget, prefersReducedMotion]);
 
   const categories: (Recipe['category'] | 'All')[] = ['All', 'High Protein', 'Anti-Nausea', 'Easy to Digest', 'Hydrating', 'Zero-Prep', 'Quick Assembly'];
   const isFiltering = recipeCategoryFilter !== 'All' || recipeSearchQuery !== '' || recipeZoneFilter !== null;
@@ -184,7 +186,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
           </div>
           {recipeZoneFilter === null && fatigueZone && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-blue/5 border border-neon-blue/10 rounded-lg">
-              <div className="w-2 h-2 bg-neon-blue rounded-full animate-pulse" />
+              <div className="h-2 w-2 rounded-full bg-neon-blue" />
               <span className="sr-only">Following your current zone.</span>
               <span className="text-[10px] font-bold text-neon-blue uppercase tracking-widest">Dynamic Mode Active: Following your {fatigueZone} Zone</span>
             </div>
@@ -202,7 +204,7 @@ const NutritionPage: React.FC<NutritionPageProps> = ({
                 id={`recipe-${recipe.id}`}
                 tabIndex={isAthenaTarget ? -1 : undefined}
                 aria-label={isAthenaTarget ? `ATHENA recommendation: ${recipe.title}` : undefined}
-                className={`scroll-mt-24 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-4 ${isAthenaTarget ? 'ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
+                className={`scroll-mt-24 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-blue focus-visible:ring-offset-4 ${isAthenaTarget ? 'athena-target-arrival ring-2 ring-neon-blue ring-offset-4 ring-offset-[color:var(--color-bg)]' : ''}`}
               >
                 {isAthenaTarget && (
                   <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-neon-blue">ATHENA recommendation</div>

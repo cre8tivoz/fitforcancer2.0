@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Recipe } from '../types';
-import { X, Clock, ChefHat, Info, ExternalLink, TriangleAlert } from 'lucide-react';
+import { X, Clock, ChefHat, Info, ExternalLink, TriangleAlert, ArrowRight } from 'lucide-react';
 import { trackNutritionRecipeOpened } from '../utils/analytics';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 interface NutritionCardProps {
   recipe: Recipe;
@@ -11,6 +12,7 @@ interface NutritionCardProps {
 
 const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -63,15 +65,16 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
 
   return (
     <>
-      <motion.div
-        whileHover={{ y: -5 }}
-        className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow transition-transform transition-colors group flex flex-col h-full"
+      <motion.article
+        whileHover={prefersReducedMotion ? undefined : { y: -2 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
       >
         <div className="relative overflow-hidden h-48 bg-slate-50">
           <img
             src={recipe.imageUrl}
             alt={recipe.title}
-            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover object-center transition-transform duration-200 motion-safe:group-hover:scale-[1.015] motion-reduce:transform-none"
             referrerPolicy="no-referrer"
           />
         </div>
@@ -86,17 +89,17 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 mb-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+          <h3 className="mb-2 text-lg font-bold leading-tight text-slate-900">{recipe.title}</h3>
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
             <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+              <Clock className="h-3 w-3" aria-hidden="true" />
               <span>Prep: {recipe.prepTime}</span>
             </div>
             <div className="flex items-center gap-1">
-              <ChefHat className="w-3 h-3" />
+              <ChefHat className="h-3 w-3" aria-hidden="true" />
               <span>Cook: {recipe.cookTime}</span>
             </div>
           </div>
-          <h3 className="text-lg font-bold mb-3 text-slate-900 leading-tight">{recipe.title}</h3>
 
           <div className="mb-4 flex-1">
             <div className="flex items-center gap-1.5 mb-2 text-slate-400">
@@ -118,15 +121,15 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
 
           <motion.button
             ref={triggerRef}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full py-3 bg-neon-blue text-neon-dark rounded-xl font-bold text-sm hover:bg-neon-blue/90 transition-shadow transition-transform transition-colors shadow-sm shadow-neon-blue/20 flex items-center justify-center gap-2"
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="group/cta flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-neon-blue px-4 py-3 text-sm font-bold text-neon-dark shadow-sm shadow-neon-blue/20 transition-colors duration-200 hover:bg-neon-blue/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-nav)] focus-visible:ring-offset-2"
             onClick={openRecipe}
             aria-haspopup="dialog"
             aria-expanded={isModalOpen}
           >
-            <ChefHat className="w-4 h-4" />
-            View Recipe
+            <span>View Recipe</span>
+            <ArrowRight className="h-4 w-4 transition-transform duration-200 motion-safe:group-hover/cta:translate-x-0.5 motion-reduce:transform-none" aria-hidden="true" />
           </motion.button>
 
           {recipe.citation && (
@@ -148,7 +151,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
             )
           )}
         </div>
-      </motion.div>
+      </motion.article>
 
       <AnimatePresence>
         {isModalOpen && (
@@ -160,6 +163,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
               onClick={() => setIsModalOpen(false)}
               aria-hidden="true"
@@ -172,10 +176,11 @@ const NutritionCard: React.FC<NutritionCardProps> = ({ recipe }) => {
               aria-modal="true"
               aria-labelledby={`recipe-title-${recipe.id}`}
               aria-describedby={`recipe-benefit-${recipe.id}`}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col outline-none"
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 8 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl outline-none"
             >
               <div className="relative h-48 sm:h-64 shrink-0">
                 <img

@@ -52,7 +52,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
       return;
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [athenaTarget, prefersReducedMotion]);
+  }, [athenaTarget]);
 
   useEffect(() => {
     if (!athenaTarget) return;
@@ -66,7 +66,7 @@ const ExercisePage: React.FC<ExercisePageProps> = ({
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [athenaTarget]);
+  }, [athenaTarget, prefersReducedMotion]);
 
   return (
     <div className="min-w-0 space-y-6">

@@ -33,12 +33,18 @@ describe('privacy-first analytics', () => {
 
   it('tracks only known SPA routes and never accepts query strings as routes', () => {
     trackPageView('/nutrition');
+    trackPageView('/data');
     trackPageView('/nutrition?cancer=breast');
     trackPageView('/unknown');
 
-    expect(getCountMock()).toHaveBeenCalledTimes(1);
-    expect(getCountMock()).toHaveBeenCalledWith(
+    expect(getCountMock()).toHaveBeenCalledTimes(2);
+    expect(getCountMock()).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({ path: '/nutrition', title: 'Nutrition' }),
+    );
+    expect(getCountMock()).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ path: '/data', title: 'Data & Roadmap' }),
     );
   });
 

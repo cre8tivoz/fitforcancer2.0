@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Movement } from '../types';
 import { Brain, Dumbbell, ShieldAlert, Clock, CheckCircle2, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { getMovementImage } from '../utils/movementImages';
 
 interface MovementCardProps {
   movement: Movement;
@@ -27,6 +28,7 @@ const MovementCard: React.FC<MovementCardProps> = ({ movement }) => {
   } as const;
 
   const zone = intensityMap[movement.intensity];
+  const imageUrl = getMovementImage(movement);
 
   return (
     <motion.article
@@ -35,9 +37,9 @@ const MovementCard: React.FC<MovementCardProps> = ({ movement }) => {
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
     >
       <div className="relative aspect-video overflow-hidden border-b border-slate-100 bg-slate-50">
-        {movement.imageUrl ? (
+        {imageUrl ? (
           <img
-            src={movement.imageUrl}
+            src={imageUrl}
             alt={movement.title}
             className="h-full w-full object-cover object-center transition-transform duration-200 motion-safe:group-hover:scale-[1.015] motion-reduce:transform-none"
             referrerPolicy="no-referrer"

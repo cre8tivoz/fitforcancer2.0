@@ -6,6 +6,7 @@ import { RECIPES } from '../constants';
 import { MOVEMENTS } from '../movements';
 import type { AthenaRecommendationRef } from '../types';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { getMovementImage } from '../utils/movementImages';
 
 interface AthenaRecommendationCardProps {
   recommendation: AthenaRecommendationRef;
@@ -22,6 +23,7 @@ const AthenaRecommendationCard: React.FC<AthenaRecommendationCardProps> = ({ rec
   if (recommendation.kind === 'movement') {
     const movement = MOVEMENTS.find((item) => item.id === recommendation.id);
     if (!movement) return null;
+    const imageUrl = getMovementImage(movement);
 
     return (
       <motion.article
@@ -30,9 +32,9 @@ const AthenaRecommendationCard: React.FC<AthenaRecommendationCardProps> = ({ rec
         className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
       >
         <div className="flex gap-3 p-3">
-          {movement.imageUrl && (
+          {imageUrl && (
             <img
-              src={movement.imageUrl}
+              src={imageUrl}
               alt=""
               className="h-20 w-20 shrink-0 rounded-lg object-cover"
               loading="lazy"

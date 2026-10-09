@@ -133,7 +133,7 @@ The browser never calls Gemini with an exposed API key.
 - first-party function declarations and execution;
 - Gemini stream parsing and app-level SSE output.
 
-The endpoint currently accepts at most 40 history messages, with per-message and total-character limits.
+The endpoint currently accepts at most 32 history messages, with per-message and total-character limits.
 
 The same 25-second request timeout covers the full turn, including a second synthesis stream when a first-party tool is used.
 
@@ -213,7 +213,7 @@ For conversational novelty requests such as "another recipe" or "something diffe
 
 This remains one bounded tool round followed by one synthesis call with function calling disabled. It is not an autonomous or recursive agent loop.
 
-If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. On this recovery call only, Gemini 2.5 Flash thinking is disabled with a zero thinking budget so the single fallback is directed toward usable text/tool output. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
+If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. Gemini 2.5 Flash thinking is disabled with a zero thinking budget on every generation call, including recovery, so the 512-token cap remains available for usable text/tool output. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
 
 If that recovery still produces no usable text/tool output, the server logs only response-shape metadata (finish reason, candidate/part counts and part kinds) for troubleshooting. Prompt text, response text, function arguments, fatigue/cancer context and conversation history are not included in that diagnostic.
 
@@ -336,3 +336,25 @@ ATHENA may become even more central to navigation and first-party Fit For Cancer
 > **ATHENA can interpret and explain; Fit For Cancer owns deterministic app state, content and safety-critical selection.**
 
 Accounts or durable cloud chat history must be scoped separately with explicit retention, deletion, consent and privacy decisions rather than being added implicitly to the current session hook.
+
+## SDK rollout and offline review
+
+The server-only `ATHENA_TRANSPORT` setting chooses one adapter at request start:
+`legacy` (the default during review) or `sdk`. Both use stable
+`gemini-2.5-flash`, temperature 0.7, a 512-token maximum and thinking budget 0.
+The SDK uses an explicit direct Google provider with the existing server key.
+AI Gateway and Interactions are not used; Google usage, project logging and
+billing remain separate from application diagnostics.
+
+The SDK adapter must preserve the bounded selection/tool/synthesis workflow,
+shared 25-second timeout, at most one empty-selection recovery and the existing
+JSON and SSE contracts. Automatic provider retries are disabled. Provider text
+from reasoning parts is excluded from visible replies. Invalid or incomplete
+streams must not produce a successful app completion.
+
+The synthetic-only offline review workflow is documented in
+[ATHENA review workflow](athena-review-workflow.md). It provides a versioned
+proposed baseline, advisory structured evaluator findings and at most three
+examples for Billy. Baseline/evaluator results require human review. It does
+not add production sample capture, patient-data imports, cloud storage, an
+external evaluator service or autonomous configuration/deployment decisions.

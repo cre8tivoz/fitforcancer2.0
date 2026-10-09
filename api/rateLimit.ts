@@ -12,6 +12,7 @@ const DEFAULT_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT = 20;
 
 let durableLimiter: Ratelimit | null | undefined;
+let authLimiter: Ratelimit | null | undefined;
 
 const getDurableLimiter = (): Ratelimit | null => {
   if (durableLimiter !== undefined) return durableLimiter;
@@ -62,6 +63,27 @@ export const getClientIp = (headers: Record<string, string | string[] | undefine
   }
 
   return getHeaderValue(headers, "x-real-ip")?.trim() || "unknown";
+};
+
+export const checkAthenaAuthRateLimit = async (
+  headers: Record<string, string | string[] | undefined> | undefined,
+): Promise<RateLimitResult> => {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    try {
+      authLimiter ??= new Ratelimit({
+        redis: Redis.fromEnv(),
+        limiter: Ratelimit.slidingWindow(5, "15 m"),
+        prefix: "ffc:baseline-auth",
+      });
+      const result = await authLimiter.limit(getClientIp(headers));
+      return { allowed: result.success, remaining: result.remaining, resetAt: result.reset };
+    } catch {
+      // Fall back to the bounded in-process limiter during a Redis outage.
+    }
+  }
+  return checkRateLimit(`baseline-auth:${getClientIp(headers)}`, 5, 15 * 60 * 1000);
 };
 
 export const checkRateLimit = (

@@ -24,6 +24,7 @@ const Resources = React.lazy(() => import('./components/Resources'));
 const AboutPage = React.lazy(() => import('./components/AboutPage'));
 const SupportPage = React.lazy(() => import('./components/SupportPage'));
 const DataRoadmapPage = React.lazy(() => import('./components/DataRoadmapPage'));
+const BaselinePage = React.lazy(() => import('./components/BaselinePage'));
 
 const TAB_PATHS: Record<AppTab, string> = {
   [AppTab.HOME]: '/',
@@ -217,6 +218,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <Routes>
+        <Route path="/baseline" element={<React.Suspense fallback={<div className="min-h-screen bg-[color:var(--color-bg)] p-8">Loading…</div>}><BaselinePage /></React.Suspense>} />
         <Route element={<Layout />}>
           <Route path="/" element={<HomePageContainer fatigueState={fatigueState} />} />
           <Route

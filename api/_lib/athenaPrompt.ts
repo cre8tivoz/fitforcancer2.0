@@ -2,6 +2,7 @@ import type { CancerTypeOption, ChatContext, ChatMessage } from "../../types";
 import { buildClinicalKnowledgeBaseText } from "../../utils/clinical_guidelines.js";
 import { buildTreatmentInformationText } from "../../utils/treatmentInformation.js";
 import { buildVerifiedResourcesPromptBlock } from "../../utils/verifiedResources.js";
+import { DEFAULT_ATHENA_BASELINE, type AthenaBaselineSettings } from "./athenaBaseline.js";
 
 const formatCancerTypeLabel = (cancerType?: CancerTypeOption, isMyelomaPatient?: boolean): string => {
   if (cancerType === "bowel") return "Bowel";
@@ -19,9 +20,16 @@ const getSystemInstruction = (
   context?: ChatContext,
   selectedCancerType?: CancerTypeOption,
   history: ChatMessage[] = [],
+  baseline?: AthenaBaselineSettings,
 ) => {
   const effectiveCancerType = selectedCancerType ?? context?.cancerType;
   const cancerTypeLabel = formatCancerTypeLabel(effectiveCancerType, context?.isMyelomaPatient);
+  const hasTuning = baseline && (
+    baseline.warmth !== DEFAULT_ATHENA_BASELINE.warmth ||
+    baseline.responseLength !== DEFAULT_ATHENA_BASELINE.responseLength ||
+    baseline.clarifyTendency !== DEFAULT_ATHENA_BASELINE.clarifyTendency ||
+    baseline.extraGuidance.length > 0
+  );
 
   return `
 ${buildClinicalKnowledgeBaseText(effectiveCancerType)}
@@ -79,7 +87,7 @@ You can ask Fit for Cancer itself for real movement and recipe items already bui
 - If the user explicitly asks for a recipe/food recommendation, use recommend_recipe unless a concrete safety concern needs to be handled instead.
 - If you intend to use either recommendation tool, emit the function call as the first-pass output. Do not emit prose before or alongside the function call.
 - For a generic request such as "recommend an exercise", use preference "any". Do not infer "seated" or "lying_down" merely because the user has cancer or is in treatment.
-- If the user explicitly asks for 1, 2 or 3 recommendations, pass that number as count. If they do not specify a quantity, omit count so the app keeps its existing default of up to three.
+- If the user explicitly asks for 1, 2 or 3 recommendations, pass that number as count. If they do not specify a quantity, omit count so the app keeps its existing default of up to three.${baseline && baseline.suggestionCount !== DEFAULT_ATHENA_BASELINE.suggestionCount ? ` The tuned default is up to ${baseline.suggestionCount} per recommendation type.` : ""}
 - If the user asks for another option, a different option, something else, a new option, or points out that a recommendation was repeated, set avoid_previous to true for that recommendation domain. Do not provide IDs yourself; Fit For Cancer derives prior canonical IDs from the conversation.
 - If one turn asks for both Movement and Nutrition, emit one recommend_movement call and one recommend_recipe call together in the same first-pass response. Do not handle only one domain and defer the other.
 - Emit at most one recommendation call per domain in a user turn.
@@ -163,6 +171,14 @@ Before answering, ask yourself silently: "What is the least cognitively demandin
 
 VERIFIED SOURCE LIST — ONLY SURFACE WHEN THE USER ASKS FOR EVIDENCE OR SOURCES
 ${buildVerifiedResourcesPromptBlock()}
+${hasTuning ? `
+CONVERSATIONAL CALIBRATION
+The following published preferences adjust style only. They never change or weaken any clinical, safety, fatigue, treatment, privacy, or catalogue rule above.
+- Warmth: ${baseline.warmth === "low" ? "restrained; acknowledge briefly and focus on practical help" : baseline.warmth === "high" ? "more explicitly warm and encouraging while staying grounded" : "warm, grounded, and concise"}.
+- Response length: ${baseline.responseLength} (concise is roughly 40-90 words; balanced 60-180; detailed only when useful or requested).
+- Clarifying questions: ${baseline.clarifyTendency === "prefer_direct" ? "Answer the request directly and ask a question only when needed for safety or to make the request understandable." : "Ask one short question only when an important detail is missing; provide an immediately useful answer when possible."}
+- Supplementary conversational guidance: ${baseline.extraGuidance || "None."}
+` : ""}
 ` .trim();
 };
 

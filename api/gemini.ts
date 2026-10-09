@@ -10,6 +10,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import { getSystemInstruction } from "./_lib/athenaPrompt.js";
 import { ATHENA_MODEL, ATHENA_TIMEOUT_MS, getAthenaTransport } from "./_lib/athenaConfig.js";
 import { safeAthenaMetadata } from "./_lib/athenaPrivacy.js";
+import { getPublishedBaseline, type AthenaBaselineSettings } from "./_lib/athenaBaseline.js";
 import { buildAthenaSynthesisMessages, generateAthenaRecovery, generateAthenaSynthesis, streamAthenaSelection, streamAthenaSynthesis } from "./_lib/athenaGoogle.js";
 
 const safeEqual = (a: string, b: string): boolean => {
@@ -328,6 +329,7 @@ export const executeBoundedRecommendationCalls = (
   fatigueZone: ChatContext["fatigueZone"],
   executeTool: typeof executeAthenaRecommendationTool = executeAthenaRecommendationTool,
   previousRecommendationRefs: RecommendationRef[] = [],
+  defaultCount = 3,
 ) => {
   const seenDomains = new Set<string>();
   const recommendationRefs: RecommendationRef[] = [];
@@ -357,7 +359,10 @@ export const executeBoundedRecommendationCalls = (
       }
 
       try {
-        execution = executeTool(call.name, call.args, fatigueZone, previousRecommendationRefs);
+        const args = (call.name === "recommend_movement" || call.name === "recommend_recipe") && !Number.isInteger(call.args?.count)
+          ? { ...call.args, count: defaultCount }
+          : call.args;
+        execution = executeTool(call.name, args, fatigueZone, previousRecommendationRefs);
         if (isRecommendationDomain) successfulRecommendationOperations += 1;
       } catch {
         if (isRecommendationDomain) failedRecommendationOperations += 1;
@@ -399,8 +404,8 @@ const makeBaseContents = (history: ChatMessage[]) =>
     parts: [{ text: message.content }],
   }));
 
-const makeSystemInstruction = (body: GeminiRequestBody) => ({
-  parts: [{ text: getSystemInstruction(body.context, body.cancerType, body.history) }],
+const makeSystemInstruction = (body: GeminiRequestBody, baseline?: AthenaBaselineSettings) => ({
+  parts: [{ text: getSystemInstruction(body.context, body.cancerType, body.history, baseline) }],
 });
 
 const makeToolBlock = () => [
@@ -573,10 +578,11 @@ const handleSdkJsonRequest = async (
   body: GeminiRequestBody,
   apiKey: string,
   signal: AbortSignal,
+  baseline: AthenaBaselineSettings,
 ): Promise<JsonResponse> => {
   const diagnostics = newAthenaDiagnostic();
   try {
-    const system = getSystemInstruction(body.context, body.cancerType, body.history);
+    const system = getSystemInstruction(body.context, body.cancerType, body.history, baseline);
     const history = body.history!.map(({ role, content }) => ({ role, content }));
     diagnostics.callCount += 1;
     const selection = await generateAthenaRecovery({ apiKey, system, history, signal });
@@ -596,6 +602,7 @@ const handleSdkJsonRequest = async (
       body.context?.fatigueZone ?? null,
       executeAthenaRecommendationTool,
       collectPreviousRecommendationRefs(body.history!),
+      baseline.suggestionCount,
     );
     if (execution.allRecommendationExecutionsFailed) {
       diagnostics.errorCategory = "upstream";
@@ -637,11 +644,12 @@ const handleSdkStreamingRequest = async (
   apiKey: string,
   signal: AbortSignal,
   res: VercelLikeResponse,
+  baseline: AthenaBaselineSettings,
 ): Promise<void> => {
   let streamStarted = false;
   const diagnostics = newAthenaDiagnostic();
   try {
-    const system = getSystemInstruction(body.context, body.cancerType, body.history);
+    const system = getSystemInstruction(body.context, body.cancerType, body.history, baseline);
     const history = body.history!.map(({ role, content }) => ({ role, content }));
     startSse(res);
     streamStarted = true;
@@ -714,6 +722,7 @@ const handleSdkStreamingRequest = async (
       body.context?.fatigueZone ?? null,
       executeAthenaRecommendationTool,
       collectPreviousRecommendationRefs(body.history!),
+      baseline.suggestionCount,
     );
     if (execution.allRecommendationExecutionsFailed) {
       writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
@@ -770,11 +779,12 @@ const handleStreamingRequest = async (
   apiKey: string,
   signal: AbortSignal,
   res: VercelLikeResponse,
+  baseline: AthenaBaselineSettings,
 ): Promise<void> => {
   let streamStarted = false;
 
   try {
-    const systemInstruction = makeSystemInstruction(body);
+    const systemInstruction = makeSystemInstruction(body, baseline);
     const baseContents = makeBaseContents(body.history!);
     const tools = makeToolBlock();
     const firstResponse = await openGeminiStream(
@@ -950,6 +960,7 @@ const handleStreamingRequest = async (
       body.context?.fatigueZone ?? null,
       executeAthenaRecommendationTool,
       collectPreviousRecommendationRefs(body.history!),
+      baseline.suggestionCount,
     );
 
     if (allRecommendationExecutionsFailed) {
@@ -1067,21 +1078,22 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   }
   body = normaliseRequestBody(body);
 
+  const baseline = await getPublishedBaseline();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
   try {
     if (isStreamingRequest(req, res)) {
       if (getAthenaTransport() === "sdk") {
-        await handleSdkStreamingRequest(body, apiKey, controller.signal, res);
+        await handleSdkStreamingRequest(body, apiKey, controller.signal, res, baseline);
       } else {
-        await handleStreamingRequest(body, apiKey, controller.signal, res);
+        await handleStreamingRequest(body, apiKey, controller.signal, res, baseline);
       }
       return;
     }
 
     if (getAthenaTransport() === "sdk") {
-      const result = await handleSdkJsonRequest(body, apiKey, controller.signal);
+      const result = await handleSdkJsonRequest(body, apiKey, controller.signal, baseline);
       if (result.error) {
         res.status(502).json({ error: result.error });
       } else {
@@ -1090,7 +1102,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       return;
     }
 
-    const systemInstruction = makeSystemInstruction(body);
+    const systemInstruction = makeSystemInstruction(body, baseline);
     const baseContents = makeBaseContents(body.history!);
     const tools = makeToolBlock();
 
@@ -1130,6 +1142,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         body.context?.fatigueZone ?? null,
         executeAthenaRecommendationTool,
         collectPreviousRecommendationRefs(body.history!),
+        baseline.suggestionCount,
       );
       const functionResponseParts = boundedExecution.functionResponseParts;
       recommendationRefs = boundedExecution.recommendationRefs;

@@ -12,12 +12,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "athena:review": "node scripts/athena-review.mjs"
   },
   "dependencies": {
+    "@ai-sdk/google": "4.0.92",
     "@tailwindcss/vite": "^4.3.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "ai": "7.0.133",
     "framer-motion": "^12.42.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.575.0",
@@ -32,10 +35,11 @@
   },
   "pnpm": {
     "overrides": {
-      "brace-expansion": "^5.0.9",
+      "brace-expansion": "^5.0.12",
       "dompurify": "^3.4.13",
-      "fast-uri": "^3.1.6",
-      "nanoid": "^3.3.18"
+      "fast-uri": "^3.1.8",
+      "nanoid": "^3.3.18",
+      "source-map-js": "^1.2.2"
     }
   },
   "devDependencies": {

@@ -80,6 +80,15 @@ pnpm dev
 
 To exercise ATHENA locally, create a local environment file based on `.env.example` and run the project through Vercel dev so the serverless API route is available.
 
+Set server-side `ATHENA_TRANSPORT=sdk` to exercise the pinned Vercel AI SDK
+integration. The default `legacy` transport remains available during preview
+review. Both connect directly to Google with `GEMINI_API_KEY` and the same
+Gemini 2.5 Flash settings; Google remains responsible for model usage and billing.
+
+The opt-in [ATHENA review workflow](docs/athena-review-workflow.md) accepts
+synthetic samples only. It runs locally, does not capture production chats and
+produces advisory findings for human review.
+
 Run the full verification set with:
 
 ```bash
@@ -97,6 +106,7 @@ pnpm build
 - React Router
 - Vercel Serverless Functions
 - Gemini 2.5 Flash behind the server-side ATHENA API boundary
+- Pinned Vercel AI SDK with the direct Google provider (server-side opt-in)
 - Vitest + Testing Library
 - Optional Upstash rate limiting
 

@@ -34,13 +34,14 @@ const bearerToken = (headers?: HeaderMap) => {
 export const verifyBaselineRequest = async (headers?: HeaderMap): Promise<BaselineUser | "forbidden" | null> => {
   const token = bearerToken(headers);
   const allowlisted = authorisedEmail();
-  const issuer = authBaseUrl();
-  if (!token || !allowlisted || !issuer) return null;
+  const configuredAuthUrl = authBaseUrl();
+  if (!token || !allowlisted || !configuredAuthUrl) return null;
   const chunks = token.split(".");
   if (chunks.length !== 3) return null;
   try {
     const metadata = b64urlJson(chunks[0]);
     const claims = b64urlJson(chunks[1]);
+    const issuer = new URL(configuredAuthUrl).origin;
     if (metadata.alg !== "EdDSA" || claims.iss !== issuer || !Number.isFinite(claims.exp) || claims.exp <= Date.now() / 1000) return null;
     if (claims.nbf && claims.nbf > Date.now() / 1000) return null;
     const subject = typeof claims.sub === "string" ? claims.sub : "";

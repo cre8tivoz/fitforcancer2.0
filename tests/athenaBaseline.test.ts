@@ -58,8 +58,8 @@ describe("ATHENA baseline backend boundaries", () => {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519");
     const jwk = { ...publicKey.export({ format: "jwk" }), kid: "test-key", alg: "EdDSA", use: "sig" };
     vi.stubEnv("ATHENA_TUNING_EMAIL", "owner@example.test");
-    vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
-    vi.stubEnv("NEON_AUTH_JWKS_URL", "https://auth.example.test/.well-known/jwks.json");
+    vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test/neondb/auth");
+    vi.stubEnv("NEON_AUTH_JWKS_URL", "https://auth.example.test/neondb/auth/.well-known/jwks.json");
     vi.stubEnv("DATABASE_URL", "postgres://db.example.test/test");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ keys: [jwk] }), { status: 200 })));
     dbQuery.mockResolvedValueOnce({ rows: [{ email: "owner@example.test", emailVerified: true }] });
@@ -71,6 +71,8 @@ describe("ATHENA baseline backend boundaries", () => {
     };
 
     expect(await verifyBaselineRequest({ authorization: `Bearer ${token()}` })).toEqual({ email: "owner@example.test" });
+    expect(await verifyBaselineRequest({ authorization: `Bearer ${token({ iss: "https://wrong.example.test" })}` })).toBeNull();
+    expect(await verifyBaselineRequest({ authorization: `Bearer ${token({ iss: "https://auth.example.test/neondb/auth" })}` })).toBeNull();
     dbQuery.mockResolvedValueOnce({ rows: [{ email: "other@example.test", emailVerified: true }] });
     expect(await verifyBaselineRequest({ authorization: `Bearer ${token({ sub: "user-2" })}` })).toBe("forbidden");
     dbQuery.mockResolvedValueOnce({ rows: [{ email: "owner@example.test", emailVerified: false }] });
@@ -78,6 +80,8 @@ describe("ATHENA baseline backend boundaries", () => {
     expect(await verifyBaselineRequest({ authorization: `Bearer ${token({ exp: Math.floor(Date.now() / 1000) - 1 })}` })).toBeNull();
     const forged = token().replace(/.$/, "A");
     expect(await verifyBaselineRequest({ authorization: `Bearer ${forged}` })).toBeNull();
+    vi.stubEnv("NEON_AUTH_BASE_URL", "not a valid URL");
+    expect(await verifyBaselineRequest({ authorization: `Bearer ${token()}` })).toBeNull();
   });
 
   it("serves only the public auth endpoint configuration and requires email setup", async () => {

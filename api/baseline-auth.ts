@@ -1,5 +1,5 @@
 import { isSameOriginRequest, verifyBaselineRequest } from "./_lib/athenaBaselineAuth.js";
-import { proxyMagicLink } from "./_lib/neonAuthProxy.js";
+import { proxyEmailOtp, proxyMagicLink } from "./_lib/neonAuthProxy.js";
 import { checkAthenaAuthRateLimit } from "./rateLimit.js";
 
 type Request = { method?: string; headers?: Record<string, string | string[] | undefined>; body?: unknown; query?: Record<string, string | string[] | undefined> };
@@ -25,16 +25,34 @@ export default async function handler(req: Request, res: Response) {
   const rateLimit = await checkAthenaAuthRateLimit(req.headers);
   if (!rateLimit.allowed) return res.status(429).json({ error: "Unable to send sign-in link" });
   const body = asRecord(req.body);
-  if (body.action !== "magicLink" || typeof body.email !== "string") return res.status(400).json({ error: "Invalid request" });
   const originHeader = req.headers?.origin;
   const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader;
   if (!origin) return res.status(403).json({ error: "Request origin rejected" });
-  if (body.email.trim().toLowerCase() !== (process.env.ATHENA_TUNING_EMAIL ?? "").trim().toLowerCase()) return res.status(200).json({ ok: true });
-  try {
-    const upstream = await proxyMagicLink({ ...req, body }, origin);
-    if (!upstream.ok) return res.status(502).json({ error: "Unable to send sign-in link" });
-    const cookies = upstream.headers.getSetCookie();
-    if (cookies.length) res.setHeader?.("Set-Cookie", cookies);
-  } catch { return res.status(502).json({ error: "Unable to send sign-in link" }); }
-  return res.status(200).json({ ok: true });
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const allowedEmail = (process.env.ATHENA_TUNING_EMAIL ?? "").trim().toLowerCase();
+  if (body.action === "magicLink" || body.action === "sendCode") {
+    if (!email) return res.status(400).json({ error: "Invalid request" });
+    if (email.toLowerCase() !== allowedEmail) return res.status(200).json({ ok: true });
+    try {
+      const upstream = body.action === "magicLink"
+        ? await proxyMagicLink({ ...req, body: { email } }, origin)
+        : await proxyEmailOtp({ ...req, body: { email } }, origin, "send", { email });
+      if (!upstream.ok) return res.status(502).json({ error: "Unable to send sign-in link" });
+      const cookies = upstream.headers.getSetCookie();
+      if (cookies.length) res.setHeader?.("Set-Cookie", cookies);
+      return res.status(200).json({ ok: true });
+    } catch { return res.status(502).json({ error: "Unable to send sign-in link" }); }
+  }
+  if (body.action === "verifyCode") {
+    if (!email || typeof body.otp !== "string" || !/^\d{6,8}$/.test(body.otp)) return res.status(400).json({ error: "Invalid or expired code" });
+    if (email.toLowerCase() !== allowedEmail || !allowedEmail) return res.status(401).json({ error: "Invalid or expired code" });
+    try {
+      const upstream = await proxyEmailOtp({ ...req, body: { email, otp: body.otp } }, origin, "verify", { email, otp: body.otp });
+      if (!upstream.ok) return res.status(401).json({ error: "Invalid or expired code" });
+      const cookies = upstream.headers.getSetCookie();
+      if (cookies.length) res.setHeader?.("Set-Cookie", cookies);
+      return res.status(200).json({ ok: true });
+    } catch { return res.status(502).json({ error: "Unable to verify sign-in code" }); }
+  }
+  return res.status(400).json({ error: "Invalid request" });
 }

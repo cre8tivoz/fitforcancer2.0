@@ -96,12 +96,16 @@ describe("ATHENA baseline backend boundaries", () => {
     expect(state.status).toBe(503);
   });
 
-  it("limits the same-origin auth proxy to session, token, verification, and sign-out routes", async () => {
+  it("limits the same-origin auth proxy to session, token, and sign-out routes", async () => {
     vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
     vi.stubEnv("NEON_AUTH_COOKIE_SECRET", "x".repeat(32));
     const forbidden = makeResponse();
     await neonAuthProxyHandler({ method: "POST", query: { path: ["sign-up", "email"] }, headers: { origin: "https://app.example.test", host: "app.example.test" } }, forbidden.response);
     expect(forbidden.state.status).toBe(404);
+
+    const verification = makeResponse();
+    await neonAuthProxyHandler({ method: "GET", url: "/api/auth/magic-link/verify", headers: { host: "app.example.test" } }, verification.response);
+    expect(verification.state.status).toBe(404);
 
     const crossOrigin = makeResponse();
     await neonAuthProxyHandler({ method: "POST", query: { path: "sign-out" }, headers: { origin: "https://attacker.example", host: "app.example.test" } }, crossOrigin.response);
@@ -156,5 +160,49 @@ describe("ATHENA baseline backend boundaries", () => {
     await baselineAuthHandler({ method: "POST", headers: { origin: "https://app.example.test", host: "app.example.test" }, body: { action: "magicLink", email: "someone-else@example.test" } }, other.response);
     expect(other.state.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends and verifies email OTP only for the allowlisted address and forwards the session cookie", async () => {
+    vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
+    vi.stubEnv("NEON_AUTH_COOKIE_SECRET", "x".repeat(32));
+    vi.stubEnv("ATHENA_TUNING_EMAIL", "owner@example.test");
+    vi.stubEnv("ATHENA_TUNING_ORIGIN", "https://app.example.test");
+    const otpCookie = "__Secure-neon-auth.session_token=session-token; Domain=auth.example.test; HttpOnly; Secure; SameSite=None; Path=/";
+    const sendResponse = new Response(JSON.stringify({ success: true }), { status: 200 });
+    const verifyResponse = new Response(JSON.stringify({ token: "jwt", user: { email: "owner@example.test" } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Set-Cookie": otpCookie },
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(sendResponse)
+      .mockResolvedValueOnce(verifyResponse)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ session: null, user: null }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const sent = makeResponse();
+    await baselineAuthHandler({ method: "POST", headers: { origin: "https://app.example.test", host: "app.example.test" }, body: { action: "sendCode", email: "owner@example.test" } }, sent.response);
+    expect(sent.state.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [sendUrl, sendInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(sendUrl.toString()).toBe("https://auth.example.test/email-otp/send-verification-otp");
+    expect(JSON.parse(String(sendInit.body))).toEqual({ email: "owner@example.test", type: "sign-in" });
+
+    const verified = makeResponse();
+    await baselineAuthHandler({ method: "POST", headers: { origin: "https://app.example.test", host: "app.example.test" }, body: { action: "verifyCode", email: "owner@example.test", otp: "123456" } }, verified.response);
+    expect(verified.state.status).toBe(200);
+    const [verifyUrl, verifyInit] = fetchMock.mock.calls[1] as [URL, RequestInit];
+    expect(verifyUrl.toString()).toBe("https://auth.example.test/sign-in/email-otp");
+    expect(JSON.parse(String(verifyInit.body))).toEqual({ email: "owner@example.test", otp: "123456" });
+    const cookies = verified.state.headers["Set-Cookie"] as string[];
+    expect(cookies).toEqual(expect.arrayContaining([expect.stringContaining("Domain=app.example.test")]));
+    const sessionCookie = cookies.find(value => value.includes("session_token"));
+    expect(sessionCookie).toContain("HttpOnly");
+    expect(sessionCookie).toContain("Secure");
+    expect(sessionCookie).toContain("SameSite=Lax");
+
+    const denied = makeResponse();
+    await baselineAuthHandler({ method: "POST", headers: { origin: "https://app.example.test", host: "app.example.test" }, body: { action: "sendCode", email: "someone-else@example.test" } }, denied.response);
+    expect(denied.state.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

@@ -120,7 +120,6 @@ describe("ATHENA baseline backend boundaries", () => {
     await neonAuthProxyHandler({
       method: "GET",
       url: "/api/auth/get-session",
-      query: { path: "get-session" },
       headers: { host: "app.example.test", "x-forwarded-proto": "https" },
     }, response);
 

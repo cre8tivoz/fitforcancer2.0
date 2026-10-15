@@ -97,8 +97,11 @@ const allowedPath = (method: string, path: string) =>
 
 export async function handleNeonAuthRoute(req: AuthProxyRequest, res: AuthProxyResponse) {
   res.setHeader?.("Cache-Control", "private, no-store");
+  const pathname = req.url ? new URL(req.url, requestOrigin(req)).pathname : "";
+  const urlPath = pathname.startsWith("/api/auth/") ? pathname.slice("/api/auth/".length) : "";
   const pathValue = req.query?.path;
-  const path = Array.isArray(pathValue) ? pathValue.join("/") : pathValue ?? "";
+  const queryPath = Array.isArray(pathValue) ? pathValue.join("/") : pathValue ?? "";
+  const path = urlPath || queryPath;
   const method = (req.method ?? "GET").toUpperCase();
   if (!allowedPath(method, path)) return res.status(404).end?.();
   if (method === "POST" && !isSameOriginRequest(req.headers)) return res.status(403).json?.({ error: "Request origin rejected" });

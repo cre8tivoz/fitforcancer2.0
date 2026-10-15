@@ -90,9 +90,15 @@ describe("ATHENA baseline backend boundaries", () => {
 
   it("serves only the public auth endpoint configuration and requires email setup", async () => {
     vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
+    vi.stubEnv("ATHENA_TUNING_EMAIL", "owner@example.test");
+    const configured = makeResponse();
+    await baselineAuthHandler({ method: "GET", query: { action: "config" }, headers: { "x-forwarded-proto": "https", host: "app.example.test", origin: "https://untrusted.example" } }, configured.response);
+    expect(configured.state.status).toBe(200);
+    expect(configured.state.body).toEqual({ url: "https://app.example.test/api/auth" });
+
     vi.stubEnv("ATHENA_TUNING_EMAIL", " ");
     const { response, state } = makeResponse();
-    await baselineAuthHandler({ method: "GET", query: { action: "config" } }, response);
+    await baselineAuthHandler({ method: "GET", query: { action: "config" }, headers: { "x-forwarded-proto": "https", host: "app.example.test" } }, response);
     expect(state.status).toBe(503);
   });
 

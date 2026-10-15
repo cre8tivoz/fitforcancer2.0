@@ -5,14 +5,29 @@ import { checkAthenaAuthRateLimit } from "./rateLimit.js";
 type Request = { method?: string; headers?: Record<string, string | string[] | undefined>; body?: unknown; query?: Record<string, string | string[] | undefined> };
 type Response = { status(code: number): Response; json(body: unknown): void; setHeader?(key: string, value: string | string[]): void };
 const asRecord = (value: unknown): Record<string, unknown> => typeof value === "string" ? JSON.parse(value) : value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const requestHeader = (headers: Request["headers"], name: string) => {
+  const value = Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
+  return (Array.isArray(value) ? value[0] : value)?.split(",")[0].trim();
+};
+const getAppAuthUrl = (headers: Request["headers"]) => {
+  const protocol = requestHeader(headers, "x-forwarded-proto")?.toLowerCase();
+  const host = requestHeader(headers, "x-forwarded-host") ?? requestHeader(headers, "host");
+  if (!protocol || !host || !["http", "https"].includes(protocol)) return null;
+  try {
+    const appUrl = new URL(`${protocol}://${host}`);
+    if (!appUrl.hostname || appUrl.pathname !== "/" || appUrl.search || appUrl.hash || appUrl.username || appUrl.password) return null;
+    return new URL("/api/auth", appUrl).toString();
+  } catch { return null; }
+};
 
 export default async function handler(req: Request, res: Response) {
   res.setHeader?.("Cache-Control", "private, no-store");
   const action = Array.isArray(req.query?.action) ? req.query?.action[0] : req.query?.action;
   if (req.method === "GET" && action === "config") {
     const url = (process.env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
-    return url && process.env.ATHENA_TUNING_EMAIL?.trim()
-      ? res.status(200).json({ url: "/api/auth" })
+    const appAuthUrl = getAppAuthUrl(req.headers);
+    return url && process.env.ATHENA_TUNING_EMAIL?.trim() && appAuthUrl
+      ? res.status(200).json({ url: appAuthUrl })
       : res.status(503).json({ error: "Authentication is unavailable" });
   }
   if (req.method === "GET" && action === "session") {

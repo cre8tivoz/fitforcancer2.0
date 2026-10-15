@@ -73,16 +73,3 @@ export const isSameOriginRequest = (headers?: HeaderMap) => {
     return parsed.origin === `${proto}://${host.split(",")[0].trim()}`;
   } catch { return false; }
 };
-
-export const requestMagicLink = async (email: string, callbackURL: string) => {
-  const authUrl = authBaseUrl();
-  const allowed = authorisedEmail();
-  if (!authUrl || !allowed || email.trim().toLowerCase() !== allowed) return false;
-  const response = await fetch(`${authUrl}/sign-in/magic-link`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Origin: new URL(callbackURL).origin },
-    body: JSON.stringify({ email: allowed, callbackURL }),
-    signal: AbortSignal.timeout(2500),
-  });
-  return response.ok;
-};

@@ -55,7 +55,7 @@ const BaselinePage: React.FC = () => {
     request<{ url?: string }>('/api/baseline-auth?action=config')
       .then(async config => {
         if (!config.url) throw new Error('Private sign-in is not configured yet. Please try again later.');
-        const client = createBaselineAuthClient(config.url);
+        const client = createBaselineAuthClient(new URL(config.url, window.location.origin).toString());
         if (!active) return;
         setAuthClient(client);
         const session = await client.getSession();

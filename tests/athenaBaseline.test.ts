@@ -1,7 +1,9 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateKeyPairSync, sign } from "node:crypto";
 import baselineHandler from "../api/baseline.js";
 import baselineAuthHandler from "../api/baseline-auth.js";
+import neonAuthProxyHandler from "../api/auth/[...path].js";
 import { normaliseBaselineSettings, DEFAULT_ATHENA_BASELINE } from "../api/_lib/athenaBaseline.js";
 import { verifyBaselineRequest } from "../api/_lib/athenaBaselineAuth.js";
 import { getSystemInstruction } from "../api/_lib/athenaPrompt.js";
@@ -12,11 +14,13 @@ vi.mock("@neondatabase/serverless", () => ({
 }));
 
 const makeResponse = () => {
-  const state: { status?: number; body?: unknown; headers: Record<string, string> } = { headers: {} };
+  const state: { status?: number; body?: unknown; headers: Record<string, string | string[]> } = { headers: {} };
   const response = {
     status(code: number) { state.status = code; return response; },
     json(body: unknown) { state.body = body; },
-    setHeader(key: string, value: string) { state.headers[key] = value; },
+    send(body: string) { state.body = body; },
+    end(body?: string) { state.body = body; },
+    setHeader(key: string, value: string | string[]) { state.headers[key] = value; },
   };
   return { response, state };
 };
@@ -90,5 +94,68 @@ describe("ATHENA baseline backend boundaries", () => {
     const { response, state } = makeResponse();
     await baselineAuthHandler({ method: "GET", query: { action: "config" } }, response);
     expect(state.status).toBe(503);
+  });
+
+  it("limits the same-origin auth proxy to session, token, verification, and sign-out routes", async () => {
+    vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
+    vi.stubEnv("NEON_AUTH_COOKIE_SECRET", "x".repeat(32));
+    const forbidden = makeResponse();
+    await neonAuthProxyHandler({ method: "POST", query: { path: ["sign-up", "email"] }, headers: { origin: "https://app.example.test", host: "app.example.test" } }, forbidden.response);
+    expect(forbidden.state.status).toBe(404);
+
+    const crossOrigin = makeResponse();
+    await neonAuthProxyHandler({ method: "POST", query: { path: "sign-out" }, headers: { origin: "https://attacker.example", host: "app.example.test" } }, crossOrigin.response);
+    expect(crossOrigin.state.status).toBe(403);
+  });
+
+  it("proxies a same-origin session request without Origin and rewrites the challenge cookie", async () => {
+    vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
+    vi.stubEnv("NEON_AUTH_COOKIE_SECRET", "x".repeat(32));
+    const upstreamCookie = "__Secure-neon-auth.session_challenge=challenge; Domain=auth.example.test; HttpOnly; Secure; SameSite=None; Path=/";
+    const upstreamResponse = new Response("null", { status: 200, headers: { "Content-Type": "application/json", "Set-Cookie": upstreamCookie } });
+    const fetchMock = vi.fn().mockResolvedValue(upstreamResponse);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { response, state } = makeResponse();
+    await neonAuthProxyHandler({
+      method: "GET",
+      url: "/api/auth/get-session",
+      query: { path: "get-session" },
+      headers: { host: "app.example.test", "x-forwarded-proto": "https" },
+    }, response);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(new Headers(init.headers).get("Origin")).toBe("https://app.example.test");
+    expect(new Headers(init.headers).get("x-neon-auth-middleware")).toBe("true");
+    const cookies = state.headers["Set-Cookie"];
+    expect(cookies).toEqual(expect.arrayContaining([expect.stringContaining("Domain=app.example.test")]));
+    const challenge = (cookies as string[]).find(value => value.includes("session_challenge"));
+    expect(challenge).toContain("HttpOnly");
+    expect(challenge).toContain("Secure");
+    expect(challenge).toContain("SameSite=Lax");
+  });
+
+  it("sends only the allowlisted address through the Neon SDK proxy with the app callback", async () => {
+    vi.stubEnv("NEON_AUTH_BASE_URL", "https://auth.example.test");
+    vi.stubEnv("NEON_AUTH_COOKIE_SECRET", "x".repeat(32));
+    vi.stubEnv("ATHENA_TUNING_EMAIL", "owner@example.test");
+    vi.stubEnv("ATHENA_TUNING_ORIGIN", "https://app.example.test");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const allowed = makeResponse();
+    await baselineAuthHandler({ method: "POST", headers: { origin: "https://app.example.test", host: "app.example.test" }, body: { action: "magicLink", email: "owner@example.test" } }, allowed.response);
+    expect(allowed.state.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [target, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(target.toString()).toBe("https://auth.example.test/sign-in/magic-link");
+    expect(new Headers(init.headers).get("x-neon-auth-middleware")).toBe("true");
+    expect(JSON.parse(String(init.body))).toEqual({ email: "owner@example.test", callbackURL: "https://app.example.test/baseline" });
+
+    const other = makeResponse();
+    await baselineAuthHandler({ method: "POST", headers: { origin: "https://app.example.test", host: "app.example.test" }, body: { action: "magicLink", email: "someone-else@example.test" } }, other.response);
+    expect(other.state.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

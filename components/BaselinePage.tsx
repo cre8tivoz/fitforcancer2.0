@@ -35,8 +35,6 @@ const BaselinePage: React.FC = () => {
   const [user, setUser] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
-  const [linkSent, setLinkSent] = useState(false);
-  const [useEmailCode, setUseEmailCode] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [emailCode, setEmailCode] = useState('');
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -60,7 +58,7 @@ const BaselinePage: React.FC = () => {
         if (!config.url) throw new Error('Private sign-in is not configured yet. Please try again later.');
         const client = createBaselineAuthClient(new URL(config.url, window.location.origin).toString());
         if (!active) return;
-        setAuthClient(client);
+        setAuthClient(() => client);
         const session = await client.getSession();
         const sessionData = session.data as { user?: { email?: string }; session?: { user?: { email?: string } } } | null;
         const sessionUser = sessionData?.user || sessionData?.session?.user;
@@ -77,7 +75,6 @@ const BaselinePage: React.FC = () => {
     try { await operation(); } catch (e) { const message = e instanceof Error ? e.message : 'Something went wrong. Please try again.'; if (e instanceof ApiError && e.status === 403) { setAccessDenied(true); setUser(null); } if (message.includes('session has expired')) setUser(null); setError(e instanceof ApiError && e.status === 403 ? 'Access is not available for this account.' : message); }
     finally { setBusy(''); }
   };
-  const sendLink = () => run('link', async () => { await request('/api/baseline-auth', { method: 'POST', body: JSON.stringify({ action: 'magicLink', email: email.trim() }) }); setLinkSent(true); setNotice('If this address is authorised, a sign-in link is on its way.'); });
   const sendCode = () => run('code', async () => { await request('/api/baseline-auth', { method: 'POST', body: JSON.stringify({ action: 'sendCode', email: email.trim() }) }); setCodeSent(true); setNotice('If this address is authorised, a sign-in code is on its way.'); });
   const verifyCode = () => run('verify', async () => {
     await request('/api/baseline-auth', { method: 'POST', body: JSON.stringify({ action: 'verifyCode', email: email.trim(), otp: emailCode.trim() }) });
@@ -91,7 +88,7 @@ const BaselinePage: React.FC = () => {
     await loadConfig(authClient);
     setNotice('Signed in successfully.');
   });
-  const signOut = () => run('signout', async () => { if (!authClient) return; const result = await authClient.signOut(); if (result.error) throw new Error(result.error.message || 'Unable to sign out.'); setUser(null); setAccessDenied(false); setPreview(null); setLinkSent(false); setCodeSent(false); setEmailCode(''); setUseEmailCode(false); setNotice('You have signed out.'); });
+  const signOut = () => run('signout', async () => { if (!authClient) return; const result = await authClient.signOut(); if (result.error) throw new Error(result.error.message || 'Unable to sign out.'); setUser(null); setAccessDenied(false); setPreview(null); setCodeSent(false); setEmailCode(''); setNotice('You have signed out.'); });
   const saveDraft = () => run('save', async () => { await request('/api/baseline', { method: 'PUT', body: JSON.stringify({ action: 'saveDraft', settings }) }, authClient || undefined); setSavedSettings(settings); setNotice('Draft saved. Visitors are still using the published version.'); if (authClient) await loadConfig(authClient); });
   const runPreview = () => run('preview', async () => { const result = await request<PreviewResult>('/api/baseline', { method: 'POST', body: JSON.stringify({ action: 'preview', scenario: selectedScenario, settings }) }, authClient || undefined); setPreview(result); });
   const publish = () => run('publish', async () => { await request('/api/baseline', { method: 'POST', body: JSON.stringify({ action: 'publish', settings }) }, authClient || undefined); setNotice('Draft published. ATHENA will use it for new conversations.'); if (authClient) await loadConfig(authClient); });
@@ -100,7 +97,23 @@ const BaselinePage: React.FC = () => {
   return <div className="min-h-screen bg-[color:var(--color-bg)] px-4 py-6 sm:px-8 sm:py-10"><div className="mx-auto max-w-4xl">
     <header className="mb-8 flex items-center justify-between gap-4"><Link to="/" className={`${buttonClass} bg-white text-[color:var(--color-text)] shadow-sm`}><ArrowLeft size={16} /> Back to Fit For Cancer</Link>{user && <button type="button" onClick={signOut} disabled={!!busy} className={`${buttonClass} bg-stone-200 text-stone-800`}><LogOut size={16} /> Sign out</button>}</header>
     <div className="mb-7"><div className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-[color:var(--color-primary)]"><SlidersHorizontal size={16} /> ATHENA</div><h1 className="text-3xl font-bold sm:text-4xl">Conversation tuning</h1><p className="mt-2 max-w-2xl text-[color:var(--color-text-muted)]">Adjust the tone and shape of ATHENA’s replies, test a few synthetic examples, then publish when the draft feels right.</p></div>
-    {!authChecked ? <div className="rounded-2xl border border-stone-200 bg-white p-6 text-stone-600">Checking your sign-in…</div> : accessDenied ? <section className="max-w-xl rounded-2xl border border-amber-200 bg-white p-6 shadow-sm sm:p-8"><h2 className="text-xl font-bold">Access unavailable</h2><p className="mt-2 text-sm text-stone-600">This signed-in account does not have access to private tuning.</p><button type="button" onClick={signOut} disabled={!!busy} className={`${buttonClass} mt-5 bg-stone-100 text-stone-800`}><LogOut size={16} /> Sign out</button></section> : !user ? <section className="max-w-xl rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8"><h2 className="text-xl font-bold">Sign in</h2><p className="mt-1 text-sm text-stone-600">Enter your authorised email address to receive a one-time sign-in link or code.</p><form className="mt-5" onSubmit={e => { e.preventDefault(); void (useEmailCode ? sendCode() : sendLink()); }}><label className="block text-sm font-semibold" htmlFor="baseline-email">Email address</label><input id="baseline-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className={controlClass} placeholder="you@example.com" /><button type="submit" disabled={!!busy} className={`${buttonClass} mt-4 w-full bg-[color:var(--color-nav)] text-white`}>{busy === 'link' || busy === 'code' ? 'Sending…' : <><Send size={16} /> {useEmailCode ? 'Send sign-in code' : 'Send sign-in link'}</>}</button></form>{useEmailCode && codeSent && <form className="mt-4" onSubmit={e => { e.preventDefault(); void verifyCode(); }}><label className="block text-sm font-semibold" htmlFor="baseline-code">Email code</label><input id="baseline-code" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={8} required value={emailCode} onChange={e => setEmailCode(e.target.value.replace(/\D/g, ''))} className={controlClass} placeholder="Enter your code" /><button type="submit" disabled={!!busy} className={`${buttonClass} mt-3 w-full bg-[color:var(--color-accent)] text-[color:var(--color-nav)]`}>{busy === 'verify' ? 'Verifying…' : 'Verify code'}</button></form>}{useEmailCode && codeSent && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">If this address is authorised, check your inbox for a sign-in code.</p>}<button type="button" disabled={!!busy} onClick={() => { setUseEmailCode(!useEmailCode); setCodeSent(false); setEmailCode(''); setError(''); setNotice(''); }} className="mt-4 text-sm font-semibold text-[color:var(--color-primary)] underline">{useEmailCode ? 'Use a sign-in link instead' : 'Use an email code instead'}</button>{linkSent && <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">Check your inbox for a sign-in link. This page will be ready after you return.</p>}</section> : <>
+    {!authChecked ? <div className="rounded-2xl border border-stone-200 bg-white p-6 text-stone-600">Checking your sign-in…</div> : accessDenied ? <section className="max-w-xl rounded-2xl border border-amber-200 bg-white p-6 shadow-sm sm:p-8"><h2 className="text-xl font-bold">Access unavailable</h2><p className="mt-2 text-sm text-stone-600">This signed-in account does not have access to private tuning.</p><button type="button" onClick={signOut} disabled={!!busy} className={`${buttonClass} mt-5 bg-stone-100 text-stone-800`}><LogOut size={16} /> Sign out</button></section> : !user ? <section className="max-w-xl rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+      <h2 className="text-xl font-bold">Sign in</h2>
+      <p className="mt-1 text-sm text-stone-600">Enter your authorised email address to receive a one-time sign-in code.</p>
+      <form className="mt-5" onSubmit={e => { e.preventDefault(); void sendCode(); }}>
+        <label className="block text-sm font-semibold" htmlFor="baseline-email">Email address</label>
+        <input id="baseline-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className={controlClass} placeholder="you@example.com" />
+        <button type="submit" disabled={!!busy} className={`${buttonClass} mt-4 w-full bg-[color:var(--color-nav)] text-white`}>{busy === 'code' ? 'Sending…' : <><Send size={16} /> Send sign-in code</>}</button>
+      </form>
+      {codeSent && <>
+        <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">If this address is authorised, check your inbox for a sign-in code.</p>
+        <form className="mt-4" onSubmit={e => { e.preventDefault(); void verifyCode(); }}>
+          <label className="block text-sm font-semibold" htmlFor="baseline-code">Email code</label>
+          <input id="baseline-code" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={8} pattern="[0-9]{6,8}" required value={emailCode} onChange={e => setEmailCode(e.target.value.replace(/\D/g, ''))} className={controlClass} placeholder="Enter your code" />
+          <button type="submit" disabled={!!busy} className={`${buttonClass} mt-3 w-full bg-[color:var(--color-accent)] text-[color:var(--color-nav)]`}>{busy === 'verify' ? 'Verifying…' : 'Verify code'}</button>
+        </form>
+      </>}
+    </section> : <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"><span className="flex items-center gap-2"><Check size={16} /> Signed in as <strong>{user}</strong></span><span className="text-emerald-800">Draft changes stay private until published.</span></div>
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"><section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-7"><h2 className="text-xl font-bold">Draft settings</h2><p className="mt-1 text-sm text-stone-600">Small adjustments to how ATHENA responds.</p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">

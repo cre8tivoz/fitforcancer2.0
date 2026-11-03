@@ -9,7 +9,8 @@ interface RateLimitBucket {
 const buckets = new Map<string, RateLimitBucket>();
 
 const DEFAULT_WINDOW_MS = 10 * 60 * 1000;
-const DEFAULT_LIMIT = 20;
+// Protected QA preview only: permit the synthetic evaluation batch.
+const DEFAULT_LIMIT = 200;
 
 let durableLimiter: Ratelimit | null | undefined;
 let authLimiter: Ratelimit | null | undefined;

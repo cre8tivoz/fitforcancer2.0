@@ -95,3 +95,17 @@ can offer several catalogue cards despite mentioning only two in prose. These
 are recorded limitations of recommendation quality, not evidence that all
 clinical or conversational behaviour has been exhaustively validated. Clinical
 choice and dosing requests were refused in the tested conversations.
+
+## CI security-audit follow-up
+
+The original Verify job passed install, type checking, 301 tests and build, but
+failed its high-severity dependency audit (12 high and 2 critical findings).
+The earlier deployment-success report did not establish overall CI success.
+
+Updated DOMPurify, Better Auth and its support libraries, Zod, Undici, Vite and
+Happy DOM to patched versions, with the lockfile regenerated using pnpm 10.34.5.
+The high-severity audit gate is unchanged. Local audit now reports zero high and
+zero critical findings (4 low and 8 moderate remain below the configured gate).
+Private tuning calls now pass explicit request options required by the patched
+auth client. Component tests use Motion's JavaScript animation fallback because
+Happy DOM 21 rejects canceled native-animation promises during test cleanup.

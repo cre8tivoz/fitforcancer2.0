@@ -19,7 +19,7 @@ const createBaselineAuthClient = (url: string) => createAuthClient(url);
 type AuthClient = ReturnType<typeof createBaselineAuthClient>;
 class ApiError extends Error { constructor(message: string, readonly status: number) { super(message); } }
 async function request<T>(url: string, init?: RequestInit, authClient?: AuthClient): Promise<T> {
-  const tokenResult = authClient ? await authClient.token() : null;
+  const tokenResult = authClient ? await authClient.token({ query: {} }) : null;
   const token = tokenResult?.data?.token;
   if (authClient && (!token || tokenResult?.error)) throw new Error('Your session has expired. Sign in again.');
   const response = await fetch(url, { ...init, credentials: 'same-origin', headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init?.headers } });
@@ -59,7 +59,7 @@ const BaselinePage: React.FC = () => {
         const client = createBaselineAuthClient(new URL(config.url, window.location.origin).toString());
         if (!active) return;
         setAuthClient(() => client);
-        const session = await client.getSession();
+        const session = await client.getSession({ query: {} });
         const sessionData = session.data as { user?: { email?: string }; session?: { user?: { email?: string } } } | null;
         const sessionUser = sessionData?.user || sessionData?.session?.user;
         if (session.error) throw new Error(session.error.message || 'Unable to check your sign-in.');
@@ -79,7 +79,7 @@ const BaselinePage: React.FC = () => {
   const verifyCode = () => run('verify', async () => {
     await request('/api/baseline-auth', { method: 'POST', body: JSON.stringify({ action: 'verifyCode', email: email.trim(), otp: emailCode.trim() }) });
     if (!authClient) throw new Error('Unable to check your sign-in. Please try again.');
-    const session = await authClient.getSession();
+    const session = await authClient.getSession({ query: {} });
     const data = session.data as { user?: { email?: string }; session?: { user?: { email?: string } } } | null;
     const signedInUser = data?.user || data?.session?.user;
     if (session.error || !signedInUser?.email) throw new Error(session.error?.message || 'Unable to confirm your sign-in. Please try again.');
@@ -88,7 +88,7 @@ const BaselinePage: React.FC = () => {
     await loadConfig(authClient);
     setNotice('Signed in successfully.');
   });
-  const signOut = () => run('signout', async () => { if (!authClient) return; const result = await authClient.signOut(); if (result.error) throw new Error(result.error.message || 'Unable to sign out.'); setUser(null); setAccessDenied(false); setPreview(null); setCodeSent(false); setEmailCode(''); setNotice('You have signed out.'); });
+  const signOut = () => run('signout', async () => { if (!authClient) return; const result = await authClient.signOut({}); if (result.error) throw new Error(result.error.message || 'Unable to sign out.'); setUser(null); setAccessDenied(false); setPreview(null); setCodeSent(false); setEmailCode(''); setNotice('You have signed out.'); });
   const saveDraft = () => run('save', async () => { await request('/api/baseline', { method: 'PUT', body: JSON.stringify({ action: 'saveDraft', settings }) }, authClient || undefined); setSavedSettings(settings); setNotice('Draft saved. Visitors are still using the published version.'); if (authClient) await loadConfig(authClient); });
   const runPreview = () => run('preview', async () => { const result = await request<PreviewResult>('/api/baseline', { method: 'POST', body: JSON.stringify({ action: 'preview', scenario: selectedScenario, settings }) }, authClient || undefined); setPreview(result); });
   const publish = () => run('publish', async () => { await request('/api/baseline', { method: 'POST', body: JSON.stringify({ action: 'publish', settings }) }, authClient || undefined); setNotice('Draft published. ATHENA will use it for new conversations.'); if (authClient) await loadConfig(authClient); });

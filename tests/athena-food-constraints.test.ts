@@ -64,6 +64,14 @@ describe('recipe restrictions from the current conversation',()=>{
   expect(result.items.map(i=>i.id)).toEqual(['8']);
   expect(result.items[0]).toHaveProperty('format','meal');
  });
+ it.each(['I need a meal instead of a shake.', 'I need a meal rather than a shake.'])('rejects the drink alternative: %s',message=>{
+  const constraints=deriveRecipeConstraints([...history('I need a meal.'),{role:'user',content:message}]);
+  expect(constraints).toMatchObject({mealOnly:true,drinkOnly:false});
+  expect(recommendRecipes('🟡 Yellow','any',1,[],constraints).items.map(i=>i.id)).toEqual(['8']);
+ });
+ it('allows a shake when it is requested instead of a meal',()=>{
+  expect(deriveRecipeConstraints(history('I need a shake instead of a meal.'))).toMatchObject({mealOnly:false,drinkOnly:true});
+ });
  it('does not require a meal when the user explicitly wants a snack instead',()=>{
   const constraints=deriveRecipeConstraints(history('I do not want a meal, just a snack. Recommend one zero-prep recipe.'));
   expect(constraints).toMatchObject({mealOnly:false,solidOnly:true,drinkOnly:false});

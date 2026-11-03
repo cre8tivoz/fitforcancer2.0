@@ -58,7 +58,7 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
       const request = clause.match(/\b(?:want|like|recommend|suggest|have|need|just|only)\b.{0,35}?\b(?:drink|smoothie|shake|cooler|snack)\b/);
       if (!request) continue;
       const prefix = clause.slice(Math.max(0, (request.index || 0) - 15), request.index);
-      const negated = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drink|smoothie|shake|cooler|snack)\b/.test(request[0]);
+      const negated = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drink|smoothie|shake|cooler|snack)\b/.test(request[0]);
       if (!negated) { const snack = /snack\b$/.test(request[0]); result.mealOnly = false; result.solidOnly = snack; result.drinkOnly = !snack; }
     }
   }

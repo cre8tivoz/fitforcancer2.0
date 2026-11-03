@@ -115,7 +115,7 @@ https://aistudio.google.com/docs/pricing#gemini-3.6-flash
 
 ## Final automated validation
 
-324 tests pass across 42 files, including general nut wording and the distinction
+327 tests pass across 42 files, including general nut wording and the distinction
 between solid snacks and complete meals. Type checking and production build pass.
 The existing high-severity dependency-audit gate is unchanged.
 
@@ -123,3 +123,6 @@ Final review follow-up adds regression coverage for contrasting ingredient permi
 coordinated exclusion lists, switching from meals to drinks while retaining allergies,
 and classifying strained broth as a drink. These are deterministic selector changes;
 the earlier raw model transcripts remain an unaltered record of their tested revision.
+
+Review also adds explicit negated-meal, later-snack and past-meal-mention cases,
+so the presence of the word meal does not itself force a meal-only filter.

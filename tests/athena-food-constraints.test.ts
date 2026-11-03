@@ -56,6 +56,18 @@ describe('recipe restrictions from the current conversation',()=>{
   expect(result.items.map(i=>i.id)).toEqual(['8']);
   expect(result.items[0]).toHaveProperty('format','meal');
  });
+ it('does not require a meal when the user explicitly wants a snack instead',()=>{
+  const constraints=deriveRecipeConstraints(history('I do not want a meal, just a snack. Recommend one zero-prep recipe.'));
+  expect(constraints).toMatchObject({mealOnly:false,solidOnly:true,drinkOnly:false});
+  expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items.map(i=>i.id)).toEqual(['12']);
+ });
+ it('allows a later request for just a snack to replace the prior meal restriction',()=>{
+  const constraints=deriveRecipeConstraints([...history('I need a meal.'),{role:'user',content:'Just a snack instead, please.'}]);
+  expect(constraints).toMatchObject({mealOnly:false,solidOnly:true});
+ });
+ it('does not turn a past meal mention into a new meal-only request',()=>{
+  expect(deriveRecipeConstraints(history('I had lunch earlier. Recommend one zero-prep recipe.'))).not.toHaveProperty('mealOnly');
+ });
  it('does not use model claims to invent or erase user restrictions',()=>{
   expect(deriveRecipeConstraints([{role:'model',content:'You are vegan and allergic to milk.'}])).toEqual({});
   expect(deriveRecipeConstraints([...history('I am vegan.'),{role:'model',content:'You are not vegan anymore.'}])).toMatchObject({vegan:true});

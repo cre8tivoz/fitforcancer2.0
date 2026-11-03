@@ -72,6 +72,19 @@ describe('recipe restrictions from the current conversation',()=>{
  it('allows a shake when it is requested instead of a meal',()=>{
   expect(deriveRecipeConstraints(history('I need a shake instead of a meal.'))).toMatchObject({mealOnly:false,drinkOnly:true});
  });
+ it.each(['I need meals, not drinks.', 'Recommend lunches instead of shakes.'])('retains plural meal requests: %s',message=>{
+  const constraints=deriveRecipeConstraints(history(message));
+  expect(constraints).toMatchObject({mealOnly:true,drinkOnly:false});
+  expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items).toEqual([]);
+ });
+ it.each(['I only want snacks.', 'I just need snacks.'])('allows a later plural snack request: %s',message=>{
+  const constraints=deriveRecipeConstraints([...history('I need meals.'),{role:'user',content:message}]);
+  expect(constraints).toMatchObject({mealOnly:false,solidOnly:true,drinkOnly:false});
+ });
+ it('honours plural drink requests and rejected meals',()=>{
+  const constraints=deriveRecipeConstraints(history('I need shakes instead of meals.'));
+  expect(constraints).toMatchObject({mealOnly:false,drinkOnly:true});
+ });
  it('does not require a meal when the user explicitly wants a snack instead',()=>{
   const constraints=deriveRecipeConstraints(history('I do not want a meal, just a snack. Recommend one zero-prep recipe.'));
   expect(constraints).toMatchObject({mealOnly:false,solidOnly:true,drinkOnly:false});

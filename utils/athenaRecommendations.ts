@@ -49,17 +49,17 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
       if (stated) allergens.add(name);
     }
     for (const clause of clauses) {
-      const requested = /\b(?:want|need|like|recommend|suggest|give|show|find|have|make|looking for|after)\b.{0,75}\b(?:meal|lunch|dinner|breakfast)\b|\b(?:actual|proper|full)\s+meal\b|\b(?:meal|lunch|dinner|breakfast)\s+(?:please|idea|option|recipe)\b/.test(clause);
-      const negated = /(?:don't|do not|not|no longer)\s+(?:really\s+)?(?:want|need|like|have|recommend|suggest)\b[^,;.!?]{0,24}\b(?:meal|lunch|dinner|breakfast)\b|\b(?:no|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+|full\s+|proper\s+)?(?:meal|lunch|dinner|breakfast)\b/.test(clause);
+      const requested = /\b(?:want|need|like|recommend|suggest|give|show|find|have|make|looking for|after)\b.{0,75}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:actual|proper|full)\s+meals?\b|\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\s+(?:please|idea|option|recipe)\b/.test(clause);
+      const negated = /(?:don't|do not|not|no longer)\s+(?:really\s+)?(?:want|need|like|have|recommend|suggest)\b[^,;.!?]{0,24}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:no|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+|full\s+|proper\s+)?(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b/.test(clause);
       if (requested || negated) { result.mealOnly = !negated; result.drinkOnly = false; }
     }
-    if (/something (?:i can |to )?eat|not a drink|solid food/.test(text)) { result.solidOnly = true; result.drinkOnly = false; }
+    if (/something (?:i can |to )?eat|not (?:a )?drinks?|solid food/.test(text)) { result.solidOnly = true; result.drinkOnly = false; }
     for (const clause of clauses.flatMap(clause => clause.split(','))) {
-      const request = clause.match(/\b(?:want|like|recommend|suggest|have|need|just|only)\b.{0,35}?\b(?:drink|smoothie|shake|cooler|snack)\b/);
+      const request = clause.match(/\b(?:want|like|recommend|suggest|have|need|just|only)\b.{0,35}?\b(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/);
       if (!request) continue;
       const prefix = clause.slice(Math.max(0, (request.index || 0) - 15), request.index);
-      const negated = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drink|smoothie|shake|cooler|snack)\b/.test(request[0]);
-      if (!negated) { const snack = /snack\b$/.test(request[0]); result.mealOnly = false; result.solidOnly = snack; result.drinkOnly = !snack; }
+      const negated = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/.test(request[0]);
+      if (!negated) { const snack = /snacks?\b$/.test(request[0]); result.mealOnly = false; result.solidOnly = snack; result.drinkOnly = !snack; }
     }
   }
   if (allergens.size) result.excludedAllergens = [...allergens];

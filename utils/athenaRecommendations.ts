@@ -1,7 +1,57 @@
+import { ATHENA_RECIPE_INGREDIENTS } from "./athenaRecipeIngredients.js";
 import type { ChatContext, Recipe } from "../types";
 
 export type RecommendationKind = "movement" | "recipe";
 export type RecommendationRef = { kind: RecommendationKind; id: string };
+
+export interface RecipeConstraints { mealOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[] }
+const ALLERGENS: Record<string, RegExp> = {
+  peanut: /peanuts?/, tree_nut: /almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?|brazil nuts?/,
+  milk: /milk|cream|yog[uh]?urt|yoghurt|cheese|feta|butter|custard|parmesan|milo|horlicks/,
+  egg: /\beggs?\b/, fish: /fish|sardines?|salmon|tuna/, shellfish: /shellfish|prawns?|shrimp|crab|lobster/,
+  wheat: /wheat|gluten|flour|bread|toast|spaghetti|fettuccine|oats|milo|horlicks/,
+  sesame: /sesame|tahini/, soy: /soy|soya|tofu/,
+};
+const ALLERGEN_NAMES: Record<string, RegExp> = { ...ALLERGENS,
+  milk: /milk|dairy|lactose/, wheat: /wheat|gluten|coeliac|celiac/,
+  tree_nut: /tree nuts?|almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?/,
+};
+const DRINK_IDS = new Set(['1','10','11','14']);
+const MEAL_IDS = new Set(['5','6','7','8','9','13','17']);
+const PROTEIN_IDS = new Set(['1','5','8','9','11','12','13','14','17']);
+
+// Conservatively retain explicit food restrictions from user turns. Model prose
+// cannot remove them. This screens listed ingredients, not manufacturing labels
+// or cross-contact, and must never be presented as allergy certification.
+export const deriveRecipeConstraints = (history: readonly { role: string; content: string }[]): RecipeConstraints => {
+  const result: RecipeConstraints = {}; const allergens = new Set<string>();
+  for (const turn of history) {
+    if (turn.role !== 'user') continue;
+    const text = turn.content.toLowerCase();
+    if (/\bvegan\b/.test(text) && !/not (?:a )?vegan/.test(text)) result.vegan = true;
+    if (/\bvegetarian\b/.test(text) && !/not (?:a )?vegetarian/.test(text)) result.vegetarian = true;
+    for (const [name, pattern] of Object.entries(ALLERGEN_NAMES)) {
+      const ingredient = `\\b(?:${pattern.source})\\b`;
+      const negated = new RegExp(`(?:not allergic to|no allergy to)\\s+(?:${pattern.source})|no\\s+(?:${pattern.source})\\s+allergy`).test(text);
+      const stated = new RegExp(`(?:allerg\\w*|anaphyla\\w*|intoleran\\w*|avoid|can't (?:eat|have)|cannot (?:eat|have)).{0,35}${ingredient}|${ingredient}.{0,20}(?:allerg\\w*|intoleran\\w*)|(?:no|without)\\s+(?:any\\s+)?${ingredient}|${ingredient}[- ]free`).test(text);
+      if (stated && !negated) allergens.add(name);
+    }
+    if (/\bmeal\b|\blunch\b|\bdinner\b|\bbreakfast\b|something (?:I can |to )?eat|not a drink/.test(text)) result.mealOnly = true;
+    if (!/not|\bno\b|without|rather than/.test(text) && /(?:want|like|recommend|suggest|have|need).{0,25}(?:drink|smoothie|shake|cooler)/.test(text)) result.mealOnly = false;
+  }
+  if (allergens.size) result.excludedAllergens = [...allergens];
+  return result;
+};
+
+const recipeMatchesConstraints = (id: string, constraints: RecipeConstraints): boolean => {
+  const ingredients = ATHENA_RECIPE_INGREDIENTS[id];
+  if (!ingredients) return false;
+  const text = ingredients.join(' ').toLowerCase();
+  if (constraints.mealOnly && !MEAL_IDS.has(id)) return false;
+  if (constraints.vegan && /milk|cream|yoghurt|yogurt|cheese|feta|butter|custard|parmesan|eggs?|chicken|fish|sardine|honey|milo|horlicks/.test(text)) return false;
+  if (constraints.vegetarian && /chicken|fish|sardine|beef|pork|lamb/.test(text)) return false;
+  return !(constraints.excludedAllergens || []).some(name => ALLERGENS[name]?.test(text));
+};
 
 type ZoneName = "Green" | "Yellow" | "Red";
 export type MovementPreference =
@@ -200,6 +250,7 @@ export const recommendRecipes = (
   preferenceInput: unknown = "any",
   countInput: unknown = 3,
   excludedIdsInput: readonly string[] = [],
+  constraints: RecipeConstraints = {},
 ) => {
   const zone = getZoneName(fatigueZone);
   const preference = normaliseRecipePreference(preferenceInput);
@@ -215,7 +266,7 @@ export const recommendRecipes = (
     };
   }
 
-  const sameZoneAll = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
+  const sameZoneAll = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone && recipeMatchesConstraints(item.id, constraints));
   const sameZone = sameZoneAll.filter((item) => !excludedIds.has(item.id));
 
   if (sameZone.length === 0 && sameZoneAll.length > 0 && excludedIds.size > 0) {
@@ -231,9 +282,16 @@ export const recommendRecipes = (
 
   const preferred = preference === "any"
     ? sameZone
-    : sameZone.filter((item) => RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference);
+    : sameZone.filter((item) => (preference === "high_protein" ? PROTEIN_IDS.has(item.id) : RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference));
   const preferenceMatched = preference === "any" || preferred.length > 0;
-  const items = (preferenceMatched ? preferred : sameZone).slice(0, count);
+  const items = (preferenceMatched ? preferred : sameZone).slice(0, count).map(item => ({
+    ...item, ingredients: ATHENA_RECIPE_INGREDIENTS[item.id],
+    format: DRINK_IDS.has(item.id) ? 'drink' : MEAL_IDS.has(item.id) ? 'meal' : 'snack',
+  }));
+  if (!items.length) return {
+    status: 'no_suitable_results' as const, kind: 'recipe' as const, zone, preference, items: [],
+    message: 'No catalogue recipe matches the stated food restrictions and meal request in this fatigue band. Explain the gap honestly and offer a simple general idea if useful. Do not substitute an unsuitable item, claim another search is running, or call tools again.',
+  };
 
   return {
     status: "ok" as const,
@@ -241,6 +299,7 @@ export const recommendRecipes = (
     zone,
     preference,
     preferenceMatched,
+    safetyNote: 'Listed ingredients only: check actual product labels and cross-contact advice for allergies. Never guarantee an item is allergy-safe.',
     items,
   };
 };
@@ -299,6 +358,7 @@ export const executeAthenaRecommendationTool = (
   args: unknown,
   fatigueZone: ChatContext["fatigueZone"],
   previousRecommendations: readonly RecommendationRef[] = [],
+  constraints: RecipeConstraints = {},
 ): { response: Record<string, unknown>; refs: RecommendationRef[] } => {
   const safeArgs = args && typeof args === "object" && !Array.isArray(args)
     ? (args as Record<string, unknown>)
@@ -321,7 +381,7 @@ export const executeAthenaRecommendationTool = (
     const excludedIds = safeArgs.avoid_previous === true
       ? previousRecommendations.filter((ref) => ref.kind === "recipe").map((ref) => ref.id)
       : [];
-    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count, excludedIds);
+    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count, excludedIds, constraints);
     return {
       response,
       refs: response.status === "ok"

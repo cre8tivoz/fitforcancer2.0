@@ -2,6 +2,8 @@ import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
 import {
   ATHENA_RECOMMENDATION_TOOL_DECLARATIONS,
   executeAthenaRecommendationTool,
+  deriveRecipeConstraints,
+  type RecipeConstraints,
   type RecommendationRef,
 } from "../utils/athenaRecommendations.js";
 import { getFatigueZone } from "../utils/fatigueScore.js";
@@ -329,6 +331,7 @@ export const executeBoundedRecommendationCalls = (
   executeTool: typeof executeAthenaRecommendationTool = executeAthenaRecommendationTool,
   previousRecommendationRefs: RecommendationRef[] = [],
   defaultCount = 3,
+  recipeConstraints: RecipeConstraints = {},
 ) => {
   const seenDomains = new Set<string>();
   const recommendationRefs: RecommendationRef[] = [];
@@ -361,7 +364,9 @@ export const executeBoundedRecommendationCalls = (
         const args = (call.name === "recommend_movement" || call.name === "recommend_recipe") && !Number.isInteger(call.args?.count)
           ? { ...call.args, count: defaultCount }
           : call.args;
-        execution = executeTool(call.name, args, fatigueZone, previousRecommendationRefs);
+        execution = Object.keys(recipeConstraints).length
+          ? executeTool(call.name, args, fatigueZone, previousRecommendationRefs, recipeConstraints)
+          : executeTool(call.name, args, fatigueZone, previousRecommendationRefs);
         if (isRecommendationDomain) successfulRecommendationOperations += 1;
       } catch {
         if (isRecommendationDomain) failedRecommendationOperations += 1;
@@ -603,6 +608,7 @@ const handleSdkJsonRequest = async (
       executeAthenaRecommendationTool,
       collectPreviousRecommendationRefs(body.history!),
       baseline.suggestionCount,
+      deriveRecipeConstraints(body.history!),
     );
     if (execution.allRecommendationExecutionsFailed) {
       diagnostics.errorCategory = "upstream";
@@ -723,6 +729,7 @@ const handleSdkStreamingRequest = async (
       executeAthenaRecommendationTool,
       collectPreviousRecommendationRefs(body.history!),
       baseline.suggestionCount,
+      deriveRecipeConstraints(body.history!),
     );
     if (execution.allRecommendationExecutionsFailed) {
       writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
@@ -961,6 +968,7 @@ const handleStreamingRequest = async (
       executeAthenaRecommendationTool,
       collectPreviousRecommendationRefs(body.history!),
       baseline.suggestionCount,
+      deriveRecipeConstraints(body.history!),
     );
 
     if (allRecommendationExecutionsFailed) {
@@ -1143,6 +1151,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
         executeAthenaRecommendationTool,
         collectPreviousRecommendationRefs(body.history!),
         baseline.suggestionCount,
+      deriveRecipeConstraints(body.history!),
       );
       const functionResponseParts = boundedExecution.functionResponseParts;
       recommendationRefs = boundedExecution.recommendationRefs;

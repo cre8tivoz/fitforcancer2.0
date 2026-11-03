@@ -23,6 +23,14 @@ describe('recipe restrictions from the current conversation',()=>{
   expect(deriveRecipeConstraints(history('I have no energy. Can I have peanut butter?'))).not.toHaveProperty('excludedAllergens');
   expect(deriveRecipeConstraints(history('I have no peanut allergy.'))).not.toHaveProperty('excludedAllergens');
  });
+ it('treats a general nut allergy conservatively, including peanuts',()=>{
+  const result=recommendRecipes('🔴 Red','zero_prep',3,[],deriveRecipeConstraints(history('I am allergic to nuts.')));
+  expect(result.items.map(i=>i.id)).not.toContain('11');
+ });
+ it('can return a solid snack when food rather than a complete meal is requested',()=>{
+  const result=recommendRecipes('🔴 Red','any',1,[],deriveRecipeConstraints(history('I need something to eat, not a drink.')));
+  expect(result.items.map(i=>i.id)).toEqual(['12']);
+ });
  it('does not use model claims to invent or erase user restrictions',()=>{
   expect(deriveRecipeConstraints([{role:'model',content:'You are vegan and allergic to milk.'}])).toEqual({});
   expect(deriveRecipeConstraints([...history('I am vegan.'),{role:'model',content:'You are not vegan anymore.'}])).toMatchObject({vegan:true});

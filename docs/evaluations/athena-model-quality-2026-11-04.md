@@ -112,3 +112,9 @@ input tokens and US$3.75 per million output/thinking tokens through 31 December
 2026, increasing to US$1.50 / US$7.50 on 1 January 2027. These are published unit
 rates, not measured Athena bills. Source checked 4 November 2026:
 https://aistudio.google.com/docs/pricing#gemini-3.6-flash
+
+## Final automated validation
+
+318 tests pass across 42 files, including general nut wording and the distinction
+between solid snacks and complete meals. Type checking and production build pass.
+The existing high-severity dependency-audit gate is unchanged.

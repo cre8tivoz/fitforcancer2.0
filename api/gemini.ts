@@ -8,7 +8,7 @@ import { getFatigueZone } from "../utils/fatigueScore.js";
 import { checkGeminiRateLimit, getHeaderValue } from "./rateLimit.js";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { getSystemInstruction } from "./_lib/athenaPrompt.js";
-import { ATHENA_MODEL, ATHENA_TIMEOUT_MS, getAthenaTransport } from "./_lib/athenaConfig.js";
+import { ATHENA_MODEL, ATHENA_TIMEOUT_MS, ATHENA_GENERATION_SETTINGS, ATHENA_GOOGLE_OPTIONS, getAthenaTransport } from "./_lib/athenaConfig.js";
 import { safeAthenaMetadata } from "./_lib/athenaPrivacy.js";
 import { getPublishedBaseline, type AthenaBaselineSettings } from "./_lib/athenaBaseline.js";
 import { buildAthenaSynthesisMessages, generateAthenaRecovery, generateAthenaSynthesis, streamAthenaSelection, streamAthenaSynthesis } from "./_lib/athenaGoogle.js";
@@ -126,14 +126,10 @@ const MAX_HISTORY_MESSAGES = 32;
 // public endpoint to forward an unbounded amount of health-related text.
 const MAX_MESSAGE_CHARS = 8000;
 const MAX_TOTAL_CHARS = 60000;
-const MAX_OUTPUT_TOKENS = 512;
-// Gemini's token cap covers both thinking and visible output. ATHENA's prompt
-// calls for concise replies, so disable hidden reasoning on every request to
-// avoid turning an otherwise complete streamed reply into MAX_TOKENS.
+// Both transports must send the same model generation configuration.
 const GEMINI_GENERATION_CONFIG = {
-  temperature: 0.7,
-  maxOutputTokens: MAX_OUTPUT_TOKENS,
-  thinkingConfig: { thinkingBudget: 0 },
+  ...ATHENA_GENERATION_SETTINGS,
+  ...ATHENA_GOOGLE_OPTIONS,
 };
 const VALID_ROLES = new Set(["user", "model"]);
 const VALID_CANCER_TYPES = new Set(["bowel", "melanoma", "breast", "prostate", "lung", "blood_myeloma", "other"]);
@@ -149,6 +145,9 @@ const validateRequestBody = (body: GeminiRequestBody): string | null => {
     if (!msg || !VALID_ROLES.has(msg.role) || typeof msg.content !== "string" || msg.content.length < 1 || msg.content.length > MAX_MESSAGE_CHARS) {
       return "Request history contains an invalid message";
     }
+  }
+  if (body.history.at(-1)?.role !== "user" || !body.history.at(-1)?.content.trim()) {
+    return "Request history must end with a non-empty user message";
   }
   const totalChars = body.history.reduce((sum, msg) => sum + msg.content.length, 0);
   if (totalChars > MAX_TOTAL_CHARS) {
@@ -233,7 +232,7 @@ const extractText = (payload: any): string | null => {
     }
 
     const text = parts
-      .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+      .map((part: any) => (part?.thought !== true && typeof part?.text === "string" ? part.text : ""))
       .join("")
       .trim();
 
@@ -248,7 +247,7 @@ const extractText = (payload: any): string | null => {
 const extractTextChunk = (payload: any): string => {
   const parts = payload?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return "";
-  return parts.map((part: any) => (typeof part?.text === "string" ? part.text : "")).join("");
+  return parts.map((part: any) => (part?.thought !== true && typeof part?.text === "string" ? part.text : "")).join("");
 };
 
 const extractFunctionCalls = (payload: any): GeminiFunctionCall[] => {
@@ -453,6 +452,7 @@ const isConsumableGeminiStreamPayload = (payload: unknown): boolean => {
     content.parts.some((part) => {
       if (!isRecordValue(part)) return false;
       if (typeof part.text === "string" && part.text.length > 0) return true;
+      if (typeof part.thoughtSignature === "string" && part.thoughtSignature.length > 0) return true;
       const functionCall = part.functionCall;
       return (
         isRecordValue(functionCall) &&

@@ -26,14 +26,13 @@ describe("ATHENA direct Google SDK adapter", () => {
     });
 
     expect(result.text).toBe("Synthetic answer");
-    expect(capturedUrl).toContain("generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
+    expect(capturedUrl).toContain("generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
     expect(capturedHeaders?.get("x-goog-api-key")).toBe("test-only-key");
     expect(capturedBody?.systemInstruction.parts[0].text).toBe("Synthetic instruction");
     expect(capturedBody?.contents).toEqual([{ role: "user", parts: [{ text: "Synthetic question" }] }]);
     expect(capturedBody?.generationConfig).toMatchObject({
-      temperature: 0.7,
-      maxOutputTokens: 512,
-      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingLevel: "medium" },
     });
     const declarations = capturedBody?.tools?.[0]?.functionDeclarations;
     expect(declarations.map((tool: { name: string }) => tool.name)).toEqual([

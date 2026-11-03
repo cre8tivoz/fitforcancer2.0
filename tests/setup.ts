@@ -26,6 +26,15 @@ if (typeof window !== "undefined") {
 
 // ─── Browser API mocks for component tests ─────────────────
 if (typeof window !== "undefined") {
+  // Component tests assert content and navigation, not native animation timing.
+  // Use Motion's JavaScript fallback: Happy DOM 21's canceled WAAPI promises
+  // otherwise reject during component cleanup.
+  Object.defineProperty(window.Element.prototype, "animate", {
+    configurable: true,
+    writable: true,
+    value: undefined,
+  });
+
   // document/element scrolling
   window.scrollTo = vi.fn();
   window.HTMLElement.prototype.scrollIntoView = () => undefined;

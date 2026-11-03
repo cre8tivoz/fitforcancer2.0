@@ -96,6 +96,7 @@ export const toAthenaModelMessages = (history: AthenaHistoryMessage[]): ModelMes
 
 const commonOptions = (apiKey: string, fetchImpl?: typeof fetch) => ({
   model: providerFor(apiKey, fetchImpl)(ATHENA_MODEL),
+  temperature: 0.7,
   maxOutputTokens: ATHENA_GENERATION_SETTINGS.maxOutputTokens,
   providerOptions: { google: ATHENA_GOOGLE_OPTIONS },
   maxRetries: 0,

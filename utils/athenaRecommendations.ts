@@ -4,7 +4,7 @@ import type { ChatContext, Recipe } from "../types";
 export type RecommendationKind = "movement" | "recipe";
 export type RecommendationRef = { kind: RecommendationKind; id: string };
 
-export interface RecipeConstraints { mealOnly?: boolean; solidOnly?: boolean; drinkOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[] }
+export interface RecipeConstraints { mealOnly?: boolean; solidOnly?: boolean; drinkOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[]; excludedRecipeIds?: string[] }
 const ALLERGENS: Record<string, RegExp> = {
   peanut: /peanuts?/, tree_nut: /almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?|brazil nuts?/,
   milk: /milk|cream|yog[uh]?urt|yoghurt|cheese|feta|butter|custard|parmesan|milo|horlicks/,
@@ -48,18 +48,31 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
       });
       if (stated) allergens.add(name);
     }
-    for (const clause of clauses) {
+    // Apply corrections in conversation order, including corrections within a turn.
+    for (const clause of clauses.flatMap(clause => clause.split(','))) {
       const requested = /\b(?:want|need|like|recommend|suggest|give|show|find|have|make|looking for|after)\b.{0,75}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:actual|proper|full)\s+meals?\b|\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\s+(?:please|idea|option|recipe)\b/.test(clause);
       const negated = /(?:don't|do not|not|no longer)\s+(?:really\s+)?(?:want|need|like|have|recommend|suggest)\b[^,;.!?]{0,24}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:no|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+|full\s+|proper\s+)?(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b/.test(clause);
-      if (requested || negated) { result.mealOnly = !negated; result.drinkOnly = false; }
-    }
-    if (/something (?:i can |to )?eat|not (?:a )?drinks?|solid food/.test(text)) { result.solidOnly = true; result.drinkOnly = false; }
-    for (const clause of clauses.flatMap(clause => clause.split(','))) {
+      if (requested || negated) {
+        result.mealOnly = !negated;
+        if (!negated) { result.drinkOnly = false; result.solidOnly = false; }
+      }
+      if (/something (?:i can |to )?eat|solid food/.test(clause)) { result.solidOnly = true; result.drinkOnly = false; }
       const request = clause.match(/\b(?:want|like|recommend|suggest|have|need|just|only)\b.{0,35}?\b(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/);
-      if (!request) continue;
-      const prefix = clause.slice(Math.max(0, (request.index || 0) - 15), request.index);
-      const negated = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/.test(request[0]);
-      if (!negated) { const snack = /snacks?\b$/.test(request[0]); result.mealOnly = false; result.solidOnly = snack; result.drinkOnly = !snack; }
+      if (request) {
+        const prefix = clause.slice(Math.max(0, (request.index || 0) - 15), request.index);
+        const rejected = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/.test(request[0]);
+        if (!rejected) {
+          const snack = /snacks?\b$/.test(request[0]);
+          result.mealOnly = false; result.solidOnly = snack; result.drinkOnly = !snack;
+          delete result.excludedRecipeIds;
+        }
+      }
+      const excluded = new Set(result.excludedRecipeIds || []);
+      for (const match of clause.matchAll(/\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(drinks?|smoothies?|shakes?|coolers?)\b/g)) {
+        const ids = /^drink/.test(match[1]) ? [...DRINK_IDS] : /^cooler/.test(match[1]) ? ['10'] : ['1','11'];
+        for (const id of ids) excluded.add(id);
+      }
+      if (excluded.size) result.excludedRecipeIds = [...excluded];
     }
   }
   if (allergens.size) result.excludedAllergens = [...allergens];
@@ -68,7 +81,7 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
 
 const recipeMatchesConstraints = (id: string, constraints: RecipeConstraints): boolean => {
   const ingredients = ATHENA_RECIPE_INGREDIENTS[id];
-  if (!ingredients) return false;
+  if (!ingredients || constraints.excludedRecipeIds?.includes(id)) return false;
   const text = ingredients.join(' ').toLowerCase();
   if (constraints.mealOnly && !MEAL_IDS.has(id)) return false;
   if (constraints.solidOnly && DRINK_IDS.has(id)) return false;

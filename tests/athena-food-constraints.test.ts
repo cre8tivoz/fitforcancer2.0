@@ -85,6 +85,19 @@ describe('recipe restrictions from the current conversation',()=>{
   const constraints=deriveRecipeConstraints(history('I need shakes instead of meals.'));
   expect(constraints).toMatchObject({mealOnly:false,drinkOnly:true});
  });
+ it.each(['I need a shake, but I want a meal instead.', 'I want a shake. I need a meal instead.'])('applies corrections in clause order: %s',message=>{
+  const constraints=deriveRecipeConstraints(history(message));
+  expect(constraints).toMatchObject({mealOnly:true,drinkOnly:false});
+  expect(recommendRecipes('🟡 Yellow','any',1,[],constraints).items.map(i=>i.id)).toEqual(['8']);
+ });
+ it.each(['not shakes', 'not a shake', 'no smoothies'])('filters standalone exclusions: %s',exclusion=>{
+  const constraints=deriveRecipeConstraints(history(`Recommend one zero-prep recipe, ${exclusion}.`));
+  expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items.map(i=>i.id)).toEqual(['12']);
+ });
+ it('allows a later explicit shake request to replace a prior format exclusion',()=>{
+  const constraints=deriveRecipeConstraints([...history('No shakes.'),{role:'user',content:'I want a shake instead.'}]);
+  expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items.map(i=>i.id)).toEqual(['11']);
+ });
  it('does not require a meal when the user explicitly wants a snack instead',()=>{
   const constraints=deriveRecipeConstraints(history('I do not want a meal, just a snack. Recommend one zero-prep recipe.'));
   expect(constraints).toMatchObject({mealOnly:false,solidOnly:true,drinkOnly:false});

@@ -115,7 +115,7 @@ https://aistudio.google.com/docs/pricing#gemini-3.6-flash
 
 ## Final automated validation
 
-338 tests pass across 42 files, including general nut wording and the distinction
+344 tests pass across 42 files, including general nut wording and the distinction
 between solid snacks and complete meals. Type checking and production build pass.
 The existing high-severity dependency-audit gate is unchanged.
 
@@ -132,3 +132,5 @@ Final review also identified standalone coeliac/celiac declarations that did not
 Alternative phrasing (a meal instead of/rather than a shake, and the reverse) is also covered so rejected drink alternatives cannot overwrite the requested meal format.
 
 Plural format terms (meals, lunches, drinks, shakes and snacks) now receive equivalent filtering and switching behaviour, with regression coverage.
+
+Format corrections are processed in clause order. Standalone drink-format exclusions are applied to canonical IDs, with later explicit format requests able to replace prior format exclusions; allergy restrictions remain retained.

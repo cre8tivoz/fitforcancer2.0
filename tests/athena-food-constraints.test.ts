@@ -90,7 +90,7 @@ describe('recipe restrictions from the current conversation',()=>{
   expect(constraints).toMatchObject({mealOnly:true,drinkOnly:false});
   expect(recommendRecipes('🟡 Yellow','any',1,[],constraints).items.map(i=>i.id)).toEqual(['8']);
  });
- it.each(['not shakes', 'not a shake', 'no smoothies'])('filters standalone exclusions: %s',exclusion=>{
+ it.each(['not shakes', 'not a shake', 'no smoothies', 'I do not want a shake', "I don't want shakes", 'I do not need drinks'])('filters standalone exclusions: %s',exclusion=>{
   const constraints=deriveRecipeConstraints(history(`Recommend one zero-prep recipe, ${exclusion}.`));
   expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items.map(i=>i.id)).toEqual(['12']);
  });

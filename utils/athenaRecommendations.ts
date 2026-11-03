@@ -68,7 +68,7 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
         }
       }
       const excluded = new Set(result.excludedRecipeIds || []);
-      for (const match of clause.matchAll(/\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(drinks?|smoothies?|shakes?|coolers?)\b/g)) {
+      for (const match of clause.matchAll(/\b(?:no|not|don't|do not|without|instead of|rather than)\s+(?:(?:really\s+)?(?:want|need|like|have)\s+)?(?:a\s+|any\s+|another\s+)?(drinks?|smoothies?|shakes?|coolers?)\b/g)) {
         const ids = /^drink/.test(match[1]) ? [...DRINK_IDS] : /^cooler/.test(match[1]) ? ['10'] : ['1','11'];
         for (const id of ids) excluded.add(id);
       }

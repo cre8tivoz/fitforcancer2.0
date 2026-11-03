@@ -26,6 +26,7 @@ const strictGeminiStreamFetch = (baseFetch: typeof fetch): typeof fetch => async
     const parts = candidate?.content?.parts;
     const hasPart = Array.isArray(parts) && parts.some((part: any) =>
       (typeof part?.text === "string" && part.text.length > 0) ||
+      (typeof part?.thoughtSignature === "string" && part.thoughtSignature.length > 0) ||
       (typeof part?.functionCall?.name === "string" && part.functionCall.name.length > 0));
     const reason = candidate?.finishReason;
     if (!Array.isArray(payload?.candidates) || !candidate || (!hasPart && !(typeof reason === "string" && reason.length > 0))) {
@@ -95,7 +96,6 @@ export const toAthenaModelMessages = (history: AthenaHistoryMessage[]): ModelMes
 
 const commonOptions = (apiKey: string, fetchImpl?: typeof fetch) => ({
   model: providerFor(apiKey, fetchImpl)(ATHENA_MODEL),
-  temperature: ATHENA_GENERATION_SETTINGS.temperature,
   maxOutputTokens: ATHENA_GENERATION_SETTINGS.maxOutputTokens,
   providerOptions: { google: ATHENA_GOOGLE_OPTIONS },
   maxRetries: 0,

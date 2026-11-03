@@ -1,7 +1,9 @@
+import { ATHENA_MODEL } from "./athenaConfig.js";
+
 /** Metadata-only production diagnostics. Unknown fields and arbitrary text are dropped. */
 export function safeAthenaMetadata(input: Record<string, unknown>): Record<string, string | number | boolean> {
   const enums: Record<string, ReadonlySet<string>> = {
-    model: new Set(["gemini-2.5-flash"]),
+    model: new Set([ATHENA_MODEL]),
     transport: new Set(["google-generate-content"]),
     finishReason: new Set(["stop", "tool-calls", "length", "blocked", "unknown", "error"]),
     errorCategory: new Set(["timeout", "aborted", "upstream", "invalid-response", "rate-limit", "configuration"]),

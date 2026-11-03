@@ -69,8 +69,8 @@ describe("/api/gemini handler", () => {
     const fetchArgs = fetchMock.mock.calls[0];
     expect(fetchArgs[0]).not.toContain("key=");
     expect(fetchArgs[1].headers["x-goog-api-key"]).toBe("test-key");
-    expect(JSON.parse(fetchArgs[1].body).generationConfig.maxOutputTokens).toBe(512);
-    expect(JSON.parse(fetchArgs[1].body).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(JSON.parse(fetchArgs[1].body).generationConfig.maxOutputTokens).toBe(4096);
+    expect(JSON.parse(fetchArgs[1].body).generationConfig.thinkingConfig).toEqual({ thinkingLevel: "medium" });
   });
 
   it("rejects 33 messages as too long (MAX_HISTORY_MESSAGES=32)", async () => {

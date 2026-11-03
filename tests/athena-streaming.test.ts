@@ -393,6 +393,7 @@ describe('/api/gemini SSE transport', () => {
               role: 'model',
               parts: [
                 {
+                  thoughtSignature: 'synthetic-recovery-signature',
                   functionCall: {
                     id: 'movement-recovered-1',
                     name: 'recommend_movement',
@@ -445,11 +446,13 @@ describe('/api/gemini SSE transport', () => {
 
     const firstPassBody = JSON.parse(fetchMock.mock.calls[0][1].body);
     const recoveryBody = JSON.parse(fetchMock.mock.calls[1][1].body);
-    expect(firstPassBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
-    expect(recoveryBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(firstPassBody.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "medium" });
+    expect(recoveryBody.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "medium" });
 
     const synthesisBody = JSON.parse(fetchMock.mock.calls[2][1].body);
-    expect(synthesisBody.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(synthesisBody.contents.at(-2).parts).toContainEqual(expect.objectContaining({ thoughtSignature: "synthetic-recovery-signature" }));
+
+    expect(synthesisBody.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "medium" });
     const responses = synthesisBody.contents.at(-1).parts.map((part: any) => part.functionResponse);
     expect(responses.map((response: any) => [response.id, response.name])).toEqual([
       ['movement-recovered-1', 'recommend_movement'],

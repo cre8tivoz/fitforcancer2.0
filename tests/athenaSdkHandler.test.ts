@@ -70,14 +70,14 @@ describe("/api/gemini SDK transport", () => {
     expect(requests).toHaveLength(1);
     expect(diagnostic).toHaveBeenCalledWith("[athena] generation", expect.objectContaining({
       requestId: expect.stringMatching(/^[a-f0-9]{12}$/),
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash-lite",
       transport: "google-generate-content",
       callCount: 1,
       recoveryCount: 0,
       finishReason: "stop",
     }));
     expect(JSON.stringify(diagnostic.mock.calls)).not.toContain("Hello from synthetic ATHENA.");
-    expect(requests[0].url).toContain("gemini-2.5-flash:streamGenerateContent");
+    expect(requests[0].url).toContain("gemini-3.5-flash-lite:streamGenerateContent");
   });
 
   it("synthesizes SDK tool results with original conversation history", async () => {
@@ -89,7 +89,7 @@ describe("/api/gemini SDK transport", () => {
       if (url.includes(":streamGenerateContent")) {
         return requests.length === 1
           ? sse(candidate([
-            { functionCall: { id: "recipe-call", name: "recommend_recipe", args: { count: 1 } } },
+            { thoughtSignature: "synthetic-selection-signature", functionCall: { id: "recipe-call", name: "recommend_recipe", args: { count: 1 } } },
             { functionCall: { id: "movement-call", name: "recommend_movement", args: { count: 1 } } },
           ]))
           : sse(candidate([{ text: "Here are synthetic recipe and movement suggestions." }]));
@@ -131,7 +131,7 @@ describe("/api/gemini SDK transport", () => {
           : sse(candidate([{ text: "Recovered synthesis answer." }]));
       }
       if (url.includes(":generateContent")) {
-        return json(candidate([{ functionCall: { id: "recovered-call", name: "recommend_recipe", args: { count: 1 } } }]));
+        return json(candidate([{ thoughtSignature: "synthetic-recovery-signature", functionCall: { id: "recovered-call", name: "recommend_recipe", args: { count: 1 } } }]));
       }
       throw new Error(`Unexpected provider route ${url}`);
     });
@@ -147,5 +147,6 @@ describe("/api/gemini SDK transport", () => {
       "Earlier synthetic question", "Earlier synthetic answer", "Recommend one recipe",
     ]);
     expect(JSON.stringify(synthesisContents)).toContain("recovered-call");
+    expect(synthesisContents.at(-2).parts).toContainEqual(expect.objectContaining({ thoughtSignature: "synthetic-recovery-signature" }));
   });
 });

@@ -11,4 +11,4 @@ export const ATHENA_GOOGLE_OPTIONS = {
 
 // Server-only rollout switch. Unknown values fail closed to the legacy path.
 export const getAthenaTransport = (): "legacy" | "sdk" =>
-  process.env.ATHENA_TRANSPORT === "sdk" ? "sdk" : "legacy";
+  "sdk";

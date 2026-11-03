@@ -18,6 +18,7 @@ const ALLERGEN_NAMES: Record<string, RegExp> = { ...ALLERGENS,
 };
 const DRINK_IDS = new Set(['1','10','11','14']);
 const MEAL_IDS = new Set(['5','6','7','8','9','13','17']);
+// Existing catalogue options with protein ingredients; not a nutrient-content guarantee.
 const PROTEIN_IDS = new Set(['1','5','8','9','11','12','13','14','17']);
 
 // Conservatively retain explicit food restrictions from user turns. Model prose

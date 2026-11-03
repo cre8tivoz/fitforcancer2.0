@@ -26,7 +26,7 @@ describe("ATHENA direct Google SDK adapter", () => {
     });
 
     expect(result.text).toBe("Synthetic answer");
-    expect(capturedUrl).toContain("generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
+    expect(capturedUrl).toContain("generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent");
     expect(capturedHeaders?.get("x-goog-api-key")).toBe("test-only-key");
     expect(capturedBody?.systemInstruction.parts[0].text).toBe("Synthetic instruction");
     expect(capturedBody?.contents).toEqual([{ role: "user", parts: [{ text: "Synthetic question" }] }]);

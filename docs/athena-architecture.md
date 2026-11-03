@@ -213,7 +213,7 @@ For conversational novelty requests such as "another recipe" or "something diffe
 
 This remains one bounded tool round followed by one synthesis call with function calling disabled. It is not an autonomous or recursive agent loop.
 
-If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. Gemini 3.5 Flash-Lite uses medium thinking on every generation call, including recovery, with a provisional 4096-token ceiling shared by thinking and output. Thinking text is excluded from user-visible replies. See `athena-gemini3-migration.md` for the live validation gate. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
+If the streamed first-pass selection finishes with `STOP` but produces neither usable text nor a complete tool call, ATHENA may retry that same selection once with unary `generateContent`. Gemini 3.6 Flash uses medium thinking on every generation call, including recovery, with a provisional 4096-token ceiling shared by thinking and output. Thinking text is excluded from user-visible replies. See `athena-gemini3-migration.md` for the live validation gate. The recovered result returns to the existing bounded tool/synthesis flow, and no further retry loop is permitted.
 
 If that recovery still produces no usable text/tool output, the server logs only response-shape metadata (finish reason, candidate/part counts and part kinds) for troubleshooting. Prompt text, response text, function arguments, fatigue/cancer context and conversation history are not included in that diagnostic.
 
@@ -341,7 +341,7 @@ Accounts or durable cloud chat history must be scoped separately with explicit r
 
 The server-only `ATHENA_TRANSPORT` setting chooses one adapter at request start:
 `legacy` (the default during review) or `sdk`. Both use stable
-`gemini-3.5-flash-lite`, no sampling overrides, a provisional 4096-token maximum and medium thinking.
+`gemini-3.6-flash`, no sampling overrides, a provisional 4096-token maximum and medium thinking.
 The SDK uses an explicit direct Google provider with the existing server key.
 AI Gateway and Interactions are not used; Google usage, project logging and
 billing remain separate from application diagnostics.

@@ -4,7 +4,7 @@ import type { ChatContext, Recipe } from "../types";
 export type RecommendationKind = "movement" | "recipe";
 export type RecommendationRef = { kind: RecommendationKind; id: string };
 
-export interface RecipeConstraints { mealOnly?: boolean; solidOnly?: boolean; drinkOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[]; excludedRecipeIds?: string[] }
+export interface RecipeConstraints { mealOnly?: boolean; snackOnly?: boolean; solidOnly?: boolean; drinkOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[]; excludedRecipeIds?: string[] }
 const ALLERGENS: Record<string, RegExp> = {
   peanut: /peanuts?/, tree_nut: /almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?|brazil nuts?/,
   milk: /milk|cream|yog[uh]?urt|yoghurt|cheese|feta|butter|custard|parmesan|milo|horlicks/,
@@ -18,7 +18,7 @@ const ALLERGEN_NAMES: Record<string, RegExp> = { ...ALLERGENS,
   tree_nut: /(?:tree )?nuts?|almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?/,
 };
 const RESTRICTION_LIST = new RegExp(
-  `\\b(?:no|without|avoid)\\s+(?:any\\s+)?((?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')})(?:\\s*(?:,|\\band\\b|\\bor\\b|/)\\s*(?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')}))*)`, 'g',
+  `\\b(?:no|without|avoid|do not want|don't want)\\s+(?:any\\s+)?((?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')})(?:\\s*(?:,|\\band\\b|\\bor\\b|/)\\s*(?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')}))*)`, 'g',
 );
 const DRINK_IDS = new Set(['1','2','10','11','14']);
 const MEAL_IDS = new Set(['5','6','7','8','9','13','17']);
@@ -54,7 +54,7 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
       const negated = /(?:don't|do not|not|no longer)\s+(?:really\s+)?(?:want|need|like|have|recommend|suggest)\b[^,;.!?]{0,24}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:no|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+|full\s+|proper\s+)?(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b/.test(clause);
       if (requested || negated) {
         result.mealOnly = !negated;
-        if (!negated) { result.drinkOnly = false; result.solidOnly = false; }
+        if (!negated) { result.drinkOnly = false; result.solidOnly = false; result.snackOnly = false; }
       }
       if (/something (?:i can |to )?eat|solid food/.test(clause)) { result.solidOnly = true; result.drinkOnly = false; }
       const request = clause.match(/\b(?:want|like|recommend|suggest|have|need|just|only)\b.{0,35}?\b(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/);
@@ -63,7 +63,7 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
         const rejected = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/.test(request[0]);
         if (!rejected) {
           const snack = /snacks?\b$/.test(request[0]);
-          result.mealOnly = false; result.solidOnly = snack; result.drinkOnly = !snack;
+          result.mealOnly = false; result.solidOnly = snack; result.snackOnly = snack; result.drinkOnly = !snack;
           delete result.excludedRecipeIds;
         }
       }
@@ -84,6 +84,7 @@ const recipeMatchesConstraints = (id: string, constraints: RecipeConstraints): b
   if (!ingredients || constraints.excludedRecipeIds?.includes(id)) return false;
   const text = ingredients.join(' ').toLowerCase();
   if (constraints.mealOnly && !MEAL_IDS.has(id)) return false;
+  if (constraints.snackOnly && (MEAL_IDS.has(id) || DRINK_IDS.has(id))) return false;
   if (constraints.solidOnly && DRINK_IDS.has(id)) return false;
   if (constraints.drinkOnly && !DRINK_IDS.has(id)) return false;
   if (constraints.vegan && /milk|cream|yoghurt|yogurt|cheese|feta|butter|custard|parmesan|eggs?|chicken|fish|sardine|honey|milo|horlicks/.test(text)) return false;

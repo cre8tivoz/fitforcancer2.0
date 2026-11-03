@@ -1,6 +1,6 @@
 # Athena Gemini 3.5 Flash-Lite migration
 
-Status: implementation candidate; live model evaluation and release approval pending.
+Status: automated regression checks and live preview evaluation completed on 3 November 2026.
 
 Google's 3 November 2026 account notice redirects `gemini-2.5-flash` to
 `gemini-3.5-flash-lite` on 1 December 2026. The public deprecation page now
@@ -35,9 +35,8 @@ change does not verify or alter the existing Google project's retention settings
 
 ## Release gate
 
-Automated mocks verify request construction and error handling, not model tone,
-clinical appropriateness, actual token usage or latency. This workspace has no
-Gemini API key. Use a preview configured with the existing paid project to test:
+Automated mocks verify request construction and error handling. Live preview checks
+used synthetic inputs with the existing paid project, through both transports:
 
 | Scenario | Check |
 | --- | --- |
@@ -51,9 +50,7 @@ Gemini API key. Use a preview configured with the existing paid project to test:
 
 Record completion, latency, token counts and reviewer observations using only
 synthetic inputs. Check `MAX_TOKENS` and the 25-second deadline explicitly.
-Compare 3.6 Flash with the same prompt only if Flash-Lite fails the quality gate;
-this PR makes no claim about comparative live quality. Do not merge merely
-because mocked tests pass.
+No comparative model benchmark was performed; these checks evaluate this migration.
 
 Before 1 December a previous deployment can be restored for temporary rollback.
 After the redirect, reverting to the 2.5 model string does not restore 2.5
@@ -66,3 +63,35 @@ behaviour; retain Gemini 3-compatible configuration and use a validated model.
 - https://aistudio.google.com/docs/whats-new-gemini-3.6#migrate-to-gemini-3-5-flash-lite
 - https://aistudio.google.com/docs/thinking
 - https://github.com/google-gemini/gemini-skills/blob/main/skills/gemini-api-dev/SKILL.md
+
+## Validation results — 3 November 2026
+
+- 301 tests pass across 41 files, including eight added fault checks for the
+  25-second request deadline and rejected upstream requests in both transports,
+  JSON and streaming. Pre-stream failures return an HTTP error; started SDK
+  streams report an error without a success event.
+- TypeScript checking and production build pass.
+- Initial Codex review on `55099ee` completed without findings.
+- Live legacy preview: `dpl_Gx28hPKgXNun3sAzLvfxLKE4JU6e`.
+- Live SDK preview: `dpl_CY9bQGtRYQDMspd5qtgtYTQb6cRp`; branch-only
+  ATHENA_TRANSPORT=sdk makes the review preview match production's transport.
+- Both previews use the same application tree. Greeting, combined catalogue
+  calls, follow-up conversation, fatigue 8 and 10, and clinical-decision refusal
+  were exercised. JSON responses and streaming completion were inspected.
+- Browser checks at fatigue 7 and 8 confirmed rendered catalogue cards, working
+  follow-ups and treatment/dose refusal, without visible thinking text.
+- SDK server diagnostics: seven successful sampled requests finished with STOP,
+  zero recovery calls, 1.834–5.799 seconds server time, 4,114–10,066 input tokens
+  and 499–1,690 output tokens per request. Tool requests used two calls. These
+  are synthetic samples, not a production latency or billing guarantee.
+- SDK client timings for six successful model cases were 5.11–9.86 seconds,
+  including network overhead. No truncation or missing-signature errors observed.
+- Faults and interrupted/truncated stream handling were verified with controlled
+  automated tests; failures were not deliberately injected into Google's service.
+
+Quality observation: the low-energy catalogue sometimes returns a cooler or shake
+for an easy-meal request, and the model may call that a meal. Follow-up requests
+can offer several catalogue cards despite mentioning only two in prose. These
+are recorded limitations of recommendation quality, not evidence that all
+clinical or conversational behaviour has been exhaustively validated. Clinical
+choice and dosing requests were refused in the tested conversations.

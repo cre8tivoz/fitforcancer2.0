@@ -24,6 +24,7 @@ const invoke = async (transport: string, streaming: boolean, history = [{ role: 
   return out;
 };
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   delete process.env.GEMINI_API_KEY;
@@ -64,6 +65,39 @@ describe.each(['legacy', 'sdk'])('Gemini 3 migration: %s', transport => {
     expect(output).not.toContain('synthetic-call-signature');
     if (streaming) expect(output).toContain('event: done');
     else expect(out.status).toBe(200);
+  });
+
+  it.each([false, true])('ends with an error when the whole-request deadline expires (stream=%s)', async streaming => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url: unknown, init: any) => new Promise((_resolve, reject) => {
+      const abort = () => reject(new DOMException('Synthetic timeout', 'AbortError'));
+      if (init.signal.aborted) abort();
+      else init.signal.addEventListener('abort', abort, { once: true });
+    })));
+    const pending = invoke(transport, streaming);
+    await vi.advanceTimersByTimeAsync(25_001);
+    const out = await pending;
+    if (streaming && out.chunks.length > 0) {
+      expect(out.chunks.join('')).toContain('event: error');
+      expect(out.chunks.join('')).not.toContain('event: done');
+    } else {
+      expect(out.status).toBeGreaterThanOrEqual(500);
+      expect(out.body.error).toBeTruthy();
+    }
+  });
+
+  it.each([false, true])('handles an upstream rejection without reporting success (stream=%s)', async streaming => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { message: 'Synthetic rejection' } }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    })));
+    const out = await invoke(transport, streaming);
+    if (streaming && out.chunks.length > 0) {
+      expect(out.chunks.join('')).toContain('event: error');
+      expect(out.chunks.join('')).not.toContain('event: done');
+    } else {
+      expect(out.status).toBeGreaterThanOrEqual(400);
+      expect(out.body.error).toBeTruthy();
+    }
   });
 
   it('accepts signature-only streaming chunks without displaying them', async () => {

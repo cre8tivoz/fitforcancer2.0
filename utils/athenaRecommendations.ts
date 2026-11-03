@@ -4,11 +4,11 @@ import type { ChatContext, Recipe } from "../types";
 export type RecommendationKind = "movement" | "recipe";
 export type RecommendationRef = { kind: RecommendationKind; id: string };
 
-export interface RecipeConstraints { mealOnly?: boolean; solidOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[] }
+export interface RecipeConstraints { mealOnly?: boolean; solidOnly?: boolean; drinkOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[] }
 const ALLERGENS: Record<string, RegExp> = {
   peanut: /peanuts?/, tree_nut: /almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?|brazil nuts?/,
   milk: /milk|cream|yog[uh]?urt|yoghurt|cheese|feta|butter|custard|parmesan|milo|horlicks/,
-  egg: /\beggs?\b/, fish: /fish|sardines?|salmon|tuna/, shellfish: /shellfish|prawns?|shrimp|crab|lobster/,
+  egg: /\beggs?\b|custard/, fish: /fish|sardines?|salmon|tuna/, shellfish: /shellfish|prawns?|shrimp|crab|lobster/,
   wheat: /wheat|gluten|flour|bread|toast|spaghetti|fettuccine|oats|milo|horlicks/,
   sesame: /sesame|tahini/, soy: /soy|soya|tofu/,
 };
@@ -17,7 +17,10 @@ const ALLERGEN_NAMES: Record<string, RegExp> = { ...ALLERGENS,
   milk: /milk|dairy|lactose/, wheat: /wheat|gluten|coeliac|celiac/,
   tree_nut: /(?:tree )?nuts?|almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?/,
 };
-const DRINK_IDS = new Set(['1','10','11','14']);
+const RESTRICTION_LIST = new RegExp(
+  `\\b(?:no|without|avoid)\\s+(?:any\\s+)?((?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')})(?:\\s*(?:,|\\band\\b|\\bor\\b|/)\\s*(?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')}))*)`, 'g',
+);
+const DRINK_IDS = new Set(['1','2','10','11','14']);
 const MEAL_IDS = new Set(['5','6','7','8','9','13','17']);
 // Existing catalogue options with protein ingredients; not a nutrient-content guarantee.
 const PROTEIN_IDS = new Set(['1','5','8','9','11','12','13','14','17']);
@@ -32,15 +35,26 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
     const text = turn.content.toLowerCase();
     if (/\bvegan\b/.test(text) && !/not (?:a )?vegan/.test(text)) result.vegan = true;
     if (/\bvegetarian\b/.test(text) && !/not (?:a )?vegetarian/.test(text)) result.vegetarian = true;
+    const clauses = text.split(/\b(?:but|however|although)\b|[.;!?]/);
     for (const [name, pattern] of Object.entries(ALLERGEN_NAMES)) {
       const ingredient = `\\b(?:${pattern.source})\\b`;
-      const negated = new RegExp(`(?:not allergic to|no allergy to)\\s+(?:${pattern.source})|no\\s+(?:${pattern.source})\\s+allergy`).test(text);
-      const stated = new RegExp(`(?:allerg\\w*|anaphyla\\w*|intoleran\\w*|avoid|can't (?:eat|have)|cannot (?:eat|have)).{0,35}${ingredient}|${ingredient}.{0,20}(?:allerg\\w*|intoleran\\w*)|(?:no|without)\\s+(?:any\\s+)?${ingredient}|${ingredient}[- ]free`).test(text);
-      if (stated && !negated) allergens.add(name);
+      const stated = clauses.some(clause => {
+        const negated = new RegExp(`(?:not allergic to|no allergy to)\\s+(?:${pattern.source})|no\\s+(?:${pattern.source})\\s+allergy`).test(clause);
+        const permitted = new RegExp(`${ingredient}\\s+(?:is|are)\\s+(?:fine|okay|ok|allowed)`).test(clause);
+        const coordinated = [...clause.matchAll(RESTRICTION_LIST)].some(match => new RegExp(ingredient).test(match[1]));
+        return !negated && !permitted && (coordinated || new RegExp(`(?:allerg\\w*|anaphyla\\w*|intoleran\\w*|avoid|can't (?:eat|have)|cannot (?:eat|have)).{0,35}${ingredient}|${ingredient}.{0,20}(?:allerg\\w*|intoleran\\w*)|(?:no|without)\\s+(?:any\\s+)?${ingredient}|${ingredient}[- ]free`).test(clause));
+      });
+      if (stated) allergens.add(name);
     }
-    if (/\bmeal\b|\blunch\b|\bdinner\b|\bbreakfast\b/.test(text)) result.mealOnly = true;
-    if (/something (?:i can |to )?eat|not a drink|solid food/.test(text)) result.solidOnly = true;
-    if (!/not|\bno\b|without|rather than/.test(text) && /(?:want|like|recommend|suggest|have|need).{0,25}(?:drink|smoothie|shake|cooler)/.test(text)) { result.mealOnly = false; result.solidOnly = false; }
+    if (/\bmeal\b|\blunch\b|\bdinner\b|\bbreakfast\b/.test(text)) { result.mealOnly = true; result.drinkOnly = false; }
+    if (/something (?:i can |to )?eat|not a drink|solid food/.test(text)) { result.solidOnly = true; result.drinkOnly = false; }
+    for (const clause of clauses) {
+      const request = clause.match(/\b(?:want|like|recommend|suggest|have|need)\b.{0,35}?\b(?:drink|smoothie|shake|cooler)\b/);
+      if (!request) continue;
+      const prefix = clause.slice(Math.max(0, (request.index || 0) - 15), request.index);
+      const negated = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drink|smoothie|shake|cooler)\b/.test(request[0]);
+      if (!negated) { result.mealOnly = false; result.solidOnly = false; result.drinkOnly = true; }
+    }
   }
   if (allergens.size) result.excludedAllergens = [...allergens];
   return result;
@@ -52,6 +66,7 @@ const recipeMatchesConstraints = (id: string, constraints: RecipeConstraints): b
   const text = ingredients.join(' ').toLowerCase();
   if (constraints.mealOnly && !MEAL_IDS.has(id)) return false;
   if (constraints.solidOnly && DRINK_IDS.has(id)) return false;
+  if (constraints.drinkOnly && !DRINK_IDS.has(id)) return false;
   if (constraints.vegan && /milk|cream|yoghurt|yogurt|cheese|feta|butter|custard|parmesan|eggs?|chicken|fish|sardine|honey|milo|horlicks/.test(text)) return false;
   if (constraints.vegetarian && /chicken|fish|sardine|beef|pork|lamb/.test(text)) return false;
   return !(constraints.excludedAllergens || []).some(name => ALLERGENS[name]?.test(text));

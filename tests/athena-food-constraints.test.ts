@@ -31,6 +31,31 @@ describe('recipe restrictions from the current conversation',()=>{
   const result=recommendRecipes('🔴 Red','any',1,[],deriveRecipeConstraints(history('I need something to eat, not a drink.')));
   expect(result.items.map(i=>i.id)).toEqual(['12']);
  });
+ it('binds an allergy to its ingredient rather than a contrasting permission',()=>{
+  const constraints=deriveRecipeConstraints(history('I have a peanut allergy, but milk is fine. Recommend one zero-prep recipe.'));
+  expect(constraints.excludedAllergens).toEqual(['peanut']);
+  expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items.map(i=>i.id)).toEqual(['12']);
+ });
+ it('honours a later shake request while retaining a separate peanut restriction',()=>{
+  const constraints=deriveRecipeConstraints([...history('I need a meal.'),{role:'user',content:'I would like a shake, no peanuts.'}]);
+  expect(constraints).toMatchObject({mealOnly:false,drinkOnly:true,excludedAllergens:['peanut']});
+  expect(recommendRecipes('🔴 Red','zero_prep',1,[],constraints).items.map(i=>i.id)).toEqual(['14']);
+ });
+ it('does not interpret a negated shake request as permission to return drinks',()=>{
+  expect(deriveRecipeConstraints(history('I need a meal. I do not want a shake.'))).toMatchObject({mealOnly:true,drinkOnly:false});
+ });
+ it.each(['No eggs or peanuts.', 'Without eggs, milk and peanuts.'])('filters every ingredient in a coordinated exclusion: %s',message=>{
+  const constraints=deriveRecipeConstraints(history(message));
+  expect(constraints.excludedAllergens).toEqual(expect.arrayContaining(['egg','peanut']));
+  const result=recommendRecipes('🔴 Red','zero_prep',3,[],constraints);
+  expect(result.items.map(i=>i.id)).not.toContain('11');
+  expect(result.items.map(i=>i.id)).not.toContain('15');
+ });
+ it('does not classify a mug of strained broth as solid food',()=>{
+  const result=recommendRecipes('🟡 Yellow','any',1,[],deriveRecipeConstraints(history('I need something to eat, not a drink.')));
+  expect(result.items.map(i=>i.id)).toEqual(['8']);
+  expect(result.items[0]).toHaveProperty('format','meal');
+ });
  it('does not use model claims to invent or erase user restrictions',()=>{
   expect(deriveRecipeConstraints([{role:'model',content:'You are vegan and allergic to milk.'}])).toEqual({});
   expect(deriveRecipeConstraints([...history('I am vegan.'),{role:'model',content:'You are not vegan anymore.'}])).toMatchObject({vegan:true});

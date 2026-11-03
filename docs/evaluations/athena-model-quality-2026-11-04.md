@@ -115,7 +115,7 @@ https://aistudio.google.com/docs/pricing#gemini-3.6-flash
 
 ## Final automated validation
 
-327 tests pass across 42 files, including general nut wording and the distinction
+330 tests pass across 42 files, including general nut wording and the distinction
 between solid snacks and complete meals. Type checking and production build pass.
 The existing high-severity dependency-audit gate is unchanged.
 
@@ -126,3 +126,5 @@ the earlier raw model transcripts remain an unaltered record of their tested rev
 
 Review also adds explicit negated-meal, later-snack and past-meal-mention cases,
 so the presence of the word meal does not itself force a meal-only filter.
+
+Final review also identified standalone coeliac/celiac declarations that did not activate wheat screening. Declared conditions now activate that filter, with both spellings and a negated declaration covered by regression tests.

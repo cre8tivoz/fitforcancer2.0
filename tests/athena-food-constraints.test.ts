@@ -23,6 +23,14 @@ describe('recipe restrictions from the current conversation',()=>{
   expect(deriveRecipeConstraints(history('I have no energy. Can I have peanut butter?'))).not.toHaveProperty('excludedAllergens');
   expect(deriveRecipeConstraints(history('I have no peanut allergy.'))).not.toHaveProperty('excludedAllergens');
  });
+ it.each(['I have coeliac disease.', 'I am celiac.'])('excludes wheat for a declared condition: %s',message=>{
+  const constraints=deriveRecipeConstraints(history(`${message} Recommend one easy-to-digest recipe.`));
+  expect(constraints.excludedAllergens).toEqual(['wheat']);
+  expect(recommendRecipes('🟢 Green','easy_to_digest',1,[],constraints).items.map(i=>i.id)).toEqual(['4']);
+ });
+ it('does not turn a negated coeliac declaration into a restriction',()=>{
+  expect(deriveRecipeConstraints(history('I do not have coeliac disease.'))).not.toHaveProperty('excludedAllergens');
+ });
  it('treats a general nut allergy conservatively, including peanuts',()=>{
   const result=recommendRecipes('🔴 Red','zero_prep',3,[],deriveRecipeConstraints(history('I am allergic to nuts.')));
   expect(result.items.map(i=>i.id)).not.toContain('11');

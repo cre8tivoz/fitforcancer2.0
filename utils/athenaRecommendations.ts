@@ -39,10 +39,12 @@ export const deriveRecipeConstraints = (history: readonly { role: string; conten
     for (const [name, pattern] of Object.entries(ALLERGEN_NAMES)) {
       const ingredient = `\\b(?:${pattern.source})\\b`;
       const stated = clauses.some(clause => {
+        const conditionNegated = /\b(?:don't|do not|do not currently|never)\s+have\s+(?:coeliac|celiac)|\bnot\s+(?:coeliac|celiac)\b/.test(clause);
+        const condition = name === 'wheat' && !conditionNegated && /\b(?:i have|i am|i'm|diagnosed with)\s+(?:coeliac|celiac)(?:\s+disease)?\b/.test(clause);
         const negated = new RegExp(`(?:not allergic to|no allergy to)\\s+(?:${pattern.source})|no\\s+(?:${pattern.source})\\s+allergy`).test(clause);
         const permitted = new RegExp(`${ingredient}\\s+(?:is|are)\\s+(?:fine|okay|ok|allowed)`).test(clause);
         const coordinated = [...clause.matchAll(RESTRICTION_LIST)].some(match => new RegExp(ingredient).test(match[1]));
-        return !negated && !permitted && (coordinated || new RegExp(`(?:allerg\\w*|anaphyla\\w*|intoleran\\w*|avoid|can't (?:eat|have)|cannot (?:eat|have)).{0,35}${ingredient}|${ingredient}.{0,20}(?:allerg\\w*|intoleran\\w*)|(?:no|without)\\s+(?:any\\s+)?${ingredient}|${ingredient}[- ]free`).test(clause));
+        return !negated && !permitted && (condition || coordinated || new RegExp(`(?:allerg\\w*|anaphyla\\w*|intoleran\\w*|avoid|can't (?:eat|have)|cannot (?:eat|have)).{0,35}${ingredient}|${ingredient}.{0,20}(?:allerg\\w*|intoleran\\w*)|(?:no|without)\\s+(?:any\\s+)?${ingredient}|${ingredient}[- ]free`).test(clause));
       });
       if (stated) allergens.add(name);
     }

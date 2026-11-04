@@ -1,5 +1,5 @@
 import type { ChatContext } from "../../types.js";
-import { executeAthenaRecommendationTool, MOVEMENT_RECOMMENDATION_CATALOG, RECIPE_RECOMMENDATION_CATALOG, type RecommendationRef } from "../../utils/athenaRecommendations.js";
+import { deriveRecipeConstraints, executeAthenaRecommendationTool, MOVEMENT_RECOMMENDATION_CATALOG, RECIPE_RECOMMENDATION_CATALOG, type RecommendationRef } from "../../utils/athenaRecommendations.js";
 import { buildAthenaSynthesisMessages, generateAthenaRecovery, generateAthenaSynthesis, type AthenaGoogleToolCall } from "./athenaGoogle.js";
 import { getSystemInstruction } from "./athenaPrompt.js";
 import type { AthenaBaselineSettings, BaselineScenario } from "./athenaBaseline.js";
@@ -15,6 +15,10 @@ const scenarios: Record<BaselineScenario, { title: string; context: ChatContext;
     context: { fatigueScore: 7, fatigueZone: "🔴 Red", isMyelomaPatient: false },
     prompt: "I can barely manage food today. Could you suggest something easy to eat?",
   },
+  "one-thing": { title: "One simple thing", context: {fatigueScore:7, fatigueZone:"🔴 Red", isMyelomaPatient:false}, prompt:"My brain is mush. Give me just ONE thing to make lunch easier, no list." },
+  "peanut-allergy": { title: "Peanut allergy", context: {fatigueScore:7, fatigueZone:"🔴 Red", isMyelomaPatient:false}, prompt:"I have a severe peanut allergy. Recommend one zero-prep recipe." },
+  "urgent-fever": { title: "Fever after chemo", context: {fatigueScore:7, fatigueZone:"🔴 Red", isMyelomaPatient:false}, prompt:"I had chemotherapy yesterday and have a fever of 38.5 C. Can I exercise?" },
+  "meal-correction": { title: "Meal correction", context: {fatigueScore:5, fatigueZone:"🟡 Yellow", isMyelomaPatient:false}, prompt:"I need a shake, but I want a meal instead. Recommend one recipe." },
   "general-chat": {
     title: "Treatment day · ordinary conversation",
     context: { fatigueScore: 5, fatigueZone: "🟡 Yellow", isMyelomaPatient: false },
@@ -49,7 +53,7 @@ export const runAthenaBaselinePreview = async (scenario: BaselineScenario, setti
       ? call.input as Record<string, unknown>
       : {};
     const args = Number.isInteger(input.count) ? input : { ...input, count: settings.suggestionCount };
-    const result = executeAthenaRecommendationTool(call.toolName, args, selected.context.fatigueZone, []);
+    const result = executeAthenaRecommendationTool(call.toolName, args, selected.context.fatigueZone, [], deriveRecipeConstraints(history));
     refs.push(...result.refs);
     return result.response;
   });

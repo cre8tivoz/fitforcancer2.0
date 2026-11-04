@@ -1,3 +1,5 @@
+import AthenaOperationsPanel from "./AthenaOperationsPanel";
+import { OPERATION_SCENARIOS } from "../utils/athenaOperationsChecks";
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Check, Clock3, RotateCcw, Send, SlidersHorizontal, Sparkles, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -7,11 +9,7 @@ type Settings = { warmth: 'low' | 'balanced' | 'high'; responseLength: 'concise'
 type HistoryEntry = { id?: string; version?: number; createdAt?: string; publishedAt?: string; author?: string; authorEmail?: string; action?: string; summary?: string; settings?: Settings };
 type PreviewResult = { title?: string; text?: string; recommendations?: Array<{ kind?: string; id?: string; title?: string }>; scenario?: string; settings?: Settings; [key: string]: unknown };
 const DEFAULT_SETTINGS: Settings = { warmth: 'balanced', responseLength: 'balanced', clarifyTendency: 'ask_when_needed', suggestionCount: 3, extraGuidance: '' };
-const scenarios = [
-  { id: 'fatigue7-movement', title: 'Movement when fatigue is 7/10', note: 'Checks for a gentle suggestion without an unnecessary preference question.' },
-  { id: 'low-energy-meal', title: 'A low-energy meal idea', note: 'Checks that advice stays practical and easy to act on.' },
-  { id: 'general-chat', title: 'Everyday support', note: 'Checks warmth, length and clarifying questions.' },
-] as const;
+const scenarios = Object.entries(OPERATION_SCENARIOS).map(([id,s])=>({id,title:s.label,note:s.expectation}));
 const controlClass = 'mt-1 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-[color:var(--color-text)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)]';
 const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -30,6 +28,8 @@ async function request<T>(url: string, init?: RequestInit, authClient?: AuthClie
 const pretty = (value: unknown) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 
 const BaselinePage: React.FC = () => {
+  const [operations,setOperations] = useState<any>(null);
+  const [model,setModel] = useState('');
   const [email, setEmail] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<string | null>(null);
@@ -47,7 +47,8 @@ const BaselinePage: React.FC = () => {
   const [notice, setNotice] = useState('');
 
   const loadConfig = useCallback(async (client: AuthClient) => {
-    const data = await request<{ draft?: Settings; published?: Settings; history?: HistoryEntry[] }>('/api/baseline', undefined, client);
+    const data = await request<{ draft?: Settings; published?: Settings; history?: HistoryEntry[];model?:string;operations?:unknown }>('/api/baseline', undefined, client);
+    setOperations(data.operations);setModel(data.model||'');
     const draft = data.draft || data.published || DEFAULT_SETTINGS;
     setSettings({ ...DEFAULT_SETTINGS, ...draft }); setSavedSettings({ ...DEFAULT_SETTINGS, ...draft }); setHistory(data.history || []);
   }, []);
@@ -115,6 +116,7 @@ const BaselinePage: React.FC = () => {
       </>}
     </section> : <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"><span className="flex items-center gap-2"><Check size={16} /> Signed in as <strong>{user}</strong></span><span className="text-emerald-800">Draft changes stay private until published.</span></div>
+      <AthenaOperationsPanel model={model} operations={operations} version={history[0]?.id || "Initial baseline"} runPreview={scenario=>request<PreviewResult>("/api/baseline",{method:"POST",body:JSON.stringify({action:"preview",scenario,settings})},authClient || undefined)} />
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"><section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-7"><h2 className="text-xl font-bold">Draft settings</h2><p className="mt-1 text-sm text-stone-600">Small adjustments to how ATHENA responds.</p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">Warmth<select className={controlClass} value={settings.warmth} onChange={e => setSettings({ ...settings, warmth: e.target.value as Settings['warmth'] })}><option value="low">Reserved</option><option value="balanced">Warm and steady</option><option value="high">Very warm</option></select></label>

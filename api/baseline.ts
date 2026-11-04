@@ -1,3 +1,6 @@
+import { ATHENA_MODEL } from "./_lib/athenaConfig.js";
+import { readAthenaOperations, recordAthenaOperation } from "./_lib/athenaOperations.js";
+import { OPERATION_SCENARIOS, assessOperationsResult } from "../utils/athenaOperationsChecks.js";
 import { isSameOriginRequest, verifyBaselineRequest } from "./_lib/athenaBaselineAuth.js";
 import { normaliseBaselineSettings, publishBaseline, readBaseline, rollbackBaseline, saveDraft, type BaselineScenario } from "./_lib/athenaBaseline.js";
 import { runAthenaBaselinePreview } from "./_lib/athenaPreview.js";
@@ -15,7 +18,7 @@ export default async function handler(req: Request, res: Response) {
   if (!user) return res.status(401).json({ error: "Authentication required" });
 
   try {
-    if (req.method === "GET") return res.status(200).json(await readBaseline());
+    if (req.method === "GET") return res.status(200).json({...await readBaseline(), model:ATHENA_MODEL, operations:await readAthenaOperations().catch(()=>null)});
     if (req.method === "PUT") {
       const body = asRecord(req.body);
       if (body.action !== "saveDraft") return res.status(400).json({ error: "Invalid action" });
@@ -29,10 +32,18 @@ export default async function handler(req: Request, res: Response) {
       if (body.action === "preview") {
         const scenario = body.scenario;
         const settings = normaliseBaselineSettings(body.settings);
-        if (!settings || !["fatigue7-movement", "low-energy-meal", "general-chat"].includes(scenario as string)) {
+        if (!settings || !(typeof scenario === "string" && Object.hasOwn(OPERATION_SCENARIOS, scenario))) {
           return res.status(400).json({ error: "Invalid preview request" });
         }
-        return res.status(200).json(await runAthenaBaselinePreview(scenario as BaselineScenario, settings));
+        const started = Date.now();
+        try {
+          const result = await runAthenaBaselinePreview(scenario as BaselineScenario, settings);
+          const durationMs = Date.now()-started;
+          await recordAthenaOperation({model:ATHENA_MODEL,durationMs,finishReason:"stop"},"synthetic");
+          return res.status(200).json({...result,model:ATHENA_MODEL,durationMs,checkedAt:new Date().toISOString(),review:assessOperationsResult(scenario as BaselineScenario,result.text,result.recommendations)});
+        } catch(e) {
+          await recordAthenaOperation({model:ATHENA_MODEL,durationMs:Date.now()-started,errorCategory:"upstream"},"synthetic"); throw e;
+        }
       }
       if (body.action === "publish") {
         const settings = normaliseBaselineSettings(body.settings);

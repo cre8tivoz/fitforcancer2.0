@@ -1,3 +1,4 @@
+import { recordAthenaOperation } from "./_lib/athenaOperations.js";
 import type { CancerTypeOption, ChatContext, ChatMessage } from "../types";
 import {
   ATHENA_RECOMMENDATION_TOOL_DECLARATIONS,
@@ -564,8 +565,8 @@ const addTokenUsage = async (state: AthenaDiagnosticState, result: { usage: { in
     if (typeof usage.outputTokens === "number") state.outputTokens += usage.outputTokens;
   } catch { /* usage is optional provider metadata */ }
 };
-const logAthenaDiagnostic = (state: AthenaDiagnosticState) => {
-  console.info("[athena] generation", safeAthenaMetadata({
+const logAthenaDiagnostic = async (state: AthenaDiagnosticState) => {
+  const metadata = safeAthenaMetadata({
     requestId: state.requestId,
     model: ATHENA_MODEL,
     transport: "google-generate-content",
@@ -576,7 +577,9 @@ const logAthenaDiagnostic = (state: AthenaDiagnosticState) => {
     inputTokens: state.inputTokens,
     outputTokens: state.outputTokens,
     ...(state.errorCategory ? { errorCategory: state.errorCategory } : {}),
-  }));
+  });
+  console.info("[athena] generation", metadata);
+  await recordAthenaOperation(metadata, "production");
 };
 
 const handleSdkJsonRequest = async (
@@ -638,7 +641,7 @@ const handleSdkJsonRequest = async (
     diagnostics.errorCategory = (error as Error)?.name === "AbortError" ? "timeout" : "upstream";
     throw error;
   } finally {
-    logAthenaDiagnostic(diagnostics);
+    await logAthenaDiagnostic(diagnostics);
   }
 };
 
@@ -777,7 +780,7 @@ const handleSdkStreamingRequest = async (
       res.status(502).json({ error: "There was an error connecting to ATHENA. Please try again." });
     }
   } finally {
-    logAthenaDiagnostic(diagnostics);
+    await logAthenaDiagnostic(diagnostics);
   }
 };
 

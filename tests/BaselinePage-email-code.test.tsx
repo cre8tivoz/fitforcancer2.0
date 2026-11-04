@@ -41,7 +41,7 @@ describe("BaselinePage email-code sign-in", () => {
     await screen.findByText("Draft settings");
     expect(authClient).not.toHaveBeenCalled();
     expect(authClient.getSession).toHaveBeenCalledTimes(2);
-    expect(authClient.token).toHaveBeenCalled();
+    expect(authClient.token).toHaveBeenCalledWith({ query: {}, fetchOptions: { headers: { "X-Force-Fetch": "true" } } });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/baseline", expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer session-jwt" }) })));
   });
 });

@@ -17,7 +17,9 @@ const createBaselineAuthClient = (url: string) => createAuthClient(url);
 type AuthClient = ReturnType<typeof createBaselineAuthClient>;
 class ApiError extends Error { constructor(message: string, readonly status: number) { super(message); } }
 async function request<T>(url: string, init?: RequestInit, authClient?: AuthClient): Promise<T> {
-  const tokenResult = authClient ? await authClient.token({ query: {} }) : null;
+  // Neon Auth's client caches get-session and token responses under the same
+  // key. Force a network request so token() receives a JWT, not session data.
+  const tokenResult = authClient ? await authClient.token({ query: {}, fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } }) : null;
   const token = tokenResult?.data?.token;
   if (authClient && (!token || tokenResult?.error)) throw new Error('Your session has expired. Sign in again.');
   const response = await fetch(url, { ...init, credentials: 'same-origin', headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init?.headers } });

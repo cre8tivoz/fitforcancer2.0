@@ -1,6 +1,6 @@
 # Athena Gemini 3.5 Flash-Lite migration
 
-Status: automated regression checks and live preview evaluation completed on 3 November 2026.
+Status: initial Flash-Lite migration completed on 3 November 2026. The broader 4 November evaluation selects full Gemini 3.6 Flash; see `evaluations/athena-model-quality-2026-11-04.md`. The sections below retain the initial migration record.
 
 Google's 3 November 2026 account notice redirects `gemini-2.5-flash` to
 `gemini-3.5-flash-lite` on 1 December 2026. The public deprecation page now

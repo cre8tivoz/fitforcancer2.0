@@ -1,7 +1,96 @@
+import { ATHENA_RECIPE_INGREDIENTS } from "./athenaRecipeIngredients.js";
 import type { ChatContext, Recipe } from "../types";
 
 export type RecommendationKind = "movement" | "recipe";
 export type RecommendationRef = { kind: RecommendationKind; id: string };
+
+export interface RecipeConstraints { mealOnly?: boolean; snackOnly?: boolean; solidOnly?: boolean; drinkOnly?: boolean; vegan?: boolean; vegetarian?: boolean; excludedAllergens?: string[]; excludedRecipeIds?: string[] }
+const ALLERGENS: Record<string, RegExp> = {
+  peanut: /peanuts?/, tree_nut: /almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?|brazil nuts?/,
+  milk: /milk|cream|yog[uh]?urt|yoghurt|cheese|feta|butter|custard|parmesan|milo|horlicks/,
+  egg: /\beggs?\b|custard/, fish: /fish|sardines?|salmon|tuna/, shellfish: /shellfish|prawns?|shrimp|crab|lobster/,
+  wheat: /wheat|gluten|flour|bread|toast|spaghetti|fettuccine|oats|milo|horlicks/,
+  sesame: /sesame|tahini/, soy: /soy|soya|tofu/,
+};
+const ALLERGEN_NAMES: Record<string, RegExp> = { ...ALLERGENS,
+  peanut: /peanuts?|nuts?/,
+  milk: /milk|dairy|lactose/, wheat: /wheat|gluten|coeliac|celiac/,
+  tree_nut: /(?:tree )?nuts?|almonds?|cashews?|walnuts?|hazelnuts?|pecans?|pistachios?|macadamias?/,
+};
+const RESTRICTION_LIST = new RegExp(
+  `\\b(?:no|without|avoid|do not want|don't want)\\s+(?:any\\s+)?((?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')})(?:\\s*(?:,|\\band\\b|\\bor\\b|/)\\s*(?:${Object.values(ALLERGEN_NAMES).map(pattern => `(?:${pattern.source})`).join('|')}))*)`, 'g',
+);
+const DRINK_IDS = new Set(['1','2','10','11','14']);
+const MEAL_IDS = new Set(['5','6','7','8','9','13','17']);
+// Existing catalogue options with protein ingredients; not a nutrient-content guarantee.
+const PROTEIN_IDS = new Set(['1','5','8','9','11','12','13','14','17']);
+
+// Conservatively retain explicit food restrictions from user turns. Model prose
+// cannot remove them. This screens listed ingredients, not manufacturing labels
+// or cross-contact, and must never be presented as allergy certification.
+export const deriveRecipeConstraints = (history: readonly { role: string; content: string }[]): RecipeConstraints => {
+  const result: RecipeConstraints = {}; const allergens = new Set<string>();
+  for (const turn of history) {
+    if (turn.role !== 'user') continue;
+    const text = turn.content.toLowerCase();
+    if (/\bvegan\b/.test(text) && !/not (?:a )?vegan/.test(text)) result.vegan = true;
+    if (/\bvegetarian\b/.test(text) && !/not (?:a )?vegetarian/.test(text)) result.vegetarian = true;
+    const clauses = text.split(/\b(?:but|however|although)\b|[.;!?]/);
+    for (const [name, pattern] of Object.entries(ALLERGEN_NAMES)) {
+      const ingredient = `\\b(?:${pattern.source})\\b`;
+      const stated = clauses.some(clause => {
+        const conditionNegated = /\b(?:don't|do not|do not currently|never)\s+have\s+(?:coeliac|celiac)|\bnot\s+(?:coeliac|celiac)\b/.test(clause);
+        const condition = name === 'wheat' && !conditionNegated && /\b(?:i have|i am|i'm|diagnosed with)\s+(?:coeliac|celiac)(?:\s+disease)?\b/.test(clause);
+        const negated = new RegExp(`(?:not allergic to|no allergy to)\\s+(?:${pattern.source})|no\\s+(?:${pattern.source})\\s+allergy`).test(clause);
+        const permitted = new RegExp(`${ingredient}\\s+(?:is|are)\\s+(?:fine|okay|ok|allowed)`).test(clause);
+        const coordinated = [...clause.matchAll(RESTRICTION_LIST)].some(match => new RegExp(ingredient).test(match[1]));
+        return !negated && !permitted && (condition || coordinated || new RegExp(`(?:allerg\\w*|anaphyla\\w*|intoleran\\w*|avoid|can't (?:eat|have)|cannot (?:eat|have)).{0,35}${ingredient}|${ingredient}.{0,20}(?:allerg\\w*|intoleran\\w*)|(?:no|without)\\s+(?:any\\s+)?${ingredient}|${ingredient}[- ]free`).test(clause));
+      });
+      if (stated) allergens.add(name);
+    }
+    // Apply corrections in conversation order, including corrections within a turn.
+    for (const clause of clauses.flatMap(clause => clause.split(','))) {
+      const requested = /\b(?:want|need|like|recommend|suggest|give|show|find|have|make|looking for|after)\b.{0,75}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:actual|proper|full)\s+meals?\b|\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\s+(?:please|idea|option|recipe)\b/.test(clause);
+      const negated = /(?:don't|do not|not|no longer)\s+(?:really\s+)?(?:want|need|like|have|recommend|suggest)\b[^,;.!?]{0,24}\b(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b|\b(?:no|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+|full\s+|proper\s+)?(?:meals?|lunch(?:es)?|dinners?|breakfasts?)\b/.test(clause);
+      if (requested || negated) {
+        result.mealOnly = !negated;
+        if (!negated) { result.drinkOnly = false; result.solidOnly = false; result.snackOnly = false; }
+      }
+      if (/something (?:i can |to )?eat|solid food/.test(clause)) { result.solidOnly = true; result.drinkOnly = false; }
+      const request = clause.match(/\b(?:want|like|recommend|suggest|have|need|just|only)\b.{0,35}?\b(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/);
+      if (request) {
+        const prefix = clause.slice(Math.max(0, (request.index || 0) - 15), request.index);
+        const rejected = /(?:don't|do not|not)\s*$/.test(prefix) || /\b(?:no|not|without|instead of|rather than)\s+(?:a\s+|any\s+|another\s+)?(?:drinks?|smoothies?|shakes?|coolers?|snacks?)\b/.test(request[0]);
+        if (!rejected) {
+          const snack = /snacks?\b$/.test(request[0]);
+          result.mealOnly = false; result.solidOnly = snack; result.snackOnly = snack; result.drinkOnly = !snack;
+          delete result.excludedRecipeIds;
+        }
+      }
+      const excluded = new Set(result.excludedRecipeIds || []);
+      for (const match of clause.matchAll(/\b(?:no|not|don't|do not|without|instead of|rather than)\s+(?:(?:really\s+)?(?:want|need|like|have)\s+)?(?:a\s+|any\s+|another\s+)?(drinks?|smoothies?|shakes?|coolers?)\b/g)) {
+        const ids = /^drink/.test(match[1]) ? [...DRINK_IDS] : /^cooler/.test(match[1]) ? ['10'] : ['1','11'];
+        for (const id of ids) excluded.add(id);
+      }
+      if (excluded.size) result.excludedRecipeIds = [...excluded];
+    }
+  }
+  if (allergens.size) result.excludedAllergens = [...allergens];
+  return result;
+};
+
+const recipeMatchesConstraints = (id: string, constraints: RecipeConstraints): boolean => {
+  const ingredients = ATHENA_RECIPE_INGREDIENTS[id];
+  if (!ingredients || constraints.excludedRecipeIds?.includes(id)) return false;
+  const text = ingredients.join(' ').toLowerCase();
+  if (constraints.mealOnly && !MEAL_IDS.has(id)) return false;
+  if (constraints.snackOnly && (MEAL_IDS.has(id) || DRINK_IDS.has(id))) return false;
+  if (constraints.solidOnly && DRINK_IDS.has(id)) return false;
+  if (constraints.drinkOnly && !DRINK_IDS.has(id)) return false;
+  if (constraints.vegan && /milk|cream|yoghurt|yogurt|cheese|feta|butter|custard|parmesan|eggs?|chicken|fish|sardine|honey|milo|horlicks/.test(text)) return false;
+  if (constraints.vegetarian && /chicken|fish|sardine|beef|pork|lamb/.test(text)) return false;
+  return !(constraints.excludedAllergens || []).some(name => ALLERGENS[name]?.test(text));
+};
 
 type ZoneName = "Green" | "Yellow" | "Red";
 export type MovementPreference =
@@ -200,6 +289,7 @@ export const recommendRecipes = (
   preferenceInput: unknown = "any",
   countInput: unknown = 3,
   excludedIdsInput: readonly string[] = [],
+  constraints: RecipeConstraints = {},
 ) => {
   const zone = getZoneName(fatigueZone);
   const preference = normaliseRecipePreference(preferenceInput);
@@ -215,7 +305,7 @@ export const recommendRecipes = (
     };
   }
 
-  const sameZoneAll = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone);
+  const sameZoneAll = RECIPE_RECOMMENDATION_CATALOG.filter((item) => item.zone === zone && recipeMatchesConstraints(item.id, constraints));
   const sameZone = sameZoneAll.filter((item) => !excludedIds.has(item.id));
 
   if (sameZone.length === 0 && sameZoneAll.length > 0 && excludedIds.size > 0) {
@@ -231,9 +321,16 @@ export const recommendRecipes = (
 
   const preferred = preference === "any"
     ? sameZone
-    : sameZone.filter((item) => RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference);
+    : sameZone.filter((item) => (preference === "high_protein" ? PROTEIN_IDS.has(item.id) : RECIPE_PREFERENCE_BY_CATEGORY[item.category] === preference));
   const preferenceMatched = preference === "any" || preferred.length > 0;
-  const items = (preferenceMatched ? preferred : sameZone).slice(0, count);
+  const items = (preferenceMatched ? preferred : sameZone).slice(0, count).map(item => ({
+    ...item, ingredients: ATHENA_RECIPE_INGREDIENTS[item.id],
+    format: DRINK_IDS.has(item.id) ? 'drink' : MEAL_IDS.has(item.id) ? 'meal' : 'snack',
+  }));
+  if (!items.length) return {
+    status: 'no_suitable_results' as const, kind: 'recipe' as const, zone, preference, items: [],
+    message: 'No catalogue recipe matches the stated food restrictions and meal request in this fatigue band. Explain the gap honestly and offer a simple general idea if useful. Do not substitute an unsuitable item, claim another search is running, or call tools again.',
+  };
 
   return {
     status: "ok" as const,
@@ -241,6 +338,7 @@ export const recommendRecipes = (
     zone,
     preference,
     preferenceMatched,
+    safetyNote: 'Listed ingredients only: check actual product labels and cross-contact advice for allergies. Never guarantee an item is allergy-safe.',
     items,
   };
 };
@@ -299,6 +397,7 @@ export const executeAthenaRecommendationTool = (
   args: unknown,
   fatigueZone: ChatContext["fatigueZone"],
   previousRecommendations: readonly RecommendationRef[] = [],
+  constraints: RecipeConstraints = {},
 ): { response: Record<string, unknown>; refs: RecommendationRef[] } => {
   const safeArgs = args && typeof args === "object" && !Array.isArray(args)
     ? (args as Record<string, unknown>)
@@ -321,7 +420,7 @@ export const executeAthenaRecommendationTool = (
     const excludedIds = safeArgs.avoid_previous === true
       ? previousRecommendations.filter((ref) => ref.kind === "recipe").map((ref) => ref.id)
       : [];
-    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count, excludedIds);
+    const response = recommendRecipes(fatigueZone, safeArgs.preference, safeArgs.count, excludedIds, constraints);
     return {
       response,
       refs: response.status === "ok"

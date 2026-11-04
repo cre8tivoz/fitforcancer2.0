@@ -70,14 +70,14 @@ describe("/api/gemini SDK transport", () => {
     expect(requests).toHaveLength(1);
     expect(diagnostic).toHaveBeenCalledWith("[athena] generation", expect.objectContaining({
       requestId: expect.stringMatching(/^[a-f0-9]{12}$/),
-      model: "gemini-3.5-flash-lite",
+      model: "gemini-3.6-flash",
       transport: "google-generate-content",
       callCount: 1,
       recoveryCount: 0,
       finishReason: "stop",
     }));
     expect(JSON.stringify(diagnostic.mock.calls)).not.toContain("Hello from synthetic ATHENA.");
-    expect(requests[0].url).toContain("gemini-3.5-flash-lite:streamGenerateContent");
+    expect(requests[0].url).toContain("gemini-3.6-flash:streamGenerateContent");
   });
 
   it("synthesizes SDK tool results with original conversation history", async () => {

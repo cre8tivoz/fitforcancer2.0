@@ -41,7 +41,7 @@ describe.each(['legacy', 'sdk'])('Gemini 3 migration: %s', transport => {
     const mock = vi.fn(async (url: any, init: any) => {
       const body = JSON.parse(init.body);
       requests.push(body);
-      expect(String(url)).toContain('gemini-3.5-flash-lite:');
+      expect(String(url)).toContain('gemini-3.6-flash:');
       expect(body.generationConfig).toMatchObject({ maxOutputTokens: 4096, thinkingConfig: { thinkingLevel: 'medium' } });
       for (const key of ['temperature', 'topP', 'topK', 'candidateCount']) expect(body.generationConfig).not.toHaveProperty(key);
       expect(body.generationConfig.thinkingConfig).not.toHaveProperty('thinkingBudget');

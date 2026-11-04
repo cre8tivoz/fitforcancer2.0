@@ -1,4 +1,4 @@
-export const ATHENA_MODEL = "gemini-3.5-flash-lite";
+export const ATHENA_MODEL = "gemini-3.6-flash";
 export const ATHENA_TIMEOUT_MS = 25_000;
 // Shared ceiling includes thinking tokens; visible brevity remains in the prompt.
 // Validate latency, token use and tone on a preview before release.

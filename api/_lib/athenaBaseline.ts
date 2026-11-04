@@ -16,7 +16,7 @@ export const DEFAULT_ATHENA_BASELINE: AthenaBaselineSettings = Object.freeze({
   extraGuidance: "",
 });
 
-export type BaselineScenario = "fatigue7-movement" | "low-energy-meal" | "general-chat";
+export type BaselineScenario = import("../../utils/athenaOperationsChecks.js").OperationsScenario;
 
 export const normaliseBaselineSettings = (input: unknown): AthenaBaselineSettings | null => {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;

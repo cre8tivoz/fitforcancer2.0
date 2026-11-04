@@ -150,3 +150,12 @@ describe("/api/gemini SDK transport", () => {
     expect(synthesisContents.at(-2).parts).toContainEqual(expect.objectContaining({ thoughtSignature: "synthetic-recovery-signature" }));
   });
 });
+
+it.each([true,false])('records empty STOP responses as failed operations (stream=%s)',async streaming=>{
+ const diagnostic=vi.spyOn(console,'info').mockImplementation(()=>undefined);
+ process.env.GEMINI_API_KEY='synthetic-test-key';process.env.ATHENA_TRANSPORT='sdk';
+ vi.stubGlobal('fetch',vi.fn(async(url:any)=>String(url).includes('alt=sse')?sse(candidate([])):json(candidate([]))));
+ const output=makeStreamingResponse();
+ await handler({method:'POST',headers:{...(streaming?{accept:'text/event-stream'}:{}),'x-forwarded-for':`ops-empty-${streaming}`},body:{history:[{role:'user',content:'Synthetic empty response test'}]}} as any,output.res as any);
+ expect(diagnostic).toHaveBeenCalledWith('[athena] generation',expect.objectContaining({errorCategory:'invalid-response'}));
+});

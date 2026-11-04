@@ -20,4 +20,6 @@ Google project billing remains external. No documented automatic billing source 
 
 ## Validation
 
-358 automated tests, including restriction parity, protected auth boundaries, metadata allowlisting/failure tolerance, suite failure visibility and prior-run comparison. Type checking and build are required before release. No production tuning or deployment is changed by opening this PR.
+361 automated tests, including restriction parity, protected auth boundaries, metadata allowlisting/failure tolerance, suite failure visibility and prior-run comparison. Type checking and build are required before release. No production tuning or deployment is changed by opening this PR.
+
+Review follow-up: unsuccessful empty/blocked generations receive an explicit error category; leaving the panel stops scheduling remaining scenarios (an already running provider request may complete). Regression tests cover empty STOP responses in JSON/streaming and suite unmount.

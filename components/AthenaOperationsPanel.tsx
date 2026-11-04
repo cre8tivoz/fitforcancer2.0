@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { OPERATION_SCENARIOS, type OperationsScenario } from '../utils/athenaOperationsChecks';
 type Result = {text?:string; model?:string;durationMs?:number;checkedAt?:string;review?:{findings:string[];status:string};recommendations?:{kind?:string;id?:string;title?:string}[]};
 export default function AthenaOperationsPanel({model,operations,version,runPreview}:{model:string;operations:any;version:string;runPreview:(scenario:OperationsScenario)=>Promise<Result>}) {
+ const active=useRef(true);
+ useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
  const [results,setResults]=useState<Record<string,Result>>({});
  const [previous,setPrevious]=useState<Record<string,Result>>({});
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');
  const [runVersion,setRunVersion]=useState('');
  async function run(){setBusy(true);setError('');setPrevious(results);setResults({});setRunVersion(version);
-  try { for(const id of Object.keys(OPERATION_SCENARIOS) as OperationsScenario[]){try{const r=await runPreview(id);setResults(v=>({...v,[id]:r}));}catch{setResults(v=>({...v,[id]:{review:{status:'needs-attention',findings:['Generation failed. Retry this scenario using the individual preview.']}}}));}} }
-  catch{setError('The checks could not finish.');}finally{setBusy(false);}
+  try { for(const id of Object.keys(OPERATION_SCENARIOS) as OperationsScenario[]){if(!active.current)break;try{const r=await runPreview(id);if(!active.current)break;setResults(v=>({...v,[id]:r}));}catch{if(!active.current)break;setResults(v=>({...v,[id]:{review:{status:'needs-attention',findings:['Generation failed. Retry this scenario using the individual preview.']}}}));}} }
+  catch{setError('The checks could not finish.');}finally{if(active.current)setBusy(false);}
  }
  return <section className="mb-6 rounded-2xl border border-stone-200 bg-white p-5 sm:p-7">
  <h2 className="text-xl font-bold">Operations overview</h2><p className="mt-2">Active model: <strong>{model || 'Unavailable'}</strong></p>

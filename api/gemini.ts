@@ -597,9 +597,11 @@ const handleSdkJsonRequest = async (
     diagnostics.finishReason = safeFinishReason(selection.finishReason);
     await addTokenUsage(diagnostics, selection);
     if (selection.finishReason !== "stop" && !(selection.finishReason === "tool-calls" && selection.toolCalls.length > 0)) {
+      diagnostics.errorCategory = "invalid-response";
       return { error: "ATHENA returned an incomplete response. Please try again." };
     }
     if (selection.toolCalls.length === 0) {
+      if (!selection.text.trim()) diagnostics.errorCategory = "invalid-response";
       return selection.text.trim()
         ? { text: selection.text }
         : { error: "ATHENA returned an empty response. Please try again." };
@@ -684,6 +686,7 @@ const handleSdkStreamingRequest = async (
     let toolCalls = await selection.toolCalls;
     let synthesisResponseMessages = await selection.responseMessages;
     if (finishReason !== "stop" && !(finishReason === "tool-calls" && toolCalls.length > 0)) {
+      diagnostics.errorCategory ??= "invalid-response";
       writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
       res.end!();
       return;
@@ -691,7 +694,8 @@ const handleSdkStreamingRequest = async (
 
     if (toolCalls.length === 0 && !directText.trim()) {
       if (finishReason !== "stop") {
-        writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
+        diagnostics.errorCategory ??= "invalid-response";
+      writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
         res.end!();
         return;
       }
@@ -701,7 +705,8 @@ const handleSdkStreamingRequest = async (
       diagnostics.finishReason = safeFinishReason(recovered.finishReason);
       await addTokenUsage(diagnostics, recovered);
       if (recovered.finishReason !== "stop" && !(recovered.finishReason === "tool-calls" && recovered.toolCalls.length > 0)) {
-        writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
+        diagnostics.errorCategory ??= "invalid-response";
+      writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
         res.end!();
         return;
       }
@@ -718,7 +723,7 @@ const handleSdkStreamingRequest = async (
     }
 
     if (toolCalls.length === 0) {
-      if (!directText.trim()) writeSse(res, "error", { error: "ATHENA returned an empty response. Please try again." });
+      if (!directText.trim()) { diagnostics.errorCategory = "invalid-response"; writeSse(res, "error", { error: "ATHENA returned an empty response. Please try again." }); }
       else writeSse(res, "done", { recommendations: [] });
       res.end!();
       return;
@@ -735,6 +740,7 @@ const handleSdkStreamingRequest = async (
       deriveRecipeConstraints(body.history!),
     );
     if (execution.allRecommendationExecutionsFailed) {
+      diagnostics.errorCategory ??= "invalid-response";
       writeSse(res, "error", { error: "There was an error connecting to ATHENA. Please try again." });
       res.end!();
       return;
@@ -764,6 +770,7 @@ const handleSdkStreamingRequest = async (
     await addTokenUsage(diagnostics, synthesis);
     if (synthesisFinish !== "stop" || !finalText.trim()) {
       diagnostics.errorCategory = "invalid-response";
+      diagnostics.errorCategory ??= "invalid-response";
       writeSse(res, "error", { error: "ATHENA returned an incomplete response. Please try again." });
     } else {
       writeSse(res, "done", { recommendations: execution.recommendationRefs });
@@ -772,6 +779,7 @@ const handleSdkStreamingRequest = async (
   } catch (error) {
     diagnostics.errorCategory = (error as Error)?.name === "AbortError" ? "timeout" : "upstream";
     if (streamStarted) {
+      diagnostics.errorCategory ??= "invalid-response";
       writeSse(res, "error", { error: (error as Error)?.name === "AbortError"
         ? "ATHENA took too long to respond. Please try again."
         : "There was an error connecting to ATHENA. Please try again." });

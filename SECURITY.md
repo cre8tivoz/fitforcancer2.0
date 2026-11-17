@@ -220,3 +220,37 @@ pnpm audit
 A successful production build does not substitute for the separate Vitest regression suite.
 
 For the full ATHENA lifecycle see [`docs/athena-architecture.md`](docs/athena-architecture.md).
+
+## Threat model for security scans
+
+Added 17 November 2026. Devin security scans read this section, with the rest of this file, as the repository's security model. It is the **Fit For Cancer** component of the cre8tivoz portfolio threat model (six independent repositories, no shared backend). Facts marked **[Billy]** are the owner's decisions.
+
+### Entry points
+
+| Entry point | Who can reach it | Guard |
+|---|---|---|
+| `/api/gemini` | Anyone | Optional chat access password, rate limit (`api/rateLimit.ts`, Upstash Redis), bounded recommendation tool calls |
+| `/api/auth/*` (`api/_lib/neonAuthProxy.ts`) | Anyone (Neon Auth proxy) | Neon Auth |
+| ATHENA baseline / settings endpoints (`api/_lib/athenaBaselineAuth.ts`) | Operator only | Neon Auth operator check |
+| Static app | Anyone | CSP and security headers in `vercel.json` |
+
+### Assets
+
+**[Billy] Most important:**
+
+1. Users' health and wellbeing data sent to AI: ATHENA chat, cancer type, fatigue and Energy Bank context.
+2. The operator baseline/settings portal and its sessions.
+
+Also: the Gemini API key and Neon/Upstash secrets.
+
+### Attackers
+
+**[Billy] In scope:**
+
+- Anonymous internet users.
+- Abusive AI-chat users: prompt injection, safety bypass, data extraction.
+- A compromised operator account.
+
+### Out of scope / accepted risk
+
+- **[Billy]** AI cost abuse / free-tier exhaustion (quota burning). Safety bypass, prompt injection and data leakage are **not** covered by this exclusion.
